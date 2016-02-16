@@ -1,0 +1,406 @@
+<!doctype html>
+<html>
+    <!--
+        Trap
+        An anti-pryer server for better privacy
+
+        This file is a part of Trap project
+
+        Copyright 2016 Rain Lee <raincious@gmail.com>
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+    -->
+
+    <head>
+        <meta charset="UTF-8">
+
+        <title>Trap Server Status</title>
+
+        <meta name="description" content="TRAP is an anti-pryer server, and this is it's status interface.">
+        <meta name="author" content="raincious@gmail.com">
+        <meta name="robots" content="noindex, follow">
+
+        <!-- build:js inline html5.min.js -->
+        <script src="html5.js"></script>
+        <!-- /build -->
+
+        <!-- build:css inline style.min.css -->
+        <link rel="stylesheet" href="style.css">
+        <!-- /build -->
+    </head>
+
+    <body id="p-body">
+        <header id="p-header">
+            <div class="wrapper">
+                <h1>
+                    <a id="hd-logo" class="img-logo" v-bind:class="{ 'lg-large': auth.loggedIn, 'logo-main': auth.loggedIn }" href="https://github.com/raincious/trap">
+                        <span class="hide">Trap Server</span>
+
+                        <span id="hd-logo-slabel">on GitHub</span>
+                    </a>
+                </h1>
+            </div>
+        </header>
+
+        <div id="p-cover">
+            <div id="p-main" style="display: none;">
+                <main id="status-main" class="wrapper">
+                    <section id="status-stats" class="sidebox1">
+                        <h2 class="sb-title tlt-mid-subtitle1">Statistics</h2>
+
+                        <div id="status-stats-main">
+                            <div id="status-stats-main-content">
+                                <div id="status-stats-history">
+                                    <h3 class="sb-subtitle tlt-mid-subtitle1">History</h3>
+
+                                    <div id="status-stats-history-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="status-stats-left">
+                            <div id="status-stats-distro">
+                                <h3 class="sb-subtitle tlt-mid-subtitle1">Distribution</h3>
+
+                                <div id="status-stats-distro-cover">
+                                    <div id="status-stats-distro-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="status-stats-right">
+                            <div id="status-stats-count">
+                                <h3 class="sb-subtitle tlt-mid-subtitle1">Statistics</h3>
+
+                                <div class="count countbox1 tlt-mid-subtitle1">
+                                    <h4 class="label">
+                                        Total Inbound
+                                    </h4>
+
+                                    <div class="num" title="{{ charts.status.totalInbound | number }}">
+                                        {{ charts.status.totalInbound | number }}
+                                    </div>
+                                </div>
+
+                                <div class="count countbox1 tlt-mid-subtitle1">
+                                    <h4 class="label">
+                                        Total Marked
+                                    </h4>
+
+                                    <div class="num" title="{{ charts.status.totalMarked | number }}">
+                                        {{ charts.status.totalMarked | number }}
+                                    </div>
+                                </div>
+
+                                <div class="count countbox1 tlt-mid-subtitle1">
+                                    <h4 class="label">
+                                        Uptime
+                                    </h4>
+
+                                    <div class="num" title="{{ charts.status.uptime | number }}h">
+                                        {{ charts.status.uptime | number }}h
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="status-stats-modal" v-if="!charts.status.synced">
+                            <div class="centered">
+                                <i class="img-loading img-loading-inline icon-left"></i>Loading
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="status-records">
+                        <h2 class="hide">Records</h2>
+
+                        <nav id="status-nav">
+                            <ul class="nav-switch1 layout">
+                                <li v-on:click="subNavSwitch('clients')" v-bind:class="{ 'current': currentRecordType == 'clients' }">
+                                    <a href="javascript:;">
+                                        Inbound clients
+                                    </a>
+                                </li>
+
+                                <li v-on:click="subNavSwitch('logs')" v-if="auth.permissions['logs']" v-bind:class="{ 'current': currentRecordType == 'logs' }">
+                                    <a href="javascript:;">
+                                        Recent log
+                                    </a>
+                                </li>
+
+                                <li v-on:click="subNavSwitch('sessions')" v-if="auth.permissions['sessions']" v-bind:class="{ 'current': currentRecordType == 'sessions' }">
+                                    <a href="javascript:;">
+                                        Sessions
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+
+                        <div id="status-marked-clients" class="clients-lst1" v-show="currentRecordType == 'clients'" style="display: none;">
+                            <article id="status-marked-client-{{$index}}" class="c-info" v-bind:class="{ 'c-info-expended': client.Expended }" v-for="client in clientList" v-if="!records.showingLoading && clientList.length > 0">
+                                <header class="c-hd" v-on:click="expendClientRecord(client, $index)">
+                                    <div class="count">
+                                        <span title="{{ client.Count | number }}">
+                                            {{ client.Count | number }}
+                                        </span>
+
+                                        <span class="label">
+                                            attempts
+                                        </span>
+                                    </div>
+
+                                    <div class="address">
+                                        <h2 class="title tlt-mid-subtitle1">
+                                            {{ client.Address }}
+                                        </h2>
+
+                                        <div class="info">
+                                            <span class="iitem">
+                                                Last seen:
+                                                <span title="{{ client.LastSeen | dayTime }}">
+                                                    {{ client.LastSeen | dayTime }}
+                                                </span>
+                                            </span>
+
+                                            <span class="iitem" v-if="client.Marked">Marked</span>
+                                        </div>
+                                    </div>
+                                </header>
+
+                                <div id="status-marked-client-data-{{$index}}" class="c-record">
+                                    <section class="paperbox1" v-if="client.Records.length > 0">
+                                        <h3 class="ppb-title tlt-mid-subtitle1">
+                                            <span>Report</span>
+                                        </h3>
+
+                                        <div class="records">
+                                            <div class="record" v-for="data in client.Records">
+                                                <div class="record-cover">
+                                                    <div class="rc-date">
+                                                        <h4 class="rctitle tlt-mid-subtitle1">
+                                                            {{ data.Time.Clock }}
+                                                        </h4>
+
+                                                        <div class="rcday">
+                                                            {{ data.Time.Date }}
+                                                        </div>
+
+                                                        <div class="rcyear">
+                                                            {{ data.Time.Year }}
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="rc-info">
+                                                        <div class="rc-data databox1" v-if="data.Request !== ''">
+                                                            <h5 class="dbx-title">Request</h5>
+
+                                                            <div class="dbx-data txt-monospace">
+                                                                {{{ data.Request | ASCIICode }}}
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="rc-data databox1" v-if="data.Respond !== ''">
+                                                            <h5 class="dbx-title">Respond</h5>
+
+                                                            <div class="dbx-data txt-monospace">
+                                                                {{{ data.Respond | ASCIICode }}}
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="rc-data databox1">
+                                                            <h5 class="dbx-title">Hit</h5>
+
+                                                            <div class="dbx-data">
+                                                                <em class="dbx-lb dbx-lb-green">
+                                                                    {{ data.Hitting.Port }} ({{ data.Hitting.Type }}) @ {{ data.Hitting.IP }}
+                                                                </em>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section class="opt paperbox1 form1" v-if="auth.permissions['clients']">
+                                        <h3 class="ppb-title tlt-mid-subtitle1">
+                                            <span>Operation</span>
+                                        </h3>
+
+                                        <div class="buts">
+                                            <button class="bu-red bu-big" type="button" v-bind:class="{ 'bu-disabled': client.Deleting }" v-on:click="removeClient(client, $index)">
+                                                &times; Remove {{ client.Address }}
+
+                                                <i v-if="client.Deleting" class="img-loading img-loading-inline icon-right"></i>
+                                            </button>
+                                        </div>
+                                    </section>
+                                </div>
+                            </article>
+
+                            <div class="c-info c-info-msg" v-if="!records.showingLoading && clientList.length < 1">
+                                There is no any client currently marked for attention.
+                            </div>
+
+                            <div class="c-info c-info-msg" v-if="records.showingLoading">
+                                <i class="img-loading img-loading-inline icon-left"></i>Loading
+                            </div>
+                        </div>
+
+                        <div id="status-logs" v-show="currentRecordType == 'logs'" style="display: none;">
+                            <ul class="logs-lst1 layout">
+                                <li class="item" v-for="log in records.source.logs.data" v-if="!records.showingLoading && records.source.logs.data.length > 0">
+                                    <div class="cover">
+                                        <div class="type type-{{ log.Type | lowercase }}">
+                                            {{ log.Type }}
+                                        </div>
+
+                                        <div class="info">
+                                            <div class="tp">
+                                                {{{ log.Context | spiltedBy ':' }}}
+                                            </div>
+
+                                            <h3 class="msg">
+                                                {{ log.Message }}
+                                            </h3>
+
+                                            <div class="time">
+                                                {{ log.Time | dayTime }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+
+                                <li class="item item-empty" v-if="!records.showingLoading && records.source.logs.data.length < 1">
+                                    There is no any log here
+                                </li>
+
+                                <li class="item item-empty" v-if="records.showingLoading">
+                                    <i class="img-loading img-loading-inline icon-left"></i>Loading
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div id="status-sessions" v-show="currentRecordType == 'sessions'" style="display: none;">
+                            <ul class="logs-lst1 layout">
+                                <li class="item" v-for="session in records.source.sessions.data" v-if="!records.showingLoading && records.source.sessions.data.length > 0">
+                                    <div class="cover">
+                                        <h3 class="title">
+                                            {{ session.IP }}
+                                        </h3>
+
+                                        <div class="infos">
+                                            <span class="infoi">
+                                                <span class="name">
+                                                    Created
+                                                </span>
+                                                <span class="val">
+                                                    {{ session.Created | dayTime }}
+                                                </span>
+                                            </span>
+
+                                            <span class="infoi">
+                                                <span class="name">
+                                                    Last seen
+                                                </span>
+                                                <span class="val">
+                                                    {{ session.LastSeen | dayTime }}
+                                                </span>
+                                            </span>
+
+                                            <span class="infoi">
+                                                <span class="name">
+                                                    Permissions
+                                                </span>
+                                                <span class="val">
+                                                    {{{ session.Permissions | trueFields }}}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </li>
+
+                                <li class="item item-empty" v-if="!records.showingLoading && records.source.sessions.data.length < 1">
+                                    There is no any active session here
+                                </li>
+
+                                <li class="item item-empty" v-if="records.showingLoading">
+                                    <i class="img-loading img-loading-inline icon-left"></i>Loading
+                                </li>
+                            </ul>
+                        </div>
+                    </section>
+                </main>
+            </div>
+
+            <div id="p-login">
+                <form id="status-login" class="wrapper form1" action="javascript:;" method="POST">
+                    <div id="status-login-box" class="mainbox1">
+                        <h2 class="mb-title tlt-mid-subtitle1">Identifiy yourself</h2>
+
+                        <fieldset id="status-login-field" style="display: none;">
+                            <label class="ffield">
+                                Password<br />
+
+                                <span class="finput">
+                                    <input id="status-login-password" name="Password" type="password" class="text" value="" v-model="inputs.password" autofocus />
+                                </span>
+
+                                <span class="ftip">Enter the password of this status server</span>
+                            </label>
+
+                            <div class="ffield fopt">
+                                <button type="submit" class="bu-green bu-big" v-on:click="verifySession(inputs.password)" v-bind:class="{ 'bu-disabled': inputs.password === '' }">Verify</button>
+
+                                <span class="ftip ftip-side" style="display: none;" v-show="status.verifiy.running">
+                                    <i class="img-loading img-loading-inline"></i>
+                                </span>
+                            </div>
+                        </fieldset>
+
+                        <div id="status-login-loading">
+                            <i class="img-loading img-loading-inline img-loading-big"></i>
+                        </div>
+
+                        <div id="status-login-js" class="no-js msgbox1">
+                            <div id="status-login-js-msg" class="msg">
+                                This application requires JavaScript to be enabled.
+                            </div>
+                        </div>
+
+                        <div id="status-login-msg" style="display: none;" class="msgbox1">
+                            <div id="status-login-msg-msg" class="msg">
+                                There is something.
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <footer id="p-footer">
+            <div id="ft-main" class="wrapper">
+                <div>Trap &copy; 2016 Rain Lee <!-- raincious@gmail.com --></div>
+
+                <div class="smaller">
+                    Source code available on <a href="https://github.com/raincious/trap">GitHub</a>.
+                    <a href="https://www.3ax.org/work/trap">About this project</a>
+                </div>
+            </div>
+        </footer>
+
+        <!-- build:js inline script.min.js -->
+        <script src="script.js"></script>
+        <!-- /build -->
+    </body>
+</html>

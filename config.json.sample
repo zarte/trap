@@ -1,0 +1,101 @@
+{
+    /**!
+     *
+     * Consistent monitoring (fake service) ports
+     *
+     * Formats:
+     *   80                 -- Listen to the TCP port 80
+     *   udp:2302           -- Listen to the UDP port 2302
+     *   tcp:21             -- Listen to the TCP port 21
+     *   tcp:21@127.0.0.1   -- Listen to the TCP port 21 @ IP address 127.0.0.1
+     *   tcp:21@127.0.0.1|a -- Listen to the TCP port 21 @ IP address 127.0.0.1
+     *                         with setting 'a'
+     *
+     */
+    "listen_ports": [
+        "udp:8088@0.0.0.0",
+        "tcp:8087@127.0.0.1",
+        "tcp:8086",
+        "tcp:8080"
+    ],
+
+    /**!
+     *
+     * Attempts limit
+     *
+     * Count connect attempts for the client which
+     * trying to connect our fake service port, mark
+     * that client for attention when it's over the
+     * limit thershold within given time
+     *
+     */
+    "attempt_thershold": 3,
+    "attempt_expire": 3600,
+
+    /**!
+     *
+     * Commands
+     *
+     * Commands will be execute orderly when certain
+     * event is triggered
+     *
+     * Formats:
+     *   ["iptables", "-A", "INPUT", "-s", "$(IP)", "-j", "DROP"]
+     *      Assign each segment as an array item
+     *
+     */
+    "commands": {
+        "On.Server.Up": [],
+        "On.Server.Down": [],
+        "On.Client.Marked": [],
+        "On.Client.Marked.Out": [],
+        "On.Port.Registered": [],
+        "On.Port.Unregistered": []
+    },
+
+    /**!
+     *
+     * Status interface
+     *
+     * Open up a remote accessable HTTP server as an
+     * interface of server status
+     *
+     * Set port to 0 to disable
+     *
+     *
+     * Format of accounts:
+     *   "PASSWORD": ["Permission1", "Permission2", "Permission3"...]
+     *
+     * Available permission is:
+     *   "clients"    -- Add, remove and see inbound clients
+     *   "sessions"   -- See active sessions
+     *   "logs"       -- See recent logs
+     *
+     */
+    "status_host": "trap.tau23.3ax.org",
+    "status_interface": "0.0.0.0",
+    "status_port": 0,
+    "status_accounts": {
+        "The password of an manage account": [
+            "clients",
+            "sessions",
+            "logs"
+        ],
+        "AAA": []
+    },
+
+    /**!
+     *
+     * !!!!!!!!!!!!! NOT IMPLEMENTED !!!!!!!!!!!!!
+     *
+     * Synchronizing mark and mark out commands
+     *
+     */
+    "synchronize_port": 8191,
+    "synchronize_passphrase":
+        "asdjiwu9fp,puMU&)#Y({#$NEU&$({NWF&$(WY(GN$Y(N&)N]839[n96y(BP#7b39p",
+    "synchronize_with": {
+        "server1:8192": "IMmui3-mUM80fum*m*YN{f8wn8s80",
+        "server2:8192": "IMmui3-mUM80fum*m*YN{f8wn8s80"
+    }
+}

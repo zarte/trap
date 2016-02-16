@@ -1,0 +1,23 @@
+{
+    "name": "trap-statusui",
+    "version": "0.0.0",
+    "description": "Web UI of Trap Server",
+    "author": "Rain Lee <raincious@gmail.com>",
+    "dependencies": {
+        "grunt": ">= 0.4.1",
+        "grunt-contrib-copy": "*",
+        "grunt-contrib-uglify": "*",
+        "grunt-contrib-cssmin": "*",
+        "grunt-contrib-htmlmin": "*",
+        "grunt-contrib-compress": "*",
+        "grunt-processhtml": "*",
+        "grunt-base64": "*",
+        "grunt-contrib-clean": "*",
+        "normalize-css": "^ 2.3",
+        "html5shiv": ">= 3.7",
+        "vue": "^ 1.0",
+        "jquery": "^ 1.2",
+        "chartist": "^ 0.9",
+        "jqu": "^ 0.3"
+    }
+}
