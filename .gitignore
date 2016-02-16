@@ -1,4 +1,4 @@
 statusui/temp
 statusui/node_modules
 statusui/dist
-server
+cmd/trap/trap

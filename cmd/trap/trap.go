@@ -19,7 +19,7 @@
  * limitations under the License.
  */
 
-package main
+package trap
 
 import (
     "github.com/raincious/trap/trap"
