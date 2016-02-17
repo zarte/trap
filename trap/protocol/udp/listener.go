@@ -198,7 +198,7 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
     return &listen.ListeningInfo{
         Port: this.listenOn.Port,
         IP: this.listenOn.IP,
-        Type: "udp",
+        Protocol: "udp",
     }, nil
 }
 
@@ -222,6 +222,6 @@ func (this *Listener) Down() (*listen.ListeningInfo, *types.Throw) {
     return &listen.ListeningInfo{
         Port: this.listenOn.Port,
         IP: this.listenOn.IP,
-        Type: "udp",
+        Protocol: "udp",
     }, nil
 }

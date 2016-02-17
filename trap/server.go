@@ -147,17 +147,17 @@ func (this *Server) Listen() (*listen.Listen) {
             p := event.Parameters{}
 
             this.Event().Trigger("on.port.registered",
-                p.AddString("IP",   types.String(lInfo.IP.String())).
-                AddInt16("Port",    types.Int16(lInfo.Port)).
-                AddString("Type",   types.String(lInfo.Type)))
+                p.AddString("IP",       types.String(lInfo.IP.String())).
+                AddInt16("Port",        types.Int16(lInfo.Port)).
+                AddString("Protocol",   types.String(lInfo.Protocol).Lower()))
         },
         OnUnListened: func(lInfo *listen.ListeningInfo) {
             p := event.Parameters{}
 
             this.Event().Trigger("on.port.unregistered",
-                p.AddString("IP",   types.String(lInfo.IP.String())).
-                AddInt16("Port",    types.Int16(lInfo.Port)).
-                AddString("Type",   types.String(lInfo.Type)))
+                p.AddString("IP",       types.String(lInfo.IP.String())).
+                AddInt16("Port",        types.Int16(lInfo.Port)).
+                AddString("Protocol",   types.String(lInfo.Protocol).Lower()))
         },
         OnError: func(c listen.ConnectionInfo, e *types.Throw) {
             this.logger.Debugf("An error happened when '%s' " +

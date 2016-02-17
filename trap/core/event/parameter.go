@@ -221,7 +221,7 @@ func (p Parameters) AddInt32(key types.String, val types.Int32) (Parameters) {
 
     item.SetInt32(val)
 
-    p["$(" + key + ")"] = item
+    p["$((" + key + "))"] = item
 
     return p
 }

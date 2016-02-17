@@ -40,7 +40,7 @@
      * event is triggered
      *
      * Formats:
-     *   ["iptables", "-A", "INPUT", "-s", "$(IP)", "-j", "DROP"]
+     *   ["iptables", "-A", "INPUT", "-s", "$((IP))", "-j", "DROP"]
      *      Assign each segment as an array item
      *
      */
@@ -49,8 +49,12 @@
         "On.Server.Down": [],
         "On.Client.Marked": [],
         "On.Client.Marked.Out": [],
-        "On.Port.Registered": [],
-        "On.Port.Unregistered": []
+        "On.Port.Registered": [
+            ["iptables", "-A", "INPUT", "-p", "$((Protocol))", "--dport", "$((Port))", "-j", "ACCEPT"]
+        ],
+        "On.Port.Unregistered": [
+            ["iptables", "-D", "INPUT", "-p", "$((Protocol))", "--dport", "$((Port))", "-j", "ACCEPT"]
+        ]
     },
 
     /**!

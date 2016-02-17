@@ -79,13 +79,15 @@ type ProtocolConfig struct {
 type ListeningInfo struct {
     Port            int
     IP              net.IP
-    Type            string
+    Protocol        string          // TCP or UDP in lowercase
 }
 
 type ConnectionInfo struct {
     ClientIP        types.IP
     ServerAddress   types.IPAddress
-    Type            types.String
+    Type            types.String    // Friendly name of the port which current
+                                    //     connection attached like:
+                                    //     http_proxy, tcp_filter, fake_ssh etc
 }
 
 type RespondedResult struct {
