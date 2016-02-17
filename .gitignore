@@ -1,4 +1,8 @@
+*
+!*/
+!*.*
+!LICENSE
+!README
 statusui/temp
 statusui/node_modules
 statusui/dist
-cmd/trap/trap

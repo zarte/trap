@@ -167,53 +167,55 @@ func (this *Status) getNewServer(httpHost types.String) (*http.Server, *types.Th
     })
 
     httpMux.HandleController("/api/status", &controller.Status{
-        controller.SessionedJSON{
-            Verify:         this.verifyUser,
-        },
-        func() (server.Status) {
-            return this.server.Status()
-        },
+        SessionedJSON:      controller.SessionedJSON{
+                                Verify:         this.verifyUser,
+                            },
+        GetStatus:          func() (server.Status) {
+                                return this.server.Status()
+                            },
     })
 
     httpMux.HandleController("/api/clients", &controller.Clients{
-        controller.SessionedJSON{
-            Verify:         this.verifyUser,
-        },
-        func() ([]client.Client) {
-            return this.server.Clients()
-        },
+        SessionedJSON:      controller.SessionedJSON{
+                                Verify:         this.verifyUser,
+                            },
+        GetClients:         func() ([]client.Client) {
+                                return this.server.Clients()
+                            },
     })
     httpMux.HandleController("/api/client", &controller.Client{
-        controller.SessionedJSON{
-            Verify:         this.verifyUser,
-        },
-        func(addr types.IP) (*client.Client, *types.Throw) {
-            return this.server.Client(addr)
-        },
-        func(addr types.IP, cCon server.ClientConInfo) (*client.Client, *types.Throw) {
-            return this.server.AddClient(addr, cCon)
-        },
-        func(addr types.IP) (*types.Throw) {
-            return this.server.RemoveClient(addr)
-        },
+        SessionedJSON:      controller.SessionedJSON{
+                                Verify:         this.verifyUser,
+                            },
+        GetClient:          func(addr types.IP) (*client.Client, *types.Throw) {
+                                return this.server.Client(addr)
+                            },
+        AddClient:          func(addr types.IP,
+                                cCon server.ClientConInfo) (*client.Client,
+                                *types.Throw) {
+                                return this.server.AddClient(addr, cCon)
+                            },
+        DelClient:          func(addr types.IP) (*types.Throw) {
+                                return this.server.RemoveClient(addr)
+                            },
     })
 
     httpMux.HandleController("/api/logs", &controller.Logs{
-        controller.SessionedJSON{
-            Verify:         this.verifyUser,
-        },
-        func() ([]logger.LogExport) {
-            return this.logger.Dump()
-        },
+        SessionedJSON:      controller.SessionedJSON{
+                                Verify:         this.verifyUser,
+                            },
+        GetLogs:            func() ([]logger.LogExport) {
+                                return this.logger.Dump()
+                            },
     })
 
     httpMux.HandleController("/api/sessions", &controller.Sessions{
-        controller.SessionedJSON{
-            Verify:         this.verifyUser,
-        },
-        func() ([]status.SessionDump) {
-            return this.getAllSessions()
-        },
+        SessionedJSON:      controller.SessionedJSON{
+                                Verify:         this.verifyUser,
+                            },
+        GetSessions:        func() ([]status.SessionDump) {
+                                return this.getAllSessions()
+                            },
     })
 
     return &http.Server{

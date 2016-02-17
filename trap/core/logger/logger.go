@@ -59,7 +59,7 @@ func (l *Logger) NewContext(s types.String) (*Logger) {
 }
 
 func (l *Logger) append(log Log) {
-    l.mutex.RoutineExec(func() {
+    l.mutex.Exec(func() {
         l.logs.Append(log, 256)
 
         switch log.Type {
@@ -82,14 +82,13 @@ func (l *Logger) append(log Log) {
 }
 
 func (l *Logger) Debugf(s string, v ...interface{}) {
-    return // Disable debug totally after finish develpment
-
+    /* Disable debug totally after finish develpment
     l.append(Log{
         Time:           time.Now(),
         Type:           LOG_TYPE_DEBUG,
         Context:        l.context,
         Message:        types.String(fmt.Sprintf(s, v...)),
-    })
+    })*/
 }
 
 func (l *Logger) Infof(s string, v ...interface{}) {

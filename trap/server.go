@@ -230,8 +230,8 @@ func (this *Server) insertClient(c listen.ConnectionInfo,
         Inbound:                []byte{},
         Outbound:               []byte{},
         Hitting:                client.Hitting{
-            c.ServerAddress,
-            c.Type,
+            IPAddress:          c.ServerAddress,
+            Type:               c.Type,
         },
         Time:                   nowTime,
     }, this.clientDataRecords)
@@ -294,8 +294,8 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
         Inbound:                r.ReceivedSample[:r.ReceivedLen],
         Outbound:               r.RespondedData[:r.RespondedLen],
         Hitting:                client.Hitting{
-            c.ServerAddress,
-            c.Type,
+            IPAddress:          c.ServerAddress,
+            Type:               c.Type,
         },
         Time:                   nowTime,
     }, this.clientDataRecords)

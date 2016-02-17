@@ -207,8 +207,6 @@ func main() {
 
     defer server.Down()
 
-    log.Infof("Starting `Trap` server")
-
     server.SetLogger(log)
 
     // Init Status server
@@ -229,9 +227,7 @@ func main() {
     // Register system signal handlers
     signal.Notify(signalCall,
         syscall.SIGHUP,     // For Reload
-        syscall.SIGINT,     // For Ctrl+C
-        syscall.SIGTSTP,    // For Ctrl+Z
-        syscall.SIGTERM)    // Unstopable shutdown
+        syscall.SIGINT)    // Unstopable shutdown
 
     // Loop for system signal
     for {
@@ -248,12 +244,6 @@ func main() {
                 })
 
             case syscall.SIGINT:
-                fallthrough
-
-            case syscall.SIGTSTP:
-                fallthrough
-
-            case syscall.SIGTERM:
                 log.Infof("Exit signal picked up")
 
                 signalExit = true

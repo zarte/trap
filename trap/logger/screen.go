@@ -34,28 +34,28 @@ func NewScreenPrinter() (*ScreenPrinter) {
     return &ScreenPrinter{}
 }
 
-func (l *ScreenPrinter) printf(w types.String, c types.String,
+func (l *ScreenPrinter) print(w types.String, c types.String,
     t time.Time, m types.String) {
-    fmt.Printf("<%3.3s> %-50.50s [%19.19s]: %s\r\n", w, c,
+    fmt.Printf("  <%3.3s> %-30.30s [%19.19s]: %s\r\n", w, c,
         t.Format(time.StampMilli), m)
 }
 
 func (l *ScreenPrinter) Info(c types.String, t time.Time, m types.String) {
-    l.printf("INF", c, t, m)
+    l.print("INF", c, t, m)
 }
 
 func (l *ScreenPrinter) Debug(c types.String, t time.Time, m types.String) {
-    l.printf("DBG", c, t, m)
+    l.print("DBG", c, t, m)
 }
 
 func (l *ScreenPrinter) Warning(c types.String, t time.Time, m types.String) {
-    l.printf("WRN", c, t, m)
+    l.print("WRN", c, t, m)
 }
 
 func (l *ScreenPrinter) Error(c types.String, t time.Time, m types.String) {
-    l.printf("ERR", c, t, m)
+    l.print("ERR", c, t, m)
 }
 
 func (l *ScreenPrinter) Print(c types.String, t time.Time, m types.String) {
-    l.printf("TXT", c, t, m)
+    l.print("TXT", c, t, m)
 }
