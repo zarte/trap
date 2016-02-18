@@ -21,14 +21,15 @@ type rawConfig struct {
 
     AttemptThershold    types.UInt32        `json:"attempt_thershold"`
     AttemptExpire       types.UInt32        `json:"attempt_expire"`
+    AttemptRestrict     types.UInt32        `json:"attempt_restrict"`
 
     Commands            map[types.String]rawCommandConfig   `json:"commands"`
 
-    StatusHost          types.String        `json:"status_host"`
     StatusInterface     types.IP            `json:"status_interface"`
     StatusPort          types.UInt16        `json:"status_port"`
     StatusAccounts      map[types.String][]types.String     `json:"status_accounts"`
-    StatusAllowedIPs    []types.String      `json:"status_accessable_ip_prefixes"`
+    StatusTLSCert       types.String        `json:"status_tls_certificate"`
+    StatusTLSCertKey    types.String        `json:"status_tls_certificate_key"`
 
     SyncPort            types.UInt16        `json:"synchronize_port"`
     SyncPassphrase      types.String        `json:"synchronize_passphrase"`
@@ -114,6 +115,9 @@ func Parse(configStr []byte) (*Config, *types.Throw) {
     // Parse `AttemptExpire` Field
     config.AttemptExpire = rawConfig.AttemptExpire
 
+    // Parse `AttemptRestrict` Field
+    config.AttemptRestrict = rawConfig.AttemptRestrict
+
     if config.AttemptExpire < 0 {
         config.AttemptExpire = 0
     }
@@ -172,8 +176,9 @@ func Parse(configStr []byte) (*Config, *types.Throw) {
         }
     }
 
-    // Parse `StatusHost` Field
-    config.StatusHost = rawConfig.StatusHost
+    // Parse `StatusTLSCert` and `StatusTLSCertKey` Field
+    config.StatusTLSCert    = rawConfig.StatusTLSCert
+    config.StatusTLSCertKey = rawConfig.StatusTLSCertKey
 
     // Parse `StatusInterface` Field
     config.StatusInterface = rawConfig.StatusInterface
@@ -195,12 +200,6 @@ func Parse(configStr []byte) (*Config, *types.Throw) {
         }
 
         config.StatusAccounts[pass]     =   permissionList
-    }
-
-    // Parse `StatusAllowedIPs` Field
-    for _, sIP := range rawConfig.StatusAllowedIPs {
-        config.StatusAllowedIPs = append(config.StatusAllowedIPs,
-                                            sIP.Trim().Lower())
     }
 
     // Parse `SyncPort` Field

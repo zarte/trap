@@ -25,12 +25,16 @@
         loginField = $('#status-login-field'),
         loginLoading = $('#status-login-loading');
 
+    var str = 'String', arr = ['Array'];
+
     $('.no-js').hide();
 
     if (typeof JSON !== 'object' ||
         typeof encodeURIComponent !== 'function' ||
         typeof atob !== 'function' ||
-        typeof initApp != 'function') {
+        typeof initApp !== 'function' ||
+        typeof arr.sort !== 'function' ||
+        typeof str.localeCompare !== 'function') {
         msgText.text('Sorry, it seems your web browser doesn\'t support some of the functions required by this application.');
 
         loginLoading.hide();

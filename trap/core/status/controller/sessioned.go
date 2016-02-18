@@ -68,6 +68,8 @@ func (s *Sessioned) Before(w http.ResponseWriter,
 
     s.session       =   session
 
+    w.Header().Set("Cache-Control", "private, max-age=0, no-cache")
+
     return nil
 }
 
@@ -120,6 +122,8 @@ func (s *SessionedJSON) Before(w http.ResponseWriter,
     }
 
     s.session       =   session
+
+    w.Header().Set("Cache-Control", "private, max-age=0, no-cache")
 
     return nil
 }

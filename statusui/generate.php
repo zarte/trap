@@ -80,7 +80,7 @@ $template = "/*
  * NOTICE:
  *
  * This file may contains third-party components, they are the properties
- * of it's respective holder. See README.md for more information.
+ * of it's respective holder(s). See README.md for more information.
  *
  */
 
@@ -98,19 +98,19 @@ var (
 
 $base64Code = '';
 
-foreach (explode("\r\n", chunk_split($content, 64, "\r\n")) as $val) {
+foreach (explode("\n", chunk_split($content, 64, "\n")) as $val) {
     if (!$val) {
         continue;
     }
 
     if ($base64Code) {
-        $base64Code .= " +\r\n";
+        $base64Code .= " +\n";
     }
 
     $base64Code .= '            "' . $val . '"';
 }
 
-$base64Code .= "\r\n";
+$base64Code .= "\n";
 
 $base64Code = rtrim($base64Code);
 

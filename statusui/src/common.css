@@ -130,7 +130,8 @@ ul.layout { padding: 0; margin: 0; }
 .bytes1 { width: 100%; overflow: auto; }
 .bytes1 em { color: #333; font-style: normal; border: 1px solid #eee; padding: 2px 3px; display: block; float: left; margin: 3px; }
 
-#p-header { background: #eee; padding: 20px 0; }
+#p-header { background: #eee; padding: 20px 0; position: relative; }
+#p-header:after { content: ' '; display: block; position: absolute; right: 0; left: 0; bottom: -1px; height: 2px; background: #eee; }
 #p-cover { width: 100%; position: relative; overflow: auto; }
 #p-main { background: #fff; }
 #p-login { background: #eee; }

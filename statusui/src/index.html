@@ -229,7 +229,7 @@
 
                                                             <div class="dbx-data">
                                                                 <em class="dbx-lb dbx-lb-green">
-                                                                    {{ data.Hitting.Port }} ({{ data.Hitting.Type }}) @ {{ data.Hitting.IP }}
+                                                                    {{ data.Hitting.Port | defaultVal 'n/a' }} ({{ data.Hitting.Type | defaultVal 'n/a' }}) @ {{ data.Hitting.IP | defaultVal 'n/a' }}
                                                                 </em>
                                                             </div>
                                                         </div>

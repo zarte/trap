@@ -53,6 +53,7 @@ type Server struct {
 
     tolerate                types.UInt32
     tolerateExpire          time.Duration
+    tolerateRestrict        time.Duration
 
     concurrentLimit         types.UInt16
 
@@ -78,6 +79,7 @@ func NewServer() (*Server) {
         timeout:            1 * time.Second,
         tolerate:           1,
         tolerateExpire:     3600 * time.Second,
+        tolerateRestrict:   3600 * time.Second,
         concurrentLimit:    10,
         clientDataRecords:  16,
         history:            server.Histories{},
@@ -91,12 +93,15 @@ func (this *Server) SetLogger(l *logger.Logger) {
     this.logger.Debugf("`Logger` is set")
 }
 
-func (this *Server) SetTolerate(limit types.UInt32, expire time.Duration) {
+func (this *Server) SetTolerate(limit types.UInt32, expire time.Duration,
+    restrict time.Duration) {
     this.tolerate           = limit
     this.tolerateExpire     = expire
+    this.tolerateRestrict   = restrict
 
-    this.logger.Debugf("Tolerate has been set to '%d' attempts within '%s'",
-        limit, expire)
+    this.logger.Debugf("Tolerate has been set to '%d' attempts within '%s'" +
+        ", restrict period is '%s'",
+        limit, expire, restrict)
 }
 
 func (this *Server) SetClientDataRecordLimit(l types.UInt16) {
@@ -304,7 +309,7 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
 
     // Check the connection tolerate limit
     if clientRecord.Count < this.tolerate {
-        this.logger.Infof("Client '%s' has reconnected '%d'" +
+        this.logger.Infof("Client '%s' connected '%d'" +
             " times, still counting", clientRecord.Address,
             clientRecord.Count)
 
@@ -367,6 +372,7 @@ func (this *Server) clientCron() {
                             continue
                         }
 
+                        // If client is no longer in fine, unmark for now
                         if clientInfo.Marked {
                             p := event.Parameters{}
 
@@ -377,6 +383,13 @@ func (this *Server) clientCron() {
                                     AddUInt32("Count", clientInfo.Count))
                         }
 
+                        // Check if the client within restrict time
+                        if !nowTime.After(clientInfo.LastSeen.Add(
+                            this.tolerateExpire).Add(this.tolerateRestrict)) {
+                            continue
+                        }
+
+                        // Delete the client if it's expired the restrict too
                         this.clients.Delete(clientID)
                     }
                 })

@@ -389,8 +389,9 @@
                         newClientKeys[clientList[i].Address] = true;
 
                         this.records.source.clients.listOrder.push({
-                            Key:    clientList[i].Address,
-                            Count:  clientList[i].Count
+                            Key:        clientList[i].Address,
+                            LastSeen:   clientList[i].LastSeen,
+                            Count:      clientList[i].Count
                         });
 
                         if (typeof this.records.source.clients.clientMap[clientList[i].Address] !== 'object') {
@@ -418,7 +419,9 @@
                     }
 
                     this.records.source.clients.listOrder.sort(function(a, b) {
-                        return b.Count - a.Count;
+                        return ((b.Count - a.Count)
+                            || (b.LastSeen - a.LastSeen))
+                            || (typeof a.Key.localeCompare === 'function' ? a.Key.localeCompare(b.Key) : 0);
                     });
 
                     // Scan deleted clients from client map
@@ -668,13 +671,13 @@
                     '/api/client?client=' + encodeURIComponent(client.Address),
                     {},
                     function(data) {
+                        client.Deleting = false;
+
                         if (!data.Result) {
-                            alert('Error happened');
+                            alert('Error happened :(');
 
                             return;
                         }
-
-                        client.Deleting = false;
 
                         $('#status-marked-client-' + index).slideUp(
                             500,
@@ -779,6 +782,13 @@
             },
             number: function(n) {
                 return n.toLocaleString();
+            },
+            defaultVal: function(v, d) {
+                if (v) {
+                    return v;
+                }
+
+                return d;
             }
         }
     });

@@ -25,6 +25,7 @@ import (
     "github.com/raincious/trap/trap/core/types"
     "github.com/raincious/trap/trap/core/status"
 
+    "time"
     "net"
     "net/http"
     "compress/gzip"
@@ -120,7 +121,7 @@ func (d *Default) IsGZIPSupported(r *http.Request) (bool) {
 
 func (d *Default) WriteGZIP(code int, data []byte, w http.ResponseWriter,
     r *http.Request) (*types.Throw) {
-    if !d.IsGZIPSupported(r) {
+    if !d.IsGZIPSupported(r) || len(data) < 512 {
         w.WriteHeader(code)
 
         w.Write(data)
@@ -129,18 +130,45 @@ func (d *Default) WriteGZIP(code int, data []byte, w http.ResponseWriter,
     }
 
     w.Header().Set("Content-Encoding", "gzip")
+    w.Header().Set("Vary", " Accept-Encoding")
 
     w.WriteHeader(code)
 
-    gzipWriter      :=  gzip.NewWriter(w)
+    gzipWriter              :=  gzip.NewWriter(w)
 
     defer gzipWriter.Close()
 
-    _, wError       :=  gzipWriter.Write(data)
+    _, wError               :=  gzipWriter.Write(data)
 
     if wError != nil {
         return types.ConvertError(wError)
     }
 
     return nil
+}
+
+func (d *Default) IsUnmodified(modifiedTime time.Time, r *http.Request) (bool) {
+    lastModSince            :=  r.Header.Get("If-Modified-Since")
+
+    if lastModSince == "" {
+        return false
+    }
+
+    sinceTime, sTimeErr     :=  time.Parse(time.RFC1123, lastModSince)
+
+    if sTimeErr != nil {
+        return false
+    }
+
+    sinceTime               =   sinceTime.Truncate(time.Second)
+
+    if sinceTime.After(time.Now()) {
+        return false
+    }
+
+    if sinceTime.Before(modifiedTime.Truncate(time.Second)) {
+        return false
+    }
+
+    return true
 }

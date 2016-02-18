@@ -41,14 +41,15 @@ type Config struct {
 
     AttemptThershold    types.UInt32
     AttemptExpire       types.UInt32
+    AttemptRestrict     types.UInt32
 
     Commands            Commands
 
-    StatusHost          types.String
     StatusInterface     types.IP
     StatusPort          types.UInt16
     StatusAccounts      map[types.String][]types.String
-    StatusAllowedIPs    []types.String
+    StatusTLSCert       types.String
+    StatusTLSCertKey    types.String
 
     SyncPort            types.UInt16
     SyncPassphrase      types.String

@@ -31,6 +31,7 @@ import (
 
     "net"
     "net/http"
+    "crypto/tls"
     "sync"
     "time"
 )
@@ -39,6 +40,9 @@ type Status struct {
     ip                  types.IP
     host                types.String
     port                types.UInt16
+
+    tlsCertFile         types.String
+    tlsKeyFile          types.String
 
     accounts            status.Accounts
 
@@ -52,7 +56,7 @@ type Status struct {
 
     sessionRWLock       types.Mutex
 
-    statusListener      *net.TCPListener
+    statusListener      net.Listener
     statusDownWait      sync.WaitGroup
 }
 
@@ -81,6 +85,11 @@ func (this *Status) SetLogger(l *logger.Logger) {
 
 func (this *Status) SetServer(s *Server) {
     this.server         =   s
+}
+
+func (this *Status) LoadCert(pem types.String, key types.String) {
+    this.tlsCertFile    =   pem
+    this.tlsKeyFile     =   key
 }
 
 func (this *Status) IP(ip types.IP) {
@@ -154,7 +163,7 @@ func (this *Status) getAllSessions() ([]status.SessionDump) {
     return dump
 }
 
-func (this *Status) getNewServer(httpHost types.String) (*http.Server, *types.Throw) {
+func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
     httpMux         :=  status.NewMux()
 
     httpMux.HandleController("/", &controller.Home{
@@ -219,19 +228,14 @@ func (this *Status) getNewServer(httpHost types.String) (*http.Server, *types.Th
     })
 
     return &http.Server{
-        Addr:               httpHost.String(),
+        Addr:               httpAddr,
         Handler:            httpMux,
-        WriteTimeout:       2 * time.Second,
-        ReadTimeout:        2 * time.Second,
+        WriteTimeout:       5 * time.Second,
+        ReadTimeout:        3 * time.Second,
     }, nil
 }
 
 func (this *Status) up() (*types.Throw) {
-    listenOn                :=  &net.TCPAddr{
-        IP:                 this.ip.IP(),
-        Port:               int(this.port.Int32()),
-    }
-
     // Check if the server is down before start a new one
     if this.status != nil || this.statusListener != nil {
         return status.ErrServerAlreadyUp.Throw()
@@ -242,8 +246,13 @@ func (this *Status) up() (*types.Throw) {
         return status.ErrServerNotSet.Throw()
     }
 
+    listenOn                :=  &net.TCPAddr{
+        IP:                     this.ip.IP(),
+        Port:                   int(this.port.Int32()),
+    }
+
     // Create an instance of the http status server
-    sServer, sErr       :=  this.getNewServer(this.host)
+    sServer, sErr       :=  this.getNewServer(listenOn.String())
 
     if sErr != nil {
         return types.ConvertError(sErr)
@@ -251,10 +260,30 @@ func (this *Status) up() (*types.Throw) {
 
     this.status         =   sServer
 
-    listener, lErr      :=  net.ListenTCP("tcp", listenOn)
+    listener, lErr      :=  net.Listen("tcp", listenOn.String())
 
     if lErr != nil {
         return types.ConvertError(lErr)
+    }
+
+    if this.tlsCertFile != "" && this.tlsKeyFile != "" {
+        tlsCert, tctErr :=  tls.LoadX509KeyPair(
+                                this.tlsCertFile.String(),
+                                this.tlsKeyFile.String())
+
+        if tctErr != nil {
+            return types.ConvertError(tctErr)
+        }
+
+        tlsConfig       :=  &tls.Config{
+                                InsecureSkipVerify: true,
+                                Certificates: []tls.Certificate{tlsCert},
+                            }
+
+        // Replace the raw TCP listener with TLS listner
+        listener        =   tls.NewListener(listener, tlsConfig)
+
+        this.logger.Infof("TLS enabled")
     }
 
     go func() {
@@ -264,9 +293,9 @@ func (this *Status) up() (*types.Throw) {
 
         this.logger.Infof("Serving `Status` server at: %s", listenOn)
 
-        this.statusListener = listener
+        this.statusListener =   listener
 
-        servErr         :=  this.status.Serve(this.statusListener)
+        servErr             :=  this.status.Serve(listener)
 
         if servErr != nil {
             this.logger.Infof("`Status` server closed due to error: %s",

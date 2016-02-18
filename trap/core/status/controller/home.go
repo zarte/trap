@@ -22,15 +22,37 @@
 package controller
 
 import (
+    "github.com/raincious/trap/trap/core/types"
     "github.com/raincious/trap/trap/core/status"
 
+    "time"
     "net/http"
 )
 
 type Home struct {
     Default
 
-    StaticPage      []byte
+    bootTime            time.Time
+    formatedBootTime    string
+
+    staticExpired       time.Duration
+
+    StaticPage          []byte
+}
+
+func (s *Home) Init() (*types.Throw) {
+    initErr     := s.Default.Init()
+
+    if initErr != nil {
+        return initErr
+    }
+
+    s.bootTime              =   time.Now()
+    s.formatedBootTime      =   s.bootTime.Format(time.RFC1123)
+
+    s.staticExpired         =   86400 * time.Second
+
+    return nil
 }
 
 func (s *Home) Get(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +75,19 @@ func (s *Home) Get(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    w.Header().Set("Content-Encoding", "gzip")
+    if s.IsUnmodified(s.bootTime, r) {
+        w.WriteHeader(304)
+
+        return
+    }
+
+    w.Header().Set("Content-Encoding",  "gzip")
+    w.Header().Set("Pragma",            "cache")
+    w.Header().Set("Cache-Control",     "private, max-age=86400")
+    w.Header().Set("Last-Modified",     s.formatedBootTime)
+    w.Header().Set("Expires",           time.Now().
+                                            Add(s.staticExpired).
+                                            Format(time.RFC1123))
+
     w.Write(s.StaticPage)
 }

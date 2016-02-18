@@ -68,7 +68,7 @@ func initConfig(server *trap.Server, status *trap.Status) {
             filepath.Base(os.Args[0])))
     }
 
-    cfg, err    := config.Load(cfgFile)
+    cfg, err    :=  config.Load(cfgFile)
 
     if err != nil {
         panic(fmt.Errorf("Can't load configuration file '%s' under error: %s",
@@ -76,11 +76,17 @@ func initConfig(server *trap.Server, status *trap.Status) {
     }
 
     server.SetTimeout(1 * time.Second)
-    server.SetTolerate(1, 3600 * time.Second)
+
+    if cfg.AttemptThershold > 0 && cfg.AttemptExpire > 0 {
+        server.SetTolerate(cfg.AttemptThershold,
+            time.Duration(cfg.AttemptExpire.Int64()) * time.Second,
+            time.Duration(cfg.AttemptRestrict.Int64()) * time.Second)
+    }
+
     server.SetConcurrentLimit(100)
 
     // Init TCP Protocol
-    tcpProtocol := &tcp.TCP{}
+    tcpProtocol :=  &tcp.TCP{}
 
     tcpProtocol.Responder(&tcpResponder.Echo{})
     tcpProtocol.Responder(&tcpResponder.Empty{})
@@ -88,9 +94,7 @@ func initConfig(server *trap.Server, status *trap.Status) {
     server.Listen().Register("tcp", tcpProtocol)
 
     // Init UDP Protocol
-    udpProtocol := &udp.UDP{}
-
-    server.Listen().Register("udp", udpProtocol)
+    server.Listen().Register("udp", &udp.UDP{})
 
     // Register ports
     for _, listenPort := range cfg.Listens {
@@ -144,8 +148,8 @@ func initConfig(server *trap.Server, status *trap.Status) {
             status.IP(cfg.StatusInterface)
         }
 
-        if cfg.StatusHost != "" {
-            status.Host(cfg.StatusHost)
+        if cfg.StatusTLSCert != "" && cfg.StatusTLSCertKey != "" {
+            status.LoadCert(cfg.StatusTLSCert, cfg.StatusTLSCertKey)
         }
 
         for account, permissions := range cfg.StatusAccounts {
@@ -221,7 +225,8 @@ func main() {
     if servErr != nil {
         server.Down()
 
-        panic(servErr)
+        panic(fmt.Errorf("Encountered at least one error while " +
+            "server is booting up: %s", servErr))
     }
 
     // Register system signal handlers

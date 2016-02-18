@@ -31,6 +31,7 @@
      */
     "attempt_thershold": 3,
     "attempt_expire": 3600,
+    "attempt_restrict": 86400,
 
     /**!
      *
@@ -75,12 +76,17 @@
      *   "sessions"   -- See active sessions
      *   "logs"       -- See recent logs
      *
+     * Notice:
+     *   Anyone had a valid password can login to the server interface
+     *   and see all inbound clients
+     *
      */
-    "status_host": "trap.tau23.3ax.org",
     "status_interface": "0.0.0.0",
     "status_port": 0,
+    "status_tls_certificate": "",
+    "status_tls_certificate_key": "",
     "status_accounts": {
-        "The password of an manage account": [
+        "The password of a manage account": [
             "clients",
             "sessions",
             "logs"
