@@ -24,6 +24,7 @@ package logger
 const (
     _                   =   iota
 
+    LOG_TYPE_DEFAULT
     LOG_TYPE_DEBUG
     LOG_TYPE_INFO
     LOG_TYPE_WARNING

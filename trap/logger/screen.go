@@ -57,5 +57,5 @@ func (l *ScreenPrinter) Error(c types.String, t time.Time, m types.String) {
 }
 
 func (l *ScreenPrinter) Print(c types.String, t time.Time, m types.String) {
-    l.print("TXT", c, t, m)
+    l.print("DEF", c, t, m)
 }

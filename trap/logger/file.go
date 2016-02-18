@@ -83,5 +83,5 @@ func (l *FilePrinter) Error(c types.String, t time.Time, m types.String) {
 }
 
 func (l *FilePrinter) Print(c types.String, t time.Time, m types.String) {
-    l.save("TXT", c, t, m)
+    l.save("DEF", c, t, m)
 }

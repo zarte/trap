@@ -26,6 +26,7 @@ import (
 
     "fmt"
     "time"
+    "log"
 )
 
 type Logger struct {
@@ -37,12 +38,16 @@ type Logger struct {
 }
 
 func NewLogger() (*Logger) {
-    return &Logger{
+    newLogger := &Logger{
         printers:       &Printers{},
         logs:           &Logs{},
         mutex:          &types.Mutex{},
         context:        "Trap",
     }
+
+    log.SetOutput(newLogger.NewContext("System"))
+
+    return newLogger
 }
 
 func (l *Logger) Register(printer Printer) {
@@ -58,25 +63,25 @@ func (l *Logger) NewContext(s types.String) (*Logger) {
     }
 }
 
-func (l *Logger) append(log Log) {
+func (l *Logger) append(newLog Log) {
     l.mutex.Exec(func() {
-        l.logs.Append(log, 256)
+        l.logs.Append(newLog, 256)
 
-        switch log.Type {
+        switch newLog.Type {
             case LOG_TYPE_DEBUG:
-                l.printers.Debug(log.Context, log.Time, log.Message)
+                l.printers.Debug(newLog.Context, newLog.Time, newLog.Message)
 
             case LOG_TYPE_INFO:
-                l.printers.Info(log.Context, log.Time, log.Message)
+                l.printers.Info(newLog.Context, newLog.Time, newLog.Message)
 
             case LOG_TYPE_WARNING:
-                l.printers.Warning(log.Context, log.Time, log.Message)
+                l.printers.Warning(newLog.Context, newLog.Time, newLog.Message)
 
             case LOG_TYPE_ERROR:
-                l.printers.Error(log.Context, log.Time, log.Message)
+                l.printers.Error(newLog.Context, newLog.Time, newLog.Message)
 
             default:
-                l.printers.Print(log.Context, log.Time, log.Message)
+                l.printers.Print(newLog.Context, newLog.Time, newLog.Message)
         }
     })
 }
@@ -116,6 +121,17 @@ func (l *Logger) Errorf(s string, v ...interface{}) {
         Context:        l.context,
         Message:        types.String(fmt.Sprintf(s, v...)),
     })
+}
+
+func (l *Logger) Write(p []byte) (int, error) {
+    l.append(Log{
+        Time:           time.Now(),
+        Type:           LOG_TYPE_DEFAULT,
+        Context:        l.context,
+        Message:        types.String(fmt.Sprintf("%s", p)),
+    })
+
+    return len(p), nil
 }
 
 func (l *Logger) Dump() ([]LogExport) {

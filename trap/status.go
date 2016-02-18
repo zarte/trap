@@ -230,8 +230,8 @@ func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
     return &http.Server{
         Addr:               httpAddr,
         Handler:            httpMux,
-        WriteTimeout:       5 * time.Second,
-        ReadTimeout:        3 * time.Second,
+        WriteTimeout:       32 * time.Second,
+        ReadTimeout:        16 * time.Second,
     }, nil
 }
 

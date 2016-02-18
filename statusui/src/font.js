@@ -3,14 +3,16 @@ WebFontConfig = {
 };
 
 $(window).ready(function() {
-    var wf = document.createElement('script'),
-        s = document.getElementsByTagName('script')[0];;
+    setTimeout(function() {
+        var wf = document.createElement('script'),
+            s = document.getElementsByTagName('script')[0];;
 
-    wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
-    '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
+        wf.src = ('https:' == document.location.protocol ? 'https' : 'http') +
+        '://ajax.googleapis.com/ajax/libs/webfont/1/webfont.js';
 
-    wf.type = 'text/javascript';
-    wf.async = 'true';
+        wf.type = 'text/javascript';
+        wf.async = 'true';
 
-    s.parentNode.insertBefore(wf, s);
+        s.parentNode.insertBefore(wf, s);
+    }, 100);
 });

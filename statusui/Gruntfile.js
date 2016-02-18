@@ -16,8 +16,8 @@ module.exports = function(grunt) {
                         'node_modules/jquery/dist/jquery.min.js',
                         'node_modules/vue/dist/vue.min.js',
                         'src/app.js',
-                        'src/font.js',
-                        'src/load.js'
+                        'src/load.js',
+                        'src/font.js'
                     ]
                 }
             }
