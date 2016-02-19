@@ -135,7 +135,7 @@
                             <ul class="nav-switch1 layout">
                                 <li v-on:click="subNavSwitch('clients')" v-bind:class="{ 'current': currentRecordType == 'clients' }">
                                     <a href="javascript:;">
-                                        Inbound clients
+                                        Inbound clients <em class="label">{{ charts.status.totalClients | number }}</em>
                                     </a>
                                 </li>
 

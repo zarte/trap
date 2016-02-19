@@ -20,7 +20,7 @@
  */
 
  var initApp = function() {
-    var mainControl = new Vue({
+    new Vue({
         el: '#p-body',
         data: {
             status: {
@@ -86,7 +86,7 @@
                                 }
 
                                 d.sort(function(a, b) {
-                                    return b.LastSeen - a.LastSeen;
+                                    return b.LastSeen.getTime() - a.LastSeen.getTime();
                                 });
 
                                 vueObj.records.source.sessions.data = d;
@@ -120,7 +120,7 @@
                                 }
 
                                 d.sort(function(a, b) {
-                                    return b.Time - a.Time;
+                                    return b.Time.getTime() - a.Time.getTime();
                                 });
 
                                 vueObj.records.source.logs.data = d;
@@ -158,13 +158,14 @@
                     synced: false,
                     totalInbound: 0,
                     totalMarked: 0,
+                    totalHit: 0,
                     totalClients: 0,
                     uptime: 0
                 },
                 syncer: function(vueObj) {
                     vueObj.requestJson('GET', '/api/status', {}, function(data) {
                         var parseDistributionData = function(distribution, maxItems) {
-                                var totalInbound = 0,
+                                var totalHit = 0,
                                     portAccesses = {},
                                     portPercents = [],
                                     result = [];
@@ -172,12 +173,12 @@
                                 for (var i in distribution) {
                                     portAccesses[distribution[i].Port + ':' + distribution[i].Type] = distribution[i];
 
-                                    totalInbound += distribution[i].Inbound;
+                                    totalHit += distribution[i].Hit;
                                 }
 
                                 for (var i in portAccesses) {
                                     portPercents.push({
-                                        Percent: (portAccesses[i].Inbound / totalInbound) * 100,
+                                        Percent: (portAccesses[i].Hit / totalHit) * 100,
                                         Type: portAccesses[i].Type + ' ' + portAccesses[i].Port,
                                         Port: portAccesses[i].Port
                                     });
@@ -226,6 +227,7 @@
                                         result.push({
                                             Marked: 0,
                                             Inbound: 0,
+                                            Hit: 0,
                                             Hours: i
                                         });
 
@@ -239,6 +241,7 @@
                                     result.push({
                                         Marked: 0,
                                         Inbound: 0,
+                                        Hit: 0,
                                         Hours: 0
                                     });
                                 }
@@ -247,7 +250,8 @@
                             },
                             history = {
                                 mk: [],
-                                ac: [],
+                                ib: [],
+                                ht: [],
                                 lb: []
                             },
                             distribution = {
@@ -269,19 +273,22 @@
 
                         vueObj.charts.status.totalInbound   =   data.TotalInbound;
                         vueObj.charts.status.totalMarked    =   data.TotalMarked;
+                        vueObj.charts.status.totalHit       =   data.TotalHit;
                         vueObj.charts.status.totalClients   =   data.TotalClients;
                         vueObj.charts.status.uptime         =   Math.round(currentUpHour);
 
                         for (var i in parsedHistory) {
                             history.mk.push(parsedHistory[i].Marked);
-                            history.ac.push(parsedHistory[i].Inbound);
+                            history.ib.push(parsedHistory[i].Inbound);
+                            history.ht.push(parsedHistory[i].Hit);
                             history.lb.push(parsedHistory[i].Hours);
                         }
 
                         vueObj.charts.history.update({
                             labels: history.lb,
                             series: [
-                                history.ac,
+                                history.ht,
+                                history.ib,
                                 history.mk
                             ]
                         });
@@ -388,41 +395,43 @@
                     for (var i in clientList) {
                         newClientKeys[clientList[i].Address] = true;
 
+                        eClient = parseClientData(clientList[i]);
+
                         this.records.source.clients.listOrder.push({
-                            Key:        clientList[i].Address,
-                            LastSeen:   clientList[i].LastSeen,
-                            Count:      clientList[i].Count
+                            Key:        eClient.Address,
+                            LastSeen:   eClient.LastSeen,
+                            Count:      eClient.Count
                         });
 
-                        if (typeof this.records.source.clients.clientMap[clientList[i].Address] !== 'object') {
+                        if (typeof this.records.source.clients.clientMap[eClient.Address] !== 'object') {
                             // If this is a new client, add it to the map
-                            this.records.source.clients.clientMap[clientList[i].Address] = parseClientData(
-                                clientList[i]
-                            );
+                            this.records.source.clients.clientMap[eClient.Address] = eClient;
 
                             continue;
                         }
 
-                        eClient = parseClientData(clientList[i]);
-
                         // If this is a existing client, update it
                         for (var a in updateableAttributes) {
-                            this.records.source.clients.clientMap[clientList[i].Address][updateableAttributes[a]] =
+                            this.records.source.clients.clientMap[eClient.Address][updateableAttributes[a]] =
                                 eClient[updateableAttributes[a]];
                         }
 
                         // If current client record is expanded, update clientRecord as well
-                        if (this.records.source.clients.clientMap[clientList[i].Address].Expended) {
-                            this.records.source.clients.clientMap[clientList[i].Address].Records =
+                        if (this.records.source.clients.clientMap[eClient.Address].Expended) {
+                            this.records.source.clients.clientMap[eClient.Address].Records =
                                 this.parseClientRecords(eClient.Data);
                         }
                     }
 
                     this.records.source.clients.listOrder.sort(function(a, b) {
                         return ((b.Count - a.Count)
-                            || (b.LastSeen - a.LastSeen))
-                            || (typeof a.Key.localeCompare === 'function' ? a.Key.localeCompare(b.Key) : 0);
+                            || (b.LastSeen.getTime() - a.LastSeen.getTime())
+                            || a.Key.localeCompare(b.Key));
                     });
+
+                    // Update clients count
+                    this.charts.status.totalClients =
+                        this.records.source.clients.listOrder.length;
 
                     // Scan deleted clients from client map
                     for (var c in this.records.source.clients.clientMap) {
@@ -473,9 +482,12 @@
                         loggedIn: false,
                         authID: '',
                         permissions: {}
-                    }
+                    };
 
-                    $('#status-login-password').focus();
+                    setTimeout(function() {
+                        $('#status-login-password').focus();
+                        $('#status-login-password').click();
+                    }, 500);
                 }
             },
             currentRecordType: {
@@ -604,8 +616,8 @@
                     self.status.verifiy.running = false;
                 });
             },
-            parseTime: function(timeStr) {
-                var d = new Date(Date.parse(timeStr)),
+            parseTime: function(dateTime) {
+                var d = new Date(dateTime),
                     s = [   'Jan', 'Feb', 'Mar', 'Apr',
                             'May', 'Jun', 'Jul', 'Aug',
                             'Sep', 'Oct', 'Nov', 'Dec'];

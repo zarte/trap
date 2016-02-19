@@ -28,7 +28,7 @@ import (
 type Distribution struct {
     Port                types.UInt16
     Type                types.String
-    Inbound             types.UInt32
+    Hit                 types.UInt32
 }
 
 type Distributions      map[types.String]*Distribution
@@ -40,7 +40,7 @@ func (d Distributions) GetSlot(port types.UInt16, typeName types.String) (*Distr
         d[pType]        =   &Distribution{
             Port:       port,
             Type:       typeName,
-            Inbound:    0,
+            Hit:        0,
         }
     }
 

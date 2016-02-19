@@ -60,7 +60,9 @@ func (c *Client) AppendData(data Data, maxLen types.UInt16) {
 
 type Clients map[types.IP]*Client
 
-func (c Clients) Get(ip types.IP) (*Client) {
+func (c Clients) Get(ip types.IP) (*Client, bool) {
+    isNew                   :=  false
+
     if _, ok := c[ip]; !ok {
         c[ip]               =   &Client{
             Address:            ip.IP(),
@@ -69,9 +71,11 @@ func (c Clients) Get(ip types.IP) (*Client) {
             Data:               []Data{},
             Marked:             false,
         }
+
+        isNew               =   true
     }
 
-    return c[ip]
+    return c[ip], isNew
 }
 
 func (c Clients) Has(ip types.IP) (bool) {

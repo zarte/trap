@@ -28,7 +28,7 @@ $base64File     =   $currentDir
                         . DIRECTORY_SEPARATOR
                         . 'dist'
                         . DIRECTORY_SEPARATOR
-                        . 'index.b64';
+                        . 'index.gzip';
 
 $outputTo       =   $currentDir
                         . DIRECTORY_SEPARATOR
@@ -40,7 +40,7 @@ $outputTo       =   $currentDir
                         . DIRECTORY_SEPARATOR
                         . 'status'
                         . DIRECTORY_SEPARATOR
-                        . 'template.go';
+                        . 'clientmeta.go';
 
 if (!file_exists($base64File)) {
     printf("Can't found file %s\r\n", $base64File);
@@ -82,41 +82,36 @@ $template = "/*
  * This file may contains third-party components, they are the properties
  * of it's respective holder(s). See README.md for more information.
  *
+ *
+ * !!!!!!!!!!!!!!!!!!!! DO NOT MODIFIY THIS FILE !!!!!!!!!!!!!!!!!!!!
+ * !!!!!!!!!!! Regenerate it with ./statusui/generate.php !!!!!!!!!!!
+ *
+ *
  */
 
 package status
 
-import (
-    \"encoding/base64\"
-)
+const STATUS_HOME_STATIC_PAGE =
+%ZIPPEDDATA%
+";
 
-var (
-    StaticClientPage, staticClientPageErr =
-        base64.StdEncoding.DecodeString(
-%Base64Code%)
-)";
+$gzipedContent = '';
 
-$base64Code = '';
-
-foreach (explode("\n", chunk_split($content, 64, "\n")) as $val) {
+foreach (explode("\n", chunk_split(bin2hex($content), 32, "\n")) as $val) {
     if (!$val) {
         continue;
     }
 
-    if ($base64Code) {
-        $base64Code .= " +\n";
+    if ($gzipedContent) {
+        $gzipedContent .= " + \n";
     }
 
-    $base64Code .= '            "' . $val . '"';
+    $gzipedContent .= "    \"\\x" . substr(chunk_split($val, 2, "\\x"), 0, -2) . '"';
 }
-
-$base64Code .= "\n";
-
-$base64Code = rtrim($base64Code);
 
 if (!file_put_contents(
     $outputTo,
-    str_replace("%Base64Code%", $base64Code, $template)
+    str_replace("%ZIPPEDDATA%", $gzipedContent, $template)
 )) {
     printf("Can't save data to file %s\r\n", $outputTo);
 

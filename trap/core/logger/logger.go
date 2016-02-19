@@ -65,7 +65,7 @@ func (l *Logger) NewContext(s types.String) (*Logger) {
 
 func (l *Logger) append(newLog Log) {
     l.mutex.Exec(func() {
-        l.logs.Append(newLog, 256)
+        l.logs.Append(newLog, 128)
 
         switch newLog.Type {
             case LOG_TYPE_DEBUG:

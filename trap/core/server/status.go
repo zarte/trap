@@ -30,6 +30,7 @@ import (
 type Status struct {
     TotalInbound        types.UInt64
     TotalMarked         types.UInt64
+    TotalHit            types.UInt64
     TotalClients        types.UInt64
 
     Uptime              time.Duration

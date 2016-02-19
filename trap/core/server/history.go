@@ -31,6 +31,8 @@ import (
 type History struct {
     Marked              types.UInt32
     Inbound             types.UInt32
+    Hit                 types.UInt32
+
     Hours               types.Int64
 }
 
@@ -46,6 +48,7 @@ func (h *Histories) GetSlot(referenceTime time.Time) (*History) {
         h[slot]         =   &History{
             Marked:     0,
             Inbound:    0,
+            Hit:        0,
             Hours:      0,
         }
     }
@@ -55,6 +58,7 @@ func (h *Histories) GetSlot(referenceTime time.Time) (*History) {
     if his.Hours != hour {
         his.Marked      =   0
         his.Inbound     =   0
+        his.Hit         =   0
         his.Hours       =   hour
     }
 

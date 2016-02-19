@@ -166,9 +166,7 @@ func (this *Status) getAllSessions() ([]status.SessionDump) {
 func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
     httpMux         :=  status.NewMux()
 
-    httpMux.HandleController("/", &controller.Home{
-        StaticPage:         status.StaticClientPage,
-    })
+    httpMux.HandleController("/", &controller.Home{})
 
     httpMux.HandleController("/api/auth", &controller.Auth{
         Verify:             this.verifyUser,

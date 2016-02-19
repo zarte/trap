@@ -23,7 +23,8 @@
     var msgBox = $('#status-login-msg'),
         msgText = $('#status-login-msg-msg'),
         loginField = $('#status-login-field'),
-        loginLoading = $('#status-login-loading');
+        loginLoading = $('#status-login-loading'),
+        loginInput = $('#status-login-password');
 
     var str = 'String', arr = ['Array'];
 
@@ -45,6 +46,11 @@
 
     loginLoading.hide();
     loginField.show();
+
+    setTimeout(function() {
+        loginInput.focus();
+        loginInput.click();
+    }, 500);
 
     initApp();
 });

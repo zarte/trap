@@ -65,6 +65,7 @@ type Server struct {
 
     totalInbound            types.UInt64
     totalMarked             types.UInt64
+    totalHit                types.UInt64
 
     history                 server.Histories
     distribution            server.Distributions
@@ -217,19 +218,26 @@ func (this *Server) insertClient(c listen.ConnectionInfo,
     mark bool) (*client.Client, *types.Throw) {
     nowTime                     :=  time.Now()
 
-    clientRecord                :=  this.clients.Get(c.ClientIP)
+    clientRecord, newClientRec  :=  this.clients.Get(c.ClientIP)
 
     historyRecord               :=  this.history.GetSlot(
                                         this.bootTime)
 
-    this.totalInbound           +=  1
-    historyRecord.Inbound       +=  1
+    // If this is a new client, add inbound record
+    if newClientRec {
+        this.totalInbound       +=  1
+        historyRecord.Inbound   +=  1
+    }
 
+    // Don't plus hit as we don't have actual hit here
+    this.totalHit               +=  1
+    historyRecord.Hit           +=  1
+
+    // Update port distribution
     portDis                     :=  this.distribution.GetSlot(
-                                        c.ServerAddress.Port,
-                                        c.Type)
+                                        c.ServerAddress.Port, c.Type)
 
-    portDis.Inbound             +=  1
+    portDis.Hit                 +=  1
 
     clientRecord.AppendData(client.Data{
         Inbound:                []byte{},
@@ -274,26 +282,24 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     r listen.RespondedResult) (*client.Client, *types.Throw) {
     nowTime                     :=  time.Now()
 
-    clientRecord                :=  this.clients.Get(c.ClientIP)
+    clientRecord, newClientRec  :=  this.clients.Get(c.ClientIP)
 
     historyRecord               :=  this.history.GetSlot(
                                         this.bootTime)
 
-    this.totalInbound           +=  1
-    historyRecord.Inbound       +=  1
+    if newClientRec {
+        this.totalInbound       +=  1
+        historyRecord.Inbound   +=  1
+    }
+
+    this.totalHit               +=  1
+    historyRecord.Hit           +=  1
 
     portDis                     :=  this.distribution.GetSlot(
                                         c.ServerAddress.Port,
                                         c.Type)
 
-    portDis.Inbound             +=  1
-
-    // Reset data if this client is back AFTER tolerate time
-    if !clientRecord.LastSeen.Add(
-        this.tolerateExpire).After(nowTime) {
-        clientRecord.Count      =   1
-        clientRecord.Marked     =   false
-    }
+    portDis.Hit                 +=  1
 
     clientRecord.AppendData(client.Data{
         Inbound:                r.ReceivedSample[:r.ReceivedLen],
@@ -310,8 +316,7 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     // Check the connection tolerate limit
     if clientRecord.Count < this.tolerate {
         this.logger.Infof("Client '%s' connected '%d'" +
-            " times, still counting", clientRecord.Address,
-            clientRecord.Count)
+            " times, still counting", clientRecord.Address, clientRecord.Count)
 
         return clientRecord, nil
     }
@@ -358,7 +363,7 @@ func (this *Server) clientCron() {
         // Scan the client table, check if there is any client is expired,
         // then delete it if so
 
-        time.Sleep(10 * time.Second)
+        time.Sleep(20 * time.Second)
 
         select {
             case <- this.clientCronExitCh:
@@ -381,9 +386,12 @@ func (this *Server) clientCron() {
                                         types.String(
                                             clientInfo.Address.String())).
                                     AddUInt32("Count", clientInfo.Count))
+
+                            // Unmark the client
+                            clientInfo.Marked   =   false
                         }
 
-                        // Check if the client within restrict time
+                        // Check if the client still within restrict time
                         if !nowTime.After(clientInfo.LastSeen.Add(
                             this.tolerateExpire).Add(this.tolerateRestrict)) {
                             continue
@@ -418,7 +426,7 @@ func (this *Server) Client(addr types.IP) (*client.Client, *types.Throw) {
             return
         }
 
-        c                       =   this.clients.Get(addr)
+        c, _                    =   this.clients.Get(addr)
     })
 
     if e != nil {
@@ -491,7 +499,7 @@ func (this *Server) RemoveClient(addr types.IP) (*types.Throw) {
             return
         }
 
-        clientInfo              :=  this.clients.Get(addr)
+        clientInfo, _           :=  this.clients.Get(addr)
 
         if clientInfo.Marked {
             p := event.Parameters{}
@@ -500,6 +508,8 @@ func (this *Server) RemoveClient(addr types.IP) (*types.Throw) {
                     p.AddString("ClientIP", types.String(
                                                 clientInfo.Address.String())).
                     AddUInt32("Count", clientInfo.Count))
+
+            clientInfo.Marked   =   false
         }
 
         result                  =   this.clients.Delete(addr)
@@ -519,6 +529,7 @@ func (this *Server) Status() (server.Status) {
 
         sInfo.TotalInbound      =   this.totalInbound
         sInfo.TotalMarked       =   this.totalMarked
+        sInfo.TotalHit          =   this.totalHit
         sInfo.TotalClients      =   types.UInt64(len(this.clients))
     })
 
@@ -702,6 +713,7 @@ func (this *Server) Reload(callback func(s *Server) (*types.Throw)) (*types.Thro
 
         this.totalInbound       =   0
         this.totalMarked        =   0
+        this.totalHit           =   0
         this.history            =   server.Histories{}
         this.distribution       =   server.Distributions{}
 

@@ -69,16 +69,9 @@ module.exports = function(grunt) {
                 files: [
                     {
                         src: ['temp/index.min.html'],
-                        dest: 'temp/index.gz.html'
+                        dest: 'dist/index.gzip'
                     }
                 ]
-            }
-        },
-        base64: {
-            dist: {
-                files: {
-                    'dist/index.b64': 'temp/index.gz.html'
-                }
             }
         },
         clean: ["temp"]
@@ -91,7 +84,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-clean');
     grunt.loadNpmTasks('grunt-contrib-compress');
     grunt.loadNpmTasks('grunt-processhtml');
-    grunt.loadNpmTasks('grunt-base64');
 
     grunt.registerTask('default', [
         'uglify',
@@ -100,7 +92,6 @@ module.exports = function(grunt) {
         'processhtml',
         'htmlmin',
         'compress',
-        'base64',
         'clean'
     ]);
 };

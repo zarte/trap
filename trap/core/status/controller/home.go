@@ -37,7 +37,7 @@ type Home struct {
 
     staticExpired       time.Duration
 
-    StaticPage          []byte
+    staticPage          []byte
 }
 
 func (s *Home) Init() (*types.Throw) {
@@ -51,6 +51,8 @@ func (s *Home) Init() (*types.Throw) {
     s.formatedBootTime      =   s.bootTime.Format(time.RFC1123)
 
     s.staticExpired         =   86400 * time.Second
+
+    s.staticPage            =   []byte(status.STATUS_HOME_STATIC_PAGE)
 
     return nil
 }
@@ -89,5 +91,5 @@ func (s *Home) Get(w http.ResponseWriter, r *http.Request) {
                                             Add(s.staticExpired).
                                             Format(time.RFC1123))
 
-    w.Write(s.StaticPage)
+    w.Write(s.staticPage)
 }
