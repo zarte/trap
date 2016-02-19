@@ -330,7 +330,8 @@ func (this *Status) Reset() (*types.Throw) {
     this.serverRWLock.Exec(func() {
         e               =   this.down()
 
-        if e != nil {
+        // If there is error and it's not 'Server already down'
+        if e != nil && !e.Is(status.ErrServerNotDownable) {
             return
         }
 

@@ -27,6 +27,7 @@ import (
 
     "github.com/raincious/trap/trap/core/event"
     "github.com/raincious/trap/trap/core/types"
+    statusPkg "github.com/raincious/trap/trap/core/status"
     "github.com/raincious/trap/trap/core/logger"
 
     "github.com/raincious/trap/trap/protocol/tcp"
@@ -231,8 +232,8 @@ func main() {
 
     // Register system signal handlers
     signal.Notify(signalCall,
-        syscall.SIGHUP,     // For Reload
-        syscall.SIGINT)    // Unstopable shutdown
+        syscall.SIGHUP,    // For Reload
+        syscall.SIGINT)    // Control + C
 
     // Loop for system signal
     for {
@@ -241,7 +242,12 @@ func main() {
         switch <-signalCall {
             case syscall.SIGHUP:
                 server.Reload(func(s *trap.Server) (*types.Throw) {
-                    status.Reset()
+                    statusErr := status.Reset()
+
+                    if statusErr != nil &&
+                    !statusErr.Is(statusPkg.ErrServerNotDownable) {
+                        return statusErr
+                    }
 
                     initConfig(s, status)
 

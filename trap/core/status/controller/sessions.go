@@ -54,7 +54,7 @@ func (s *Sessions) Before(w http.ResponseWriter,
         return status.ErrSessionLoginReqiured.Throw()
     }
 
-    if !session.Account().Allowed("clients") {
+    if !session.Account().Allowed("sessions") {
         s.Error(status.ErrorRespond{
             Code:   403,
             Error:  status.ErrSessionNoPermission.Throw(),

@@ -591,7 +591,7 @@ func (this *Server) powerup() (*types.Throw) {
         return lnErr
     }
 
-    this.logger.Infof("`Server` started without any problem")
+    this.logger.Infof("`Server` started without any serious problem")
 
     return nil
 }
@@ -719,7 +719,11 @@ func (this *Server) Reload(callback func(s *Server) (*types.Throw)) (*types.Thro
 
         this.logger.Debugf("Running `Reload` callback")
 
-        callback(this)
+        lnErr = callback(this)
+
+        if lnErr != nil {
+            return
+        }
 
         lnErr = this.powerup()
     })
