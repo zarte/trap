@@ -185,12 +185,13 @@
                                 }
 
                                 portPercents.sort(function(a, b) {
-                                    return b.Percent - a.Percent;
+                                    return b.Percent - a.Percent || a.Type.localeCompare(b.Type);
                                 });
 
                                 for (var i in portPercents) {
                                     if (result.length > maxItems) {
                                         result[maxItems].Percent += portPercents[i].Percent;
+                                        result[maxItems].Type = 'Rest';
                                         result[maxItems].Port = 'Rest';
 
                                         continue;

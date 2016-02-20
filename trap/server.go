@@ -167,7 +167,8 @@ func (this *Server) Listen() (*listen.Listen) {
         },
         OnError: func(c listen.ConnectionInfo, e *types.Throw) {
             this.logger.Debugf("An error happened when '%s' " +
-                "connected to '%s': %s", c.ClientIP.String(), c.ServerAddress.IP, e)
+                "connected to '%s': %s", c.ClientIP.String(),
+                c.ServerAddress.IP, e)
         },
         OnPick: func(c listen.ConnectionInfo, r listen.RespondedResult) {
             switch r.Suggestion {
@@ -360,16 +361,11 @@ func (this *Server) clientCron() {
     for {
         nowTime                     := time.Now()
 
-        // Scan the client table, check if there is any client is expired,
-        // then delete it if so
-
-        time.Sleep(20 * time.Second)
-
         select {
             case <- this.clientCronExitCh:
                 return
 
-            default:
+            case <- time.After(64 * time.Second):
                 this.clientRWLock.Exec(func() {
                     for clientID, clientInfo := range this.clients {
                         if !nowTime.After(clientInfo.LastSeen.Add(
@@ -392,8 +388,9 @@ func (this *Server) clientCron() {
                         }
 
                         // Check if the client still within restrict time
-                        if !nowTime.After(clientInfo.LastSeen.Add(
-                            this.tolerateExpire).Add(this.tolerateRestrict)) {
+                        if clientInfo.Count >= this.tolerate && !nowTime.After(
+                            clientInfo.LastSeen.Add(this.tolerateExpire).Add(
+                            this.tolerateRestrict)) {
                             continue
                         }
 
@@ -690,7 +687,8 @@ func (this *Server) Down() (*types.Throw) {
     return lnErr
 }
 
-func (this *Server) Reload(callback func(s *Server) (*types.Throw)) (*types.Throw) {
+func (this *Server) Reload(
+    callback func(s *Server) (*types.Throw)) (*types.Throw) {
     var lnErr                   *types.Throw = nil
 
     this.logger.Debugf("Reloading")

@@ -41,6 +41,17 @@ func (s *Sessioned) Session() (*status.Session) {
     return s.session
 }
 
+func (s *Sessioned) GetSessionID(r *http.Request) (types.String) {
+    headerID                :=  r.Header.Get(
+                                    status.STATUS_SERVER_SESSION_KEY_HEADER)
+
+    if headerID != "" {
+        return types.String(headerID)
+    }
+
+    return types.String("")
+}
+
 func (s *Sessioned) Before(w http.ResponseWriter,
     r *http.Request) (*types.Throw) {
     userIP, userIPErr := s.GetIPFormString(r.RemoteAddr)
@@ -54,8 +65,7 @@ func (s *Sessioned) Before(w http.ResponseWriter,
         return userIPErr
     }
 
-    session, vErr   :=  s.Verify(userIP, types.String(
-        r.Header.Get(status.STATUS_SERVER_SESSION_KEY_HEADER)))
+    session, vErr   :=  s.Verify(userIP, s.GetSessionID(r))
 
     if vErr != nil {
         s.Error(status.ErrorRespond{
@@ -85,6 +95,17 @@ func (s *SessionedJSON) Session() (*status.Session) {
     return s.session
 }
 
+func (s *SessionedJSON) GetSessionID(r *http.Request) (types.String) {
+    headerID                :=  r.Header.Get(
+                                    status.STATUS_SERVER_SESSION_KEY_HEADER)
+
+    if headerID != "" {
+        return types.String(headerID)
+    }
+
+    return types.String("")
+}
+
 func (s *SessionedJSON) Before(w http.ResponseWriter,
     r *http.Request) (*types.Throw) {
     beforeErr := s.JSON.Before(w, r)
@@ -109,8 +130,7 @@ func (s *SessionedJSON) Before(w http.ResponseWriter,
         return userIPErr
     }
 
-    session, vErr   :=  s.Verify(userIP, types.String(
-        r.Header.Get(status.STATUS_SERVER_SESSION_KEY_HEADER)))
+    session, vErr   :=  s.Verify(userIP, s.GetSessionID(r))
 
     if vErr != nil {
         s.Error(status.ErrorRespond{

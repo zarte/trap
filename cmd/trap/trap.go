@@ -48,16 +48,35 @@ import (
     "fmt"
     "bufio"
     "path/filepath"
+    "runtime/pprof"
 )
 
 var (
-    logFile     =   ""
-    cfgFile     =   ""
+    logFile         =   ""
+    silentRun       =   false
+    cfgFile         =   ""
+    cpuPrfFile      =   ""
+    memPrfFile      =   ""
 )
 
 func init() {
-    flag.StringVar(&logFile, "log", "", "Path of log file")
-    flag.StringVar(&cfgFile, "config", "", "Config file")
+    flag.StringVar(&cfgFile, "config", "",
+        "Load configuration from specified file, must be defined.")
+
+    flag.StringVar(&logFile, "log", "",
+        "Save log data to specified file, " +
+        "keep it default to disable file logger.")
+
+    flag.StringVar(&cpuPrfFile, "profiling-cpu", "",
+        "Dump CPU profile data to specified file, " +
+        "keep it blank to disable profiling.")
+
+    flag.StringVar(&memPrfFile, "profiling-mem", "",
+        "Dump memory profile data to specified file, " +
+        "keep it blank to disable profiling.")
+
+    flag.BoolVar(&silentRun, "silent", false,
+        "Do not generate any output")
 
     flag.Parse()
 }
@@ -166,9 +185,49 @@ func initConfig(server *trap.Server, status *trap.Status) {
 }
 
 func main() {
-    fmt.Printf(core.TRAP_COMMAND_BANNDER, core.TRAP_DESCRIPTION,
-        core.TRAP_COPYRIGHT, core.TRAP_VERSION, core.TRAP_LICENSE,
-        core.TRAP_LICENSEURL, core.TRAP_PROJECTURL, core.TRAP_SOURCEURL)
+    // Enable CPU profiling
+    if cpuPrfFile != "" {
+        cpuPrfFileFile, cpuPrfFileErr :=  os.OpenFile(cpuPrfFile,
+            os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
+            0600)
+
+        if cpuPrfFileErr != nil {
+            panic(fmt.Errorf("Can't create CPU profiling file due to error: %s",
+                cpuPrfFileErr))
+        }
+
+        pprof.StartCPUProfile(cpuPrfFileFile)
+
+        defer func() {
+            pprof.StopCPUProfile()
+
+            cpuPrfFileFile.Close()
+        }()
+    }
+
+    // Enable Memory profiling
+    if memPrfFile != "" {
+        memPrfFileFile, memFileErr :=  os.OpenFile(memPrfFile,
+            os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
+            0600)
+
+        if memFileErr != nil {
+            panic(fmt.Errorf("Can't create Mem profiling file due to error: %s",
+                memFileErr))
+        }
+
+        defer func() {
+            pprof.WriteHeapProfile(memPrfFileFile)
+
+            memPrfFileFile.Close()
+        }()
+    }
+
+    if !silentRun {
+        fmt.Printf(core.TRAP_COMMAND_BANNDER, core.TRAP_DESCRIPTION,
+            core.TRAP_COPYRIGHT, core.TRAP_VERSION, core.TRAP_LICENSE,
+            core.TRAP_LICENSEURL, core.TRAP_PROJECTURL, core.TRAP_SOURCEURL)
+    }
 
     log         :=  logger.NewLogger()
 
@@ -199,15 +258,12 @@ func main() {
         }
 
         log.Register(fileLogPrinter)
-    } else {
+    } else if (!silentRun) {
         // Or, register screen logger instead
         log.Register(logPrinter.NewScreenPrinter())
     }
 
-    signalCall  :=  make(chan os.Signal, 1)
-
-    defer close(signalCall)
-
+    // Start booting
     server      :=  trap.NewServer()
 
     defer server.Down()
@@ -229,6 +285,11 @@ func main() {
         panic(fmt.Errorf("Encountered at least one error while " +
             "server is booting up: %s", servErr))
     }
+
+    // Catch system signals
+    signalCall  :=  make(chan os.Signal, 1)
+
+    defer close(signalCall)
 
     // Register system signal handlers
     signal.Notify(signalCall,

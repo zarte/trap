@@ -22,6 +22,7 @@
  /* Trap Server Style */
 body { background: #222; padding: 0; margin: 0; }
 body { color: #333; line-height: 1.5; }
+body { font-family: 'Droid Sans', sans-serif; }
 
 body { min-width: 1000px; }
 
@@ -51,13 +52,13 @@ ul.layout { padding: 0; margin: 0; }
 .tlt-mid-subtitle1 { font-family: 'Oswald', sans-serif; }
 .txt-monospace { font-family: 'Roboto Mono', 'monospace', sans-serif; }
 
-.nav-switch1 { line-height: 1; list-style: none; width: 100%; overflow: auto; }
+.nav-switch1 { list-style: none; width: 100%; overflow: auto; }
 .nav-switch1 li { float: left; margin-bottom: 10px; }
-.nav-switch1 li .label { padding: 0 5px; font-style: normal; border-radius: 3px; font-size: 0.8em; background: #aaa; color: #fff; margin-left: 3px; }
+.nav-switch1 li .label { padding: 0px 5px; display: inline-block; vertical-align: middle; font-style: normal; border-radius: 3px; font-size: 0.8em; background: #aaa; color: #fff; margin-left: 3px; }
 .nav-switch1 li.current { background: #eee; position: relative; }
 .nav-switch1 li.current a { background: #eee; color: #666; }
 .nav-switch1 li.current:before { content: ''; display: block; width: 0; height: 0; position: absolute; bottom: -10px; left: 50%; margin-left: -5px; background: #eee; border: 5px solid #fff; border-top: 5px solid #eee; }
-.nav-switch1 a { display: block; color: #aaa; padding: 8px 10px; text-decoration: none; outline: none; }
+.nav-switch1 a { display: block; color: #aaa; padding: 4px 10px; text-decoration: none; outline: none; }
 .nav-switch1 a:focus { background: #f6f6f6; }
 
 .list1 { list-style: none; }
@@ -170,7 +171,7 @@ ul.layout { padding: 0; margin: 0; }
 #status-stats-history .ct-label { color: #ddd; fill: #ddd; }
 #status-stats-history .ct-grid { color: #ddd; fill: #ddd; }
 #status-stats-history .ct-series-a .ct-area, #status-stats-history .ct-series-a .ct-slice-pie { fill: #6cc; }
-#status-stats-history .ct-series-b .ct-area, #status-stats-history .ct-series-b .ct-slice-pie { fill: #4aa; }
+#status-stats-history .ct-series-b .ct-area, #status-stats-history .ct-series-b .ct-slice-pie { fill: #5bb; }
 #status-stats-history .ct-series-c .ct-area, #status-stats-history .ct-series-c .ct-slice-pie { fill: #255; }
 
 #status-stats-distro {  }
@@ -240,7 +241,7 @@ ul.layout { padding: 0; margin: 0; }
 #status-logs .type.type-warning { color: #eb0; }
 #status-logs .type.type-error { color: #c44; }
 #status-logs .info .tp { font-size: 0.75em; margin-bottom: 3px; color: #999; width: 100%; overflow: auto; }
-#status-logs .info .tp em { vertical-align: middle; line-height: normal; display: block; position: relative; font-style: normal; float: left; padding: 2px 1px 2px 15px; background: #fafafa; border: 1px solid #eee; }
+#status-logs .info .tp em { vertical-align: middle; line-height: normal; display: block; position: relative; font-style: normal; float: left; padding: 3px 1px 3px 15px; background: #fafafa; border: 1px solid #eee; }
 #status-logs .info .tp em:after { content: ''; display: block; width: 10px; background: #fafafa; border: 1px solid #eee; border-left: 0; border-radius: 0px 50% 50% 0; position: absolute; top: -1px; bottom: -1px; right: -10px; z-index: 2; }
 #status-logs .info .tp em:first-child { background: #f0f0f0; color: #aaa; padding-left: 10px; }
 #status-logs .info .tp em:first-child:after { background: #f0f0f0; color: #aaa; }
