@@ -24,6 +24,7 @@ package responder
 import (
     "github.com/raincious/trap/trap/core/types"
     "github.com/raincious/trap/trap/core/listen"
+    "github.com/raincious/trap/trap/protocol/tcp"
 
     "io"
     "net"
@@ -33,20 +34,26 @@ type Empty struct {
 
 }
 
-func (e *Empty) Handle(conn *net.TCPConn) (listen.RespondedResult, *types.Throw) {
-    var totalbuffer []byte
+func (e *Empty) Handle(conn *net.TCPConn,
+    config *tcp.ResponderConfig) (listen.RespondedResult, *types.Throw) {
+    readLen                     :=  uint(256)
 
-    result                  :=  listen.RespondedResult{
-                                    Suggestion: listen.RESPOND_SUGGEST_MARK,
-                                }
+    result                      :=  listen.RespondedResult{
+                                        Suggestion: listen.RESPOND_SUGGEST_MARK,
+                                        ReceivedSample: []byte{},
+                                    }
 
-    totalLen                :=  0
-    maxLen                  :=  len(result.ReceivedSample)
+    totalLen                    :=  uint(0)
+    maxLen                      :=  config.MaxBytes
+
+    if maxLen < 256 {
+        readLen                 =   maxLen
+    }
 
     for {
-        buffer              :=  make([]byte, 256)
+        buffer                  :=  make([]byte, readLen)
 
-        rLen, rErr          :=  conn.Read(buffer)
+        rLen, rErr              :=  conn.Read(buffer)
 
         if rErr == io.EOF {
             break
@@ -58,18 +65,15 @@ func (e *Empty) Handle(conn *net.TCPConn) (listen.RespondedResult, *types.Throw)
             return result, types.ConvertError(rErr)
         }
 
-        totalLen            +=  rLen
+        totalLen                +=  uint(rLen)
 
         if totalLen > maxLen {
             break
         }
 
-        totalbuffer         =   append(totalbuffer, buffer[:rLen]...)
+        result.ReceivedSample   =   append(result.ReceivedSample,
+                                        buffer[:rLen]...)
     }
-
-    result.ReceivedLen      =   totalLen
-
-    copy(result.ReceivedSample[:], totalbuffer)
 
     return result, nil
 }

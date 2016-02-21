@@ -29,6 +29,8 @@
      * limit thershold within given time
      *
      */
+    "attempt_timeout": 1,
+    "attempt_max_bytes": 512,
     "attempt_thershold": 3,
     "attempt_expire": 3600,
     "attempt_restrict": 86400,

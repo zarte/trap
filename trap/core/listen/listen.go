@@ -48,6 +48,8 @@ type Listen struct {
 
     error           *types.Throw
 
+    maxBytes        types.UInt32
+
     protocols       Protocols
 
     onError         func(ConnectionInfo, *types.Throw)
@@ -77,6 +79,8 @@ func (this *Listen) Init(cfg *Config) {
     this.onListened     = cfg.OnListened
     this.onUnListened   = cfg.OnUnListened
 
+    this.maxBytes       = cfg.MaxBytes
+
     this.concurrent     = cfg.Concurrent
 }
 
@@ -96,6 +100,8 @@ func (this *Listen) Register(pType types.String, protocol Protocol) (*types.Thro
     protocol.Init(&ProtocolConfig{
         OnError:        this.onError,
         OnPick:         this.onPick,
+
+        MaxBytes:       this.maxBytes,
 
         ReadTimeout:    this.timeout,
         WriteTimeout:   this.timeout,
