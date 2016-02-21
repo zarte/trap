@@ -30,7 +30,7 @@ import (
 )
 
 const (
-    _                       = iota
+    _                       =   iota
 
     RESPOND_SUGGEST_SKIP
     RESPOND_SUGGEST_MARK
@@ -43,6 +43,8 @@ type Config struct {
     OnListened      func(*ListeningInfo)
     OnUnListened    func(*ListeningInfo)
 
+    MaxBytes        types.UInt32
+
     Logger          *logger.Logger
     Concurrent      types.UInt16
 
@@ -51,10 +53,12 @@ type Config struct {
 
 type ListenerConfig struct {
     Logger          *logger.Logger
-    Concurrent      uint
+    Concurrent      types.UInt16
 
     OnError         func(ConnectionInfo, *types.Throw)
     OnPick          func(ConnectionInfo, RespondedResult)
+
+    MaxBytes        types.UInt32
 
     ReadTimeout     time.Duration
     WriteTimeout    time.Duration
@@ -70,6 +74,8 @@ type ProtocolConfig struct {
 
     OnError         func(ConnectionInfo, *types.Throw)
     OnPick          func(ConnectionInfo, RespondedResult)
+
+    MaxBytes        types.UInt32
 
     ReadTimeout     time.Duration
     WriteTimeout    time.Duration
@@ -91,11 +97,8 @@ type ConnectionInfo struct {
 }
 
 type RespondedResult struct {
-    ReceivedSample  [512]byte
-    ReceivedLen     int
-
-    RespondedData   [512]byte
-    RespondedLen    int
+    ReceivedSample  []byte
+    RespondedData   []byte
 
     Suggestion      int
 }

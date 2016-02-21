@@ -29,5 +29,6 @@ import (
 )
 
 type Responder interface {
-    Handle(*net.TCPConn) (listen.RespondedResult, *types.Throw)
+    Handle(*net.TCPConn, *ResponderConfig) (listen.RespondedResult,
+        *types.Throw)
 }

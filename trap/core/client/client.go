@@ -49,7 +49,7 @@ func (c *Client) Bump() {
 }
 
 func (c *Client) AppendData(data Data, maxLen types.UInt16) {
-    dataLen                 :=  types.UInt16(len(c.Data))
+    dataLen                 :=  types.Int32(len(c.Data)).UInt16()
 
     c.Data                  =   append(c.Data, data)
 

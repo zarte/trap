@@ -30,3 +30,7 @@ type ListenerConfig struct {
 
     Responder       Responder
 }
+
+type ResponderConfig struct {
+    MaxBytes        uint
+}

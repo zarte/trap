@@ -19,6 +19,8 @@ type rawConfig struct {
 
     Listens             []types.String      `json:"listen_ports"`
 
+    AttemptTimeout      types.UInt32        `json:"attempt_timeout"`
+    AttemptMaxBytes     types.UInt32        `json:"attempt_max_bytes"`
     AttemptThershold    types.UInt32        `json:"attempt_thershold"`
     AttemptExpire       types.UInt32        `json:"attempt_expire"`
     AttemptRestrict     types.UInt32        `json:"attempt_restrict"`
@@ -104,6 +106,12 @@ func Parse(configStr []byte) (*Config, *types.Throw) {
 
         config.Listens          =   append(config.Listens, listenItem)
     }
+
+    // Parse `AttemptTimeout` Field
+    config.AttemptTimeout       =   rawConfig.AttemptTimeout
+
+    // Parse `AttemptMaxBytes` Field
+    config.AttemptMaxBytes      =   rawConfig.AttemptMaxBytes
 
     // Parse `AttemptThershold` Field
     config.AttemptThershold = rawConfig.AttemptThershold
