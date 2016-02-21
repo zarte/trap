@@ -40,7 +40,8 @@ type Listener struct {
     responder       Responder
 
     logger          *logger.Logger
-    concurrent      uint
+    concurrent      int
+    maxBytes        uint
 
     timeoutRead     time.Duration
     timeoutWrite    time.Duration
@@ -73,7 +74,7 @@ func (this *Listener) Init(cfg ListenerConfig) (*types.Throw) {
                                     NewContext(types.String(cfg.IP.String())).
                                     NewContext(cfg.Port.String())
 
-    this.concurrent         =   cfg.Concurrent
+    this.concurrent         =   int(cfg.Concurrent.Int32()) // UInt16 to Int32
 
     if strIP == "0.0.0.0" {
         strIP = ""
@@ -82,6 +83,8 @@ func (this *Listener) Init(cfg ListenerConfig) (*types.Throw) {
     this.timeoutRead        =   cfg.ReadTimeout
     this.timeoutWrite       =   cfg.WriteTimeout
     this.timeoutTotal       =   cfg.TotalTimeout
+
+    this.maxBytes           =   uint(cfg.MaxBytes.UInt32())
 
     this.onError            =   cfg.OnError
     this.onPick             =   cfg.OnPick
@@ -122,6 +125,10 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
 
         conChan             :=  make(chan bool, this.concurrent)
 
+        responderConfig     :=  &ResponderConfig{
+            MaxBytes:           this.maxBytes,
+        }
+
         defer func() {
             if !this.upped {
                 return
@@ -145,7 +152,7 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                         return
 
                     case <- conChan:
-                        curChanLen := uint(len(conChan))
+                        curChanLen := len(conChan)
 
                         if curChanLen < this.concurrent {
                             for i := curChanLen; i < this.concurrent; i++ {
@@ -154,7 +161,7 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                         }
 
                     default:
-                        for i := uint(0); i < this.concurrent; i++ {
+                        for i := 0; i < this.concurrent; i++ {
                             conChan <- true
                         }
                 }
@@ -187,7 +194,6 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                     go func(conn *net.TCPConn) {
                         defer this.waitingGroup.Done()
 
-
                         clientAddr, cAddrErr    :=  types.ConvertIPAddress(
                                                         conn.RemoteAddr())
 
@@ -208,7 +214,8 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                         conn.SetReadDeadline(time.Now().Add(this.timeoutRead))
                         conn.SetWriteDeadline(time.Now().Add(this.timeoutWrite))
 
-                        result, err := this.responder.Handle(conn)
+                        result, err :=  this.responder.Handle(conn,
+                                            responderConfig)
 
                         if err != nil {
                             this.onError(connection, err)

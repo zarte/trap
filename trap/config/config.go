@@ -39,6 +39,8 @@ type Config struct {
 
     Listens             Listens
 
+    AttemptTimeout      types.UInt32
+    AttemptMaxBytes     types.UInt32
     AttemptThershold    types.UInt32
     AttemptExpire       types.UInt32
     AttemptRestrict     types.UInt32

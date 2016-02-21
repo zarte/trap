@@ -34,57 +34,59 @@ import (
 )
 
 type Server struct {
-    logger                  *logger.Logger
+    logger                      *logger.Logger
 
-    listen                  *listen.Listen
-    event                   *event.Event
+    listen                      *listen.Listen
+    event                       *event.Event
 
-    clients                 client.Clients
-    clientRWLock            types.Mutex
-    clientCronExitCh        chan bool
-    clientDataRecords       types.UInt16
+    clients                     client.Clients
+    clientRWLock                types.Mutex
+    clientCronExitCh            chan bool
+    clientMaxRecords            types.UInt16
+    clientMaxRecordMaxBytes     types.UInt32
 
-    serverUpped             bool
-    serverUpping            bool
-    serverLock              types.Mutex
-    serverDownWait          sync.WaitGroup
+    serverUpped                 bool
+    serverUpping                bool
+    serverLock                  types.Mutex
+    serverDownWait              sync.WaitGroup
 
-    timeout                 time.Duration
+    timeout                     time.Duration
 
-    tolerate                types.UInt32
-    tolerateExpire          time.Duration
-    tolerateRestrict        time.Duration
+    tolerate                    types.UInt32
+    tolerateExpire              time.Duration
+    tolerateRestrict            time.Duration
 
-    concurrentLimit         types.UInt16
+    concurrentLimit             types.UInt16
 
-    onUpCommands            types.Callbacks
-    onDownCommands          types.Callbacks
-    onUpDownCommands        []types.CallbackPair
+    onUpCommands                types.Callbacks
+    onDownCommands              types.Callbacks
+    onUpDownCommands            []types.CallbackPair
 
-    bootTime                time.Time
+    bootTime                    time.Time
 
-    totalInbound            types.UInt64
-    totalMarked             types.UInt64
-    totalHit                types.UInt64
+    totalInbound                types.UInt64
+    totalMarked                 types.UInt64
+    totalHit                    types.UInt64
 
-    history                 server.Histories
-    distribution            server.Distributions
+    history                     server.Histories
+    distribution                server.Distributions
 }
 
 func NewServer() (*Server) {
     return &Server{
-        clients:            client.Clients{},
-        clientRWLock:       types.Mutex{},
-        serverLock:         types.Mutex{},
-        serverDownWait:     sync.WaitGroup{},
-        timeout:            1 * time.Second,
-        tolerate:           1,
-        tolerateExpire:     3600 * time.Second,
-        tolerateRestrict:   3600 * time.Second,
-        concurrentLimit:    10,
-        clientDataRecords:  16,
-        history:            server.Histories{},
-        distribution:       server.Distributions{},
+        clients:                    client.Clients{},
+        clientRWLock:               types.Mutex{},
+        serverLock:                 types.Mutex{},
+        serverDownWait:             sync.WaitGroup{},
+        timeout:                    1 * time.Second,
+        tolerate:                   1,
+        tolerateExpire:             3600 * time.Second,
+        tolerateRestrict:           3600 * time.Second,
+        concurrentLimit:            10,
+        clientMaxRecords:           16,
+        clientMaxRecordMaxBytes:    512,
+        history:                    server.Histories{},
+        distribution:               server.Distributions{},
     }
 }
 
@@ -96,19 +98,27 @@ func (this *Server) SetLogger(l *logger.Logger) {
 
 func (this *Server) SetTolerate(limit types.UInt32, expire time.Duration,
     restrict time.Duration) {
-    this.tolerate           = limit
-    this.tolerateExpire     = expire
-    this.tolerateRestrict   = restrict
+    this.tolerate               =   limit
+    this.tolerateExpire         =   expire
+    this.tolerateRestrict       =   restrict
 
     this.logger.Debugf("Tolerate has been set to '%d' attempts within '%s'" +
         ", restrict period is '%s'",
         limit, expire, restrict)
 }
 
-func (this *Server) SetClientDataRecordLimit(l types.UInt16) {
-    this.clientDataRecords  = l
+func (this *Server) SetClientRecordLimit(l types.UInt16) {
+    this.clientMaxRecords      =   l
 
     this.logger.Debugf("Client Data Record Limit has been set to '%d' items", l)
+}
+
+func (this *Server) SetClientRecordDataLimit(limit types.UInt32) {
+    this.clientMaxRecordMaxBytes  =   limit
+
+    this.logger.Debugf("Client retrieve limit now been set to maximum '%d'" +
+        " bytes",
+        this.clientMaxRecordMaxBytes)
 }
 
 func (this *Server) SetTimeout(t time.Duration) {
@@ -149,6 +159,7 @@ func (this *Server) Listen() (*listen.Listen) {
         Timeout: this.timeout,
         Logger: this.logger,
         Concurrent: this.concurrentLimit,
+        MaxBytes: this.clientMaxRecordMaxBytes,
         OnListened: func(lInfo *listen.ListeningInfo) {
             p := event.Parameters{}
 
@@ -248,7 +259,7 @@ func (this *Server) insertClient(c listen.ConnectionInfo,
             Type:               c.Type,
         },
         Time:                   nowTime,
-    }, this.clientDataRecords)
+    }, this.clientMaxRecords)
 
     clientRecord.Bump()
 
@@ -303,14 +314,26 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     portDis.Hit                 +=  1
 
     clientRecord.AppendData(client.Data{
-        Inbound:                r.ReceivedSample[:r.ReceivedLen],
-        Outbound:               r.RespondedData[:r.RespondedLen],
+        Inbound:                func(r *listen.RespondedResult) ([]byte) {
+            if types.Int32(len(r.ReceivedSample)).UInt32() > this.clientMaxRecordMaxBytes {
+                return r.ReceivedSample[:this.clientMaxRecordMaxBytes]
+            }
+
+            return r.ReceivedSample
+        }(&r),
+        Outbound:                func(r *listen.RespondedResult) ([]byte) {
+            if types.Int32(len(r.RespondedData)).UInt32() > this.clientMaxRecordMaxBytes {
+                return r.RespondedData[:this.clientMaxRecordMaxBytes]
+            }
+
+            return r.RespondedData
+        }(&r),
         Hitting:                client.Hitting{
             IPAddress:          c.ServerAddress,
             Type:               c.Type,
         },
         Time:                   nowTime,
-    }, this.clientDataRecords)
+    }, this.clientMaxRecords)
 
     clientRecord.Bump() // Update count and last seen
 

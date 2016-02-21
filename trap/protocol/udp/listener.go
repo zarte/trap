@@ -38,7 +38,8 @@ type Listener struct {
     listener        *net.UDPConn
 
     logger          *logger.Logger
-    concurrent      uint
+    concurrent      int
+    maxBytes        types.UInt32
 
     timeoutRead     time.Duration
     timeoutWrite    time.Duration
@@ -68,7 +69,7 @@ func (this *Listener) Init(cfg ListenerConfig) (*types.Throw) {
                                     NewContext(types.String(cfg.IP.String())).
                                     NewContext(cfg.Port.String())
 
-    this.concurrent         =   cfg.Concurrent
+    this.concurrent         =   int(cfg.Concurrent.Int32()) // UInt16 to Int32
 
     if strIP == "0.0.0.0" {
         strIP = ""
@@ -77,6 +78,8 @@ func (this *Listener) Init(cfg ListenerConfig) (*types.Throw) {
     this.timeoutRead        =   cfg.ReadTimeout
     this.timeoutWrite       =   cfg.WriteTimeout
     this.timeoutTotal       =   cfg.TotalTimeout
+
+    this.maxBytes           =   cfg.MaxBytes
 
     this.onError            =   cfg.OnError
     this.onPick             =   cfg.OnPick
@@ -129,7 +132,7 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                         return
 
                     case <- conChan:
-                        curChanLen := uint(len(conChan))
+                        curChanLen := len(conChan)
 
                         if curChanLen < this.concurrent {
                             for i := curChanLen; i < this.concurrent; i++ {
@@ -138,18 +141,18 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                         }
 
                     default:
-                        for i := uint(0); i < this.concurrent; i++ {
+                        for i := 0; i < this.concurrent; i++ {
                             conChan <- true
                         }
                 }
             }
         }()
 
-        totalbuffer := make([]byte, 512)
+        totalbuffer := make([]byte, this.maxBytes)
 
         this.logger.Debugf("Waiting for connection. Maximum rate is " +
             "'%d' bytes per second",
-            uint(len(totalbuffer)) * this.concurrent)
+            len(totalbuffer) * this.concurrent)
 
         for {
             select {
@@ -184,9 +187,7 @@ func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
                         Suggestion:             listen.RESPOND_SUGGEST_MARK,
                     }
 
-                    result.ReceivedLen      =   length
-
-                    copy(result.ReceivedSample[:], totalbuffer[:length])
+                    result.ReceivedSample   =   totalbuffer[:length]
 
                     this.onPick(connection, result)
             }

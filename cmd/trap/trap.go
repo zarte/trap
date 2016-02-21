@@ -95,7 +95,13 @@ func initConfig(server *trap.Server, status *trap.Status) {
             cfgFile, err))
     }
 
-    server.SetTimeout(1 * time.Second)
+    if cfg.AttemptTimeout > 0 {
+        server.SetTimeout(time.Duration(cfg.AttemptTimeout) * time.Second)
+    }
+
+    if cfg.AttemptMaxBytes > 0 {
+        server.SetClientRecordDataLimit(cfg.AttemptMaxBytes)
+    }
 
     if cfg.AttemptThershold > 0 && cfg.AttemptExpire > 0 {
         server.SetTolerate(cfg.AttemptThershold,
@@ -294,14 +300,17 @@ func main() {
     // Register system signal handlers
     signal.Notify(signalCall,
         syscall.SIGHUP,    // For Reload
-        syscall.SIGINT)    // Control + C
+        syscall.SIGINT,
+        syscall.SIGTERM)    // Control + C
 
     // Loop for system signal
     for {
         signalExit := false
 
-        switch <-signalCall {
-            case syscall.SIGHUP:
+        callSignal := <-signalCall
+
+        switch {
+            case callSignal == syscall.SIGHUP:
                 server.Reload(func(s *trap.Server) (*types.Throw) {
                     statusErr := status.Reset()
 
@@ -315,7 +324,7 @@ func main() {
                     return nil
                 })
 
-            case syscall.SIGINT:
+            case callSignal == syscall.SIGINT || callSignal == syscall.SIGTERM:
                 log.Infof("Exit signal picked up")
 
                 signalExit = true

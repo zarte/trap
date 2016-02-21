@@ -34,6 +34,8 @@ type UDP struct {
     onError         func(listen.ConnectionInfo, *types.Throw)
     onPick          func(listen.ConnectionInfo, listen.RespondedResult)
 
+    maxBytes        types.UInt32
+
     readTimeout     time.Duration
     writeTimeout    time.Duration
     totalTimeout    time.Duration
@@ -41,7 +43,7 @@ type UDP struct {
     inited          bool
 
     logger          *logger.Logger
-    concurrent      uint
+    concurrent      types.UInt16
 }
 
 func (t *UDP) Init(c *listen.ProtocolConfig) (*types.Throw) {
@@ -53,13 +55,15 @@ func (t *UDP) Init(c *listen.ProtocolConfig) (*types.Throw) {
 
     t.logger            = c.Logger.NewContext("UDP")
 
+    t.maxBytes          = c.MaxBytes
+
     t.onError           = c.OnError
     t.onPick            = c.OnPick
 
     t.readTimeout       = c.ReadTimeout
     t.writeTimeout      = c.WriteTimeout
     t.totalTimeout      = c.TotalTimeout
-    t.concurrent        = uint(c.Concurrent.UInt16())
+    t.concurrent        = c.Concurrent
 
     return nil
 }
@@ -72,6 +76,7 @@ func (t *UDP) Spawn(ip net.IP, port types.UInt16,
         listen.ListenerConfig{
             Logger:         t.logger,
             Concurrent:     t.concurrent,
+            MaxBytes:       t.maxBytes,
 
             OnError:        t.onError,
             OnPick:         t.onPick,
