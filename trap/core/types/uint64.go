@@ -56,16 +56,16 @@ func (i UInt64) Int64() (Int64) {
 }
 
 func (i UInt64) UInt16() (UInt16) {
-    if i > UINT64_MAX_INT16 {
-        return UInt16(MAX_INT16)
+    if i > UINT64_MAX_UINT16 {
+        return UInt16(MAX_UINT16)
     }
 
     return UInt16(i)
 }
 
 func (i UInt64) UInt32() (UInt32) {
-    if i > UINT64_MAX_INT32 {
-        return UInt32(MAX_INT32)
+    if i > UINT64_MAX_UINT32 {
+        return UInt32(MAX_UINT32)
     }
 
     return UInt32(i)
