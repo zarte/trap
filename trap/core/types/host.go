@@ -49,11 +49,7 @@ func (ip *IP) String() (string) {
 }
 
 func (ip *IP) IsEqual(anotherIP *IP) (bool) {
-    if ip != anotherIP {
-        return false
-    }
-
-    return true
+    return *ip == *anotherIP
 }
 
 func (ip *IP) IsEmpty() (bool) {
