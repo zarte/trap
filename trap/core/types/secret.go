@@ -40,6 +40,28 @@ func (s Secret) Bytes() ([]byte) {
     return s
 }
 
+func (s Secret) String() (String) {
+    return String(s)
+}
+
+func (s Secret) Len() (int) {
+    return len(s)
+}
+
+func (s Secret) IsEqual(anotherSecret *Secret) (bool) {
+    if s.Len() != len(*anotherSecret) {
+        return false
+    }
+
+    for asi, asv := range *anotherSecret {
+        if s[asi] != asv {
+            return false
+        }
+    }
+
+    return true
+}
+
 func (s Secret) SHA256() (Secret) {
     sum := sha256.Sum256(s)
 
@@ -65,7 +87,7 @@ func (s Secret) Encrypt(key Secret) (Secret, *Throw) {
         return Secret(""), ConvertError(blockErr)
     }
 
-    encrypted           := make([]byte, aes.BlockSize + len(s))
+    encrypted           := make([]byte, aes.BlockSize + s.Len())
 
     // Refer the first `aes.BlockSize` bytes of `encrypted`, magic!
     iv                  := encrypted[:aes.BlockSize]
@@ -90,12 +112,16 @@ func (s Secret) Decrypt(key Secret) (Secret, *Throw) {
         return Secret(""), ConvertError(blockErr)
     }
 
-    if len(s) < aes.BlockSize {
+    if s.Len() < aes.BlockSize {
         return Secret(""), ErrSecretDecryptionContentTooShort.Throw()
     }
 
-    iv                  := s[:aes.BlockSize]
-    withoutIV           := s[aes.BlockSize:]
+    buffer              := make(Secret, s.Len())
+
+    copy(buffer, s)
+
+    iv                  := buffer[:aes.BlockSize]
+    withoutIV           := buffer[aes.BlockSize:]
 
     stream := cipher.NewCFBDecrypter(aesBlock, iv)
 
