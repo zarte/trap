@@ -36,7 +36,7 @@ var (
         NewError("Content is too short to be decrypted")
 )
 
-func (s Secret) Byte() ([]byte) {
+func (s Secret) Bytes() ([]byte) {
     return s
 }
 
