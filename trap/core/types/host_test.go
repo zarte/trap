@@ -58,6 +58,12 @@ func TestIPStruct(t *testing.T) {
         return
     }
 
+    if !ip.IP().Equal(ip2.IP()) { // Empty IP == Another type of empty IP
+        t.Errorf("When convert the IP to net.IP, the data is broken")
+
+        return
+    }
+
     if !ip.IsEmpty() {
         t.Errorf("Failed asserting an empty IP is empty")
 
@@ -99,6 +105,13 @@ func TestIPStruct(t *testing.T) {
     }
 
     if ip.IP().String() != ip.String() {
+        t.Errorf("When convert the IP to net.IP, the data is broken")
+
+        return
+    }
+
+    if ip.IP().Equal(ip2.IP()) {
+        // the `ip` is not empty now so it can't be equal with `ip2`
         t.Errorf("When convert the IP to net.IP, the data is broken")
 
         return
