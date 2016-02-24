@@ -132,7 +132,7 @@ func (s String) SelectTail(selLen int) (String, String) {
 }
 
 func (s String) SpiltWith(spiltter string) (String, String) {
-    pureString := s.String();
+    pureString := s.String()
 
     if !strings.Contains(pureString, spiltter) {
         return s, ""
