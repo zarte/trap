@@ -45,6 +45,7 @@ import (
     "syscall"
     "time"
     "net"
+    "log"
     "fmt"
     "bufio"
     "path/filepath"
@@ -235,7 +236,9 @@ func main() {
             core.TRAP_LICENSEURL, core.TRAP_PROJECTURL, core.TRAP_SOURCEURL)
     }
 
-    log         :=  logger.NewLogger()
+    logging         :=  logger.NewLogger()
+
+    log.SetOutput(logging.NewContext("System"))
 
     // Register file logger if variable `logFile` is filled
     if logFile != "" {
@@ -263,10 +266,10 @@ func main() {
                 fLPErr))
         }
 
-        log.Register(fileLogPrinter)
+        logging.Register(fileLogPrinter)
     } else if (!silentRun) {
         // Or, register screen logger instead
-        log.Register(logPrinter.NewScreenPrinter())
+        logging.Register(logPrinter.NewScreenPrinter())
     }
 
     // Start booting
@@ -274,12 +277,12 @@ func main() {
 
     defer server.Down()
 
-    server.SetLogger(log)
+    server.SetLogger(logging)
 
     // Init Status server
     status      :=  trap.NewStatus()
 
-    status.SetLogger(log)
+    status.SetLogger(logging)
 
     initConfig(server, status)
 
@@ -325,12 +328,12 @@ func main() {
                 })
 
             case callSignal == syscall.SIGINT || callSignal == syscall.SIGTERM:
-                log.Infof("Exit signal picked up")
+                logging.Infof("Exit signal picked up")
 
                 signalExit = true
 
             default:
-                log.Infof("Unknown signal")
+                logging.Infof("Unknown signal")
         }
 
         if signalExit {

@@ -26,7 +26,6 @@ import (
 
     "fmt"
     "time"
-    "log"
 )
 
 type Logger struct {
@@ -44,8 +43,6 @@ func NewLogger() (*Logger) {
         mutex:          &types.Mutex{},
         context:        "Trap",
     }
-
-    log.SetOutput(newLogger.NewContext("System"))
 
     return newLogger
 }
