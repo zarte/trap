@@ -54,7 +54,7 @@ type Parameter struct {
 }
 
 // Int 16s
-func (p *Parameter) SetInt16(i types.Int16) {
+func (p *Parameter) setInt16(i types.Int16) {
     p.int16Data = i
 
     p.dataType = DATA_TYPE_INT16
@@ -69,7 +69,7 @@ func (p *Parameter) GetInt16() (types.Int16) {
 }
 
 // Int 32s
-func (p *Parameter) SetInt32(i types.Int32) {
+func (p *Parameter) setInt32(i types.Int32) {
     p.int32Data = i
 
     p.dataType = DATA_TYPE_INT32
@@ -84,7 +84,7 @@ func (p *Parameter) GetInt32() (types.Int32) {
 }
 
 // Int 64s
-func (p *Parameter) SetInt64(i types.Int64) {
+func (p *Parameter) setInt64(i types.Int64) {
     p.int64Data = i
 
     p.dataType = DATA_TYPE_INT64
@@ -99,7 +99,7 @@ func (p *Parameter) GetInt64() (types.Int64) {
 }
 
 // UInt 16s
-func (p *Parameter) SetUInt16(i types.UInt16) {
+func (p *Parameter) setUInt16(i types.UInt16) {
     p.uint16Data = i
 
     p.dataType = DATA_TYPE_UINT16
@@ -114,7 +114,7 @@ func (p *Parameter) GetUInt16() (types.UInt16) {
 }
 
 // UInt 32s
-func (p *Parameter) SetUInt32(i types.UInt32) {
+func (p *Parameter) setUInt32(i types.UInt32) {
     p.uint32Data = i
 
     p.dataType = DATA_TYPE_UINT32
@@ -129,7 +129,7 @@ func (p *Parameter) GetUInt32() (types.UInt32) {
 }
 
 // UInt 64s
-func (p *Parameter) SetUInt64(i types.UInt64) {
+func (p *Parameter) setUInt64(i types.UInt64) {
     p.uint64Data = i
 
     p.dataType = DATA_TYPE_UINT64
@@ -144,7 +144,7 @@ func (p *Parameter) GetUInt64() (types.UInt64) {
 }
 
 // String
-func (p *Parameter) SetStr(s types.String) {
+func (p *Parameter) setStr(s types.String) {
     p.strData = s
 
     p.dataType = DATA_TYPE_STRING
@@ -159,7 +159,7 @@ func (p *Parameter) GetStr() (types.String) {
 }
 
 // Bytes
-func (p *Parameter) SetBytes(b []byte) {
+func (p *Parameter) setBytes(b []byte) {
     p.bytesData = b
 
     p.dataType = DATA_TYPE_BYTES
@@ -209,7 +209,7 @@ type Parameters map[types.String]Parameter
 func (p Parameters) AddInt16(key types.String, val types.Int16) (Parameters) {
     item := Parameter{}
 
-    item.SetInt16(val)
+    item.setInt16(val)
 
     p["$((" + key + "))"] = item
 
@@ -219,7 +219,7 @@ func (p Parameters) AddInt16(key types.String, val types.Int16) (Parameters) {
 func (p Parameters) AddInt32(key types.String, val types.Int32) (Parameters) {
     item := Parameter{}
 
-    item.SetInt32(val)
+    item.setInt32(val)
 
     p["$((" + key + "))"] = item
 
@@ -229,7 +229,7 @@ func (p Parameters) AddInt32(key types.String, val types.Int32) (Parameters) {
 func (p Parameters) AddInt64(key types.String, val types.Int64) (Parameters) {
     item := Parameter{}
 
-    item.SetInt64(val)
+    item.setInt64(val)
 
     p["$((" + key + "))"] = item
 
@@ -239,7 +239,7 @@ func (p Parameters) AddInt64(key types.String, val types.Int64) (Parameters) {
 func (p Parameters) AddUInt16(key types.String, val types.UInt16) (Parameters) {
     item := Parameter{}
 
-    item.SetUInt16(val)
+    item.setUInt16(val)
 
     p["$((" + key + "))"] = item
 
@@ -249,7 +249,7 @@ func (p Parameters) AddUInt16(key types.String, val types.UInt16) (Parameters) {
 func (p Parameters) AddUInt32(key types.String, val types.UInt32) (Parameters) {
     item := Parameter{}
 
-    item.SetUInt32(val)
+    item.setUInt32(val)
 
     p["$((" + key + "))"] = item
 
@@ -259,7 +259,7 @@ func (p Parameters) AddUInt32(key types.String, val types.UInt32) (Parameters) {
 func (p Parameters) AddUInt64(key types.String, val types.UInt64) (Parameters) {
     item := Parameter{}
 
-    item.SetUInt64(val)
+    item.setUInt64(val)
 
     p["$((" + key + "))"] = item
 
@@ -269,7 +269,7 @@ func (p Parameters) AddUInt64(key types.String, val types.UInt64) (Parameters) {
 func (p Parameters) AddString(key types.String, val types.String) (Parameters) {
     item := Parameter{}
 
-    item.SetStr(val)
+    item.setStr(val)
 
     p["$((" + key + "))"] = item
 
@@ -279,7 +279,7 @@ func (p Parameters) AddString(key types.String, val types.String) (Parameters) {
 func (p Parameters) AddBytes(key types.String, val []byte) (Parameters) {
     item := Parameter{}
 
-    item.SetBytes(val)
+    item.setBytes(val)
 
     p["$((" + key + "))"] = item
 
