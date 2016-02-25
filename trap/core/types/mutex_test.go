@@ -41,7 +41,7 @@ func testMutexExec(t *testing.T) {
 
         tWG1.Done()
 
-        time.Sleep(1 * time.Second)
+        time.Sleep(100 * time.Millisecond)
 
         val = append(val, 'A')
     })
@@ -84,7 +84,7 @@ func testMutexRoutineExec(t *testing.T) {
 
         tWG1.Done()
 
-        time.Sleep(1 * time.Second)
+        time.Sleep(100 * time.Millisecond)
 
         val = append(val, 'A')
     })
