@@ -26,11 +26,7 @@ import (
     "github.com/raincious/trap/trap/core/types"
 )
 
-type Callbacks  map[types.String][]func(*Parameters) (*types.Throw)
-
 type Event struct {
-    inited              bool
-
     error               *types.Throw
 
     logger              *logger.Logger
@@ -44,7 +40,7 @@ func (this *Event) Init(cfg *Config) {
 }
 
 func (this *Event) Register(name types.String,
-    callback func(*Parameters) (*types.Throw)) {
+    callback Callback) {
     this.events[name]   = append(this.events[name], callback)
 
     this.logger.Debugf("New `Event` handler has been registered to '%s' event",
@@ -66,11 +62,13 @@ func (this *Event) Trigger(name types.String,
     this.logger.Debugf("The event '%s' has been triggered", name)
 
     for _, eventHandler := range this.events[name] {
-        e = eventHandler(&params)
+        handleErr := eventHandler(&params)
 
-        if e != nil {
+        if handleErr != nil {
             this.logger.Errorf("An error happed when " +
-                "run handler for event '%s': %s", name, e)
+                "run handler for event '%s': %s", name, handleErr)
+
+            e = handleErr
         }
     }
 
