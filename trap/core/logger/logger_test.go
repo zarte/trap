@@ -93,6 +93,12 @@ func TestLoggerNewContext(t *testing.T) {
 }
 
 func testLoggerAppend(t *testing.T, logger *Logger, baseN int) {
+    if len(logger.Dump()) != (baseN - 1) * 4{
+        t.Error("Unexpected initial amount of log items")
+
+        return
+    }
+
     logger.Debugf("Formated %s", "String")
     logger.Infof("Formated integer %d", 10)
     logger.Warningf("Formated integer %d", 10)
