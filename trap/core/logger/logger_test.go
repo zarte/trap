@@ -126,9 +126,9 @@ func testLoggerRoutineAppend(t *testing.T, logger *Logger, baseN int) {
     pwg.Add(1)
 
     go func() {
-        pwg.Done()
-
         defer mwg.Done()
+
+        pwg.Done()
 
         logger.Infof("Formated integer %d", 10)
     }()
@@ -137,9 +137,11 @@ func testLoggerRoutineAppend(t *testing.T, logger *Logger, baseN int) {
     pwg.Add(1)
 
     go func() {
+        defer mwg.Done()
+
         pwg.Done()
 
-        defer mwg.Done()
+        time.Sleep(10 * time.Millisecond)
 
         logger.Warningf("Formated integer %d", 10)
     }()
@@ -148,9 +150,11 @@ func testLoggerRoutineAppend(t *testing.T, logger *Logger, baseN int) {
     pwg.Add(1)
 
     go func() {
+        defer mwg.Done()
+
         pwg.Done()
 
-        defer mwg.Done()
+        time.Sleep(20 * time.Millisecond)
 
         logger.Errorf("Formated integer %d", 10)
     }()
@@ -160,6 +164,8 @@ func testLoggerRoutineAppend(t *testing.T, logger *Logger, baseN int) {
     go func() {
         defer mwg.Done()
 
+        time.Sleep(30 * time.Millisecond)
+
         logger.Write([]byte("This is a slice of bytes"))
     }()
 
@@ -167,8 +173,6 @@ func testLoggerRoutineAppend(t *testing.T, logger *Logger, baseN int) {
 
     dumpped := logger.Dump()
 
-    // Notice the `Debugf` should be commented out when not in development
-    // So it wouldn't be count
     if len(dumpped) != 4 * baseN {
         t.Error("Unexpected amount of log items")
 
