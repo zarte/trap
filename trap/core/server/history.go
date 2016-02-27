@@ -29,9 +29,7 @@ import (
 )
 
 const (
-    HISTORY_LENGTH          =   12
-
-    INT64_HISTORY_LENGTH    =   types.Int64(HISTORY_LENGTH)
+    HISTORY_LENGTH          =   types.Int64(12)
 )
 
 type History struct {
@@ -48,7 +46,7 @@ func (h *Histories) GetSlot(referenceTime time.Time) (*History) {
     hour                :=  types.Int64(
                                 math.Ceil(
                                     time.Now().Sub(referenceTime).Hours()))
-    slot                :=  hour % INT64_HISTORY_LENGTH
+    slot                :=  hour % HISTORY_LENGTH
 
     if h[slot] == nil {
         h[slot]         =   &History{
