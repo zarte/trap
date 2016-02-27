@@ -22,8 +22,6 @@
 package server
 
 import (
-    //"github.com/raincious/trap/trap/core/types"
-
     "testing"
 )
 
