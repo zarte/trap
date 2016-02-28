@@ -26,10 +26,10 @@ import (
 )
 
 var (
-    ErrProtocalRegistered *types.Error =
+    ErrProtocolAlreadyRegistered *types.Error =
         types.NewError("Protocol '%s' already been registered")
 
-    ErrProtocalNotSupported *types.Error =
+    ErrProtocolNotSupported *types.Error =
         types.NewError("Protocol '%s' is not supported")
 
     ErrProtocolPrototypeNotImplmented *types.Error =

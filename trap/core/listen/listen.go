@@ -46,8 +46,6 @@ type Listen struct {
     listeners       []Listener
     randomPorts     types.UInt16
 
-    error           *types.Throw
-
     maxBytes        types.UInt32
 
     protocols       Protocols
@@ -84,20 +82,17 @@ func (this *Listen) Init(cfg *Config) {
     this.concurrent     = cfg.Concurrent
 }
 
-func (this *Listen) GetLastError() (*types.Throw) {
-    return this.error
-}
-
 func (this *Listen) Register(pType types.String, protocol Protocol) (*types.Throw) {
     if _, ok := this.protocols[pType]; ok {
-        this.error = ErrProtocalRegistered.Throw(pType)
+        regErr          :=  ErrProtocolAlreadyRegistered.Throw(pType)
 
-        this.logger.Warningf("Can't register another '%s' protocol", pType)
+        this.logger.Warningf("Can't register protocol '%s' due to error: %s",
+            pType, regErr)
 
-        return this.error
+        return regErr
     }
 
-    protocol.Init(&ProtocolConfig{
+    initErr := protocol.Init(&ProtocolConfig{
         OnError:        this.onError,
         OnPick:         this.onPick,
 
@@ -111,6 +106,10 @@ func (this *Listen) Register(pType types.String, protocol Protocol) (*types.Thro
         Concurrent:     this.concurrent,
     })
 
+    if initErr != nil {
+        return initErr
+    }
+
     this.protocols[pType] = protocol
 
     this.logger.Debugf("`Protocol` '%s' has been registered", pType)
@@ -121,22 +120,23 @@ func (this *Listen) Register(pType types.String, protocol Protocol) (*types.Thro
 func (this *Listen) Add(pType types.String, ip net.IP, port types.UInt16,
     setting types.String) (*types.Throw) {
     if _, ok := this.protocols[pType]; !ok {
-        this.error  =  ErrProtocalNotSupported.Throw(pType)
+        addErr      :=  ErrProtocolNotSupported.Throw(pType)
 
-        this.logger.Warningf("Can't add `Listener`: %s", this.error)
+        this.logger.Warningf("Can't add `Listener` '%s:%d' to `Protocol` " +
+            "'%s' due to error: %s", ip, port, pType, addErr)
 
-        return this.error
+        return addErr
     }
 
-    listener, lErr  := this.protocols[pType].Spawn(ip, port, setting)
+    listener, lErr  :=  this.protocols[pType].Spawn(ip, port, setting)
 
     if lErr != nil {
-        this.logger.Warningf("Spawn `Listener` with error: %s", lErr)
+        this.logger.Errorf("Spawn `Listener` with error: %s", lErr)
 
         return lErr
     }
 
-    this.listeners  =  append(this.listeners, listener)
+    this.listeners  =   append(this.listeners, listener)
 
     this.logger.Debugf("New `Listener` '%d' has been added at '%s:%d'",
         len(this.listeners) - 1, ip, port)
@@ -147,12 +147,6 @@ func (this *Listen) Add(pType types.String, ip net.IP, port types.UInt16,
 func (this *Listen) Serv() (*types.Throw) {
     var lastErr *types.Throw = nil
 
-    if this.error != nil {
-        this.logger.Warningf("Can't serv due to previous error: %s", this.error)
-
-        return this.error
-    }
-
     for idx, listener := range this.listeners {
         upInfo, upErr := listener.Up()
 
@@ -161,11 +155,13 @@ func (this *Listen) Serv() (*types.Throw) {
 
             this.logger.Debugf("Can't bring up `Listener` '%d' due " +
                 "to error: %s", idx, upErr)
-        } else {
-            this.onListened(upInfo)
 
-            this.logger.Debugf("`Listener` '%d' is up", idx)
+            continue
         }
+
+        this.onListened(upInfo)
+
+        this.logger.Debugf("`Listener` '%d' is up", idx)
     }
 
     if lastErr != nil {
@@ -186,11 +182,13 @@ func (this *Listen) Down() (*types.Throw) {
 
             this.logger.Debugf("Can't bring down `Listener` '%d' without " +
                 "error: %s", idx, downErr)
-        } else {
-            this.onUnListened(downInfo)
 
-            this.logger.Debugf("`Listener` '%d' is down", idx)
+            continue
         }
+
+        this.onUnListened(downInfo)
+
+        this.logger.Debugf("`Listener` '%d' is down", idx)
     }
 
     if lastErr != nil {
