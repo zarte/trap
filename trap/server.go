@@ -39,7 +39,7 @@ type Server struct {
     listen                      *listen.Listen
     event                       *event.Event
 
-    clients                     client.Clients
+    clientMaps                  *client.Clients
     clientRWLock                types.Mutex
     clientCronExitCh            chan bool
     clientMaxRecords            types.UInt16
@@ -74,7 +74,6 @@ type Server struct {
 
 func NewServer() (*Server) {
     return &Server{
-        clients:                    client.Clients{},
         clientRWLock:               types.Mutex{},
         serverLock:                 types.Mutex{},
         serverDownWait:             sync.WaitGroup{},
@@ -226,11 +225,51 @@ func (this *Server) Event() (*event.Event) {
     return this.event
 }
 
+func (this *Server) clients() (*client.Clients) {
+    if this.clientMaps != nil {
+        return this.clientMaps
+    }
+
+    this.clientMaps = client.NewClients(&client.Config{
+        OnMark: func(client *client.Client) {
+            p := event.Parameters{}
+
+            this.Event().Trigger("on.client.marked",
+                p.AddString("ClientIP",     types.String(
+                                                client.Address().String())).
+                AddUInt32("Count",          client.Count()))
+        },
+        OnUnmark: func(client *client.Client) {
+            p := event.Parameters{}
+
+            this.Event().Trigger("on.client.marked.out",
+                p.AddString("ClientIP",     types.String(
+                                                client.Address().String())).
+                AddUInt32("Count",          client.Count()))
+        },
+        OnRecord: func(client *client.Client, data client.Data) {
+            p := event.Parameters{}
+
+            this.Event().Trigger("on.client.hitting",
+                p.AddString("ClientIP",     types.String(
+                                                client.Address().String())).
+                AddString("ServerIP",       types.String(
+                                                data.Hitting.IP.String())).
+                AddUInt16("ServerPort",     data.Hitting.Port).
+                AddString("Type",           data.Hitting.Type).
+                AddBytes("ReceivedSample",  data.Inbound).
+                AddBytes("RespondedData",   data.Outbound))
+        },
+    })
+
+    return this.clientMaps
+}
+
 func (this *Server) insertClient(c listen.ConnectionInfo,
     mark bool) (*client.Client, *types.Throw) {
     nowTime                     :=  time.Now()
 
-    clientRecord, newClientRec  :=  this.clients.Get(c.ClientIP)
+    clientRecord, newClientRec  :=  this.clients().Get(c.ClientIP)
 
     historyRecord               :=  this.history.GetSlot(
                                         this.bootTime)
@@ -264,19 +303,7 @@ func (this *Server) insertClient(c listen.ConnectionInfo,
     clientRecord.Bump()
 
     if mark {
-        p := event.Parameters{}
-
-        this.Event().Trigger("on.client.marked",
-            p.AddString("ClientIP",     types.String(
-                                            c.ClientIP.String())).
-            AddString("ServerIP",       types.String(
-                                            c.ServerAddress.IP.String())).
-            AddUInt16("ServerPort",     c.ServerAddress.Port).
-            AddUInt32("Count",          clientRecord.Count).
-            AddBytes("ReceivedSample",  []byte{}).
-            AddBytes("RespondedData",   []byte{}))
-
-        clientRecord.Marked         =   true
+        clientRecord.Mark()
 
         this.totalMarked            +=  1
         historyRecord.Marked        +=  1
@@ -294,7 +321,7 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     r listen.RespondedResult) (*client.Client, *types.Throw) {
     nowTime                     :=  time.Now()
 
-    clientRecord, newClientRec  :=  this.clients.Get(c.ClientIP)
+    clientRecord, newClientRec  :=  this.clients().Get(c.ClientIP)
 
     historyRecord               :=  this.history.GetSlot(
                                         this.bootTime)
@@ -338,40 +365,29 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     clientRecord.Bump() // Update count and last seen
 
     // Check the connection tolerate limit
-    if clientRecord.Count < this.tolerate {
+    if clientRecord.Count() < this.tolerate {
         this.logger.Infof("Client '%s' connected '%d'" +
-            " times, still counting", clientRecord.Address, clientRecord.Count)
+            " times, still counting", clientRecord.Address(),
+            clientRecord.Count())
 
         return clientRecord, nil
     }
 
-    if clientRecord.Marked {
+    if clientRecord.Marked() {
         this.logger.Infof("Marked client '%s' comes again, " +
-            "counting", clientRecord.Address)
+            "counting", clientRecord.Address())
 
         return clientRecord, nil
     }
 
-    p := event.Parameters{}
-
-    this.Event().Trigger("on.client.marked",
-        p.AddString("ClientIP",     types.String(
-                                        c.ClientIP.String())).
-        AddString("ServerIP",       types.String(
-                                        c.ServerAddress.IP.String())).
-        AddUInt16("ServerPort",     c.ServerAddress.Port).
-        AddUInt32("Count",          clientRecord.Count).
-        AddBytes("ReceivedSample",  []byte{}).
-        AddBytes("RespondedData",   []byte{}))
-
-    clientRecord.Marked         =   true
+    clientRecord.Mark()
 
     this.totalMarked            +=  1
     historyRecord.Marked        +=  1
 
     this.logger.Infof("Client '%s' worth some notice as it " +
-        "connected us '%d' times within '%s'", clientRecord.Address,
-        clientRecord.Count, this.tolerateExpire)
+        "connected us '%d' times within '%s'", clientRecord.Address(),
+        clientRecord.Count(), this.tolerateExpire)
 
     return clientRecord, nil
 }
@@ -390,46 +406,33 @@ func (this *Server) clientCron() {
 
             case <- time.After(64 * time.Second):
                 this.clientRWLock.Exec(func() {
-                    for clientID, clientInfo := range this.clients {
-                        if !nowTime.After(clientInfo.LastSeen.Add(
+                    this.clients().Scan(func(clientID types.IP,
+                        clientInfo *client.Client) (*types.Throw) {
+                        if !nowTime.After(clientInfo.LastSeen().Add(
                             this.tolerateExpire)) {
-                            continue
-                        }
-
-                        // If client is no longer in fine, unmark for now
-                        if clientInfo.Marked {
-                            p := event.Parameters{}
-
-                            this.Event().Trigger("on.client.marked.out",
-                                    p.AddString("ClientIP",
-                                        types.String(
-                                            clientInfo.Address.String())).
-                                    AddUInt32("Count", clientInfo.Count))
-
-                            // Unmark the client
-                            clientInfo.Marked   =   false
+                            return nil
                         }
 
                         // Check if the client still within restrict time
-                        if clientInfo.Count >= this.tolerate && !nowTime.After(
-                            clientInfo.LastSeen.Add(this.tolerateExpire).Add(
+                        if clientInfo.Count() >= this.tolerate && !nowTime.After(
+                            clientInfo.LastSeen().Add(this.tolerateExpire).Add(
                             this.tolerateRestrict)) {
-                            continue
+                            return nil
                         }
 
                         // Delete the client if it's expired the restrict too
-                        this.clients.Delete(clientID)
-                    }
+                        return this.clients().Delete(clientID)
+                    })
                 })
         }
     }
 }
 
-func (this *Server) Clients() ([]client.Client) {
-    var clients []client.Client
+func (this *Server) Clients() ([]client.ClientExport) {
+    var clients []client.ClientExport
 
     this.clientRWLock.Exec(func() {
-        clients                 =   this.clients.Export()
+        clients                 =   this.clients().Export()
     })
 
     return clients
@@ -440,13 +443,13 @@ func (this *Server) Client(addr types.IP) (*client.Client, *types.Throw) {
     var e *types.Throw          =   nil
 
     this.clientRWLock.Exec(func() {
-        if !this.clients.Has(addr) {
+        if !this.clients().Has(addr) {
             e = server.ErrClientNotFound.Throw(addr.IP())
 
             return
         }
 
-        c, _                    =   this.clients.Get(addr)
+        c, _                    =   this.clients().Get(addr)
     })
 
     if e != nil {
@@ -485,7 +488,7 @@ func (this *Server) AddClient(addr types.IP,
 
     this.clientRWLock.Exec(func() {
         // Check if it already existed
-        if this.clients.Has(addr) {
+        if this.clients().Has(addr) {
             e                   =   server.ErrClientAlreadyExisted.Throw(
                                         addr.IP())
 
@@ -515,24 +518,13 @@ func (this *Server) RemoveClient(addr types.IP) (*types.Throw) {
     var result *types.Throw     =   nil
 
     this.clientRWLock.Exec(func() {
-        if !this.clients.Has(addr) {
+        if !this.clients().Has(addr) {
+            result              =   server.ErrClientNotFound.Throw(addr)
+
             return
         }
 
-        clientInfo, _           :=  this.clients.Get(addr)
-
-        if clientInfo.Marked {
-            p := event.Parameters{}
-
-            this.Event().Trigger("on.client.marked.out",
-                    p.AddString("ClientIP", types.String(
-                                                clientInfo.Address.String())).
-                    AddUInt32("Count", clientInfo.Count))
-
-            clientInfo.Marked   =   false
-        }
-
-        result                  =   this.clients.Delete(addr)
+        result                  =   this.clients().Delete(addr)
     })
 
     return result
@@ -550,7 +542,7 @@ func (this *Server) Status() (server.Status) {
         sInfo.TotalInbound      =   this.totalInbound
         sInfo.TotalMarked       =   this.totalMarked
         sInfo.TotalHit          =   this.totalHit
-        sInfo.TotalClients      =   types.UInt64(len(this.clients))
+        sInfo.TotalClients      =   types.UInt64(this.clients().Len())
     })
 
     return sInfo
@@ -625,19 +617,7 @@ func (this *Server) shutdown() (*types.Throw) {
 
     // Unmark all clients before shutdown
     this.clientRWLock.Exec(func() {
-        for clientID, clientInfo := range this.clients {
-            if clientInfo.Marked {
-                p := event.Parameters{}
-
-                this.Event().Trigger("on.client.marked.out",
-                        p.AddString("ClientIP",
-                            types.String(
-                                clientInfo.Address.String())).
-                        AddUInt32("Count", clientInfo.Count))
-            }
-
-            this.clients.Delete(clientID)
-        }
+        this.clients().Clear()
     })
 
     // Send down commands before actually down the server
@@ -726,7 +706,7 @@ func (this *Server) Reload(
         this.listen             =   nil
         this.event              =   nil
 
-        this.clients            =   client.Clients{}
+        this.clientMaps         =   &client.Clients{}
 
         this.onUpCommands       =   types.Callbacks{}
         this.onDownCommands     =   types.Callbacks{}

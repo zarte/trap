@@ -265,10 +265,10 @@
                                 12,
                                 Math.ceil(currentUpHour)
                             ),
-                            parsedDistribution = parseDistributionData(
+                            parsedDistribution = (data.Distribution.length > 0 ? parseDistributionData(
                                 data.Distribution,
                                 5
-                            );
+                            ) : []);
 
                         vueObj.charts.status.synced         =   true;
 
@@ -300,7 +300,7 @@
                         }
 
                         vueObj.charts.accesses.update({
-                            labels: (distribution.n.length < 1 ? [''] : distribution.n),
+                            labels: (distribution.n.length < 1 ? [' '] : distribution.n),
                             series: (distribution.d.length < 1 ? [100] : distribution.d)
                         });
                     }, function(jqXHR, textStatus, errorThrown) {
@@ -364,11 +364,9 @@
                     }
 
                     for (var i in this.records.source.clients.listOrder) {
-                        clients.push(
-                            this.records.source.clients.clientMap[
-                                this.records.source.clients.listOrder[i].Key
-                            ]
-                        );
+                        clients.push(this.records.source.clients.clientMap[
+                            this.records.source.clients.listOrder[i].Key
+                        ]);
                     }
 
                     return clients;
@@ -380,6 +378,7 @@
                             return {
                                 Address:        clientList[i].Address,
                                 LastSeen:       new Date(Date.parse(clientList[i].LastSeen)),
+                                FirstSeen:      new Date(Date.parse(clientList[i].FirstSeen)),
                                 Count:          clientList[i].Count,
                                 Data:           clientList[i].Data,
                                 Marked:         clientList[i].Marked,

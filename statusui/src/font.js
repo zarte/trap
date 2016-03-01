@@ -1,5 +1,5 @@
 WebFontConfig = {
-    google: { families: [ 'Oswald:400,700:latin', 'Roboto+Mono:400:latin', 'Droid+Sans:400,700:latin' ] }
+    google: { families: [ 'Oswald:400,700:latin', 'Roboto+Mono:400:latin', 'Noto+Sans:400,700:latin' ] }
 };
 
 $(window).ready(function() {

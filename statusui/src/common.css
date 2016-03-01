@@ -22,7 +22,7 @@
  /* Trap Server Style */
 body { background: #222; padding: 0; margin: 0; }
 body { color: #333; line-height: 1.5; }
-body { font-family: 'Droid Sans', sans-serif; }
+body { font-family: 'Noto Sans', sans-serif; }
 
 body { min-width: 1000px; }
 
@@ -219,6 +219,7 @@ ul.layout { padding: 0; margin: 0; }
 #status-marked-clients .c-info .address .title { font-size: 1.8em; color: #6cc; }
 #status-marked-clients .c-info .address .info { font-size: 0.9em; color: #666; }
 #status-marked-clients .c-info .address .info span.iitem { margin-right: 10px; }
+#status-marked-clients .c-info .address .info span.iitem.orgl { padding: 2px 5px; background: #ec9; font-size: 0.9em; color: #fff; }
 #status-marked-clients .c-record .records {  }
 #status-marked-clients .c-record .opt { overflow: auto; width: 100%; }
 #status-marked-clients .c-record .opt .buts { text-align: center; padding: 10px; }

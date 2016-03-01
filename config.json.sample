@@ -52,6 +52,7 @@
         "On.Server.Down": [],
         "On.Client.Marked": [],
         "On.Client.Marked.Out": [],
+        "On.Client.Hitting": [],
         "On.Port.Registered": [
             ["iptables", "-A", "INPUT", "-p", "$((Protocol))", "--dport", "$((Port))", "-j", "ACCEPT"]
         ],

@@ -180,7 +180,14 @@ func initConfig(server *trap.Server, status *trap.Status) {
         }
 
         for account, permissions := range cfg.StatusAccounts {
-            status.Account(account, permissions)
+            _, sAccErr := status.Account(account, permissions)
+
+            if sAccErr == nil {
+                continue
+            }
+
+            panic(fmt.Errorf("Error registering status account '%s' due to error: %s",
+                account, sAccErr))
         }
 
         server.OnUpDown(func() (*types.Throw) {

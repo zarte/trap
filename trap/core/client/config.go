@@ -19,34 +19,10 @@
  * limitations under the License.
  */
 
-package controller
+package client
 
-import (
-    "github.com/raincious/trap/trap/core/client"
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
-
-    "net/http"
-    "encoding/json"
-)
-
-type Clients struct {
-    SessionedJSON
-
-    GetClients  func() ([]client.ClientExport)
-}
-
-func (c *Clients) Get(w http.ResponseWriter, r *http.Request) {
-    jsonData, jsonErr := json.Marshal(c.GetClients())
-
-    if jsonErr != nil {
-        c.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
-
-        return
-    }
-
-    c.WriteGZIP(200, jsonData, w, r)
+type Config struct {
+    OnMark                  func(*Client)
+    OnUnmark                func(*Client)
+    OnRecord                func(*Client, Data)
 }

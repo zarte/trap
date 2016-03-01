@@ -25,6 +25,7 @@ import (
     "github.com/raincious/trap/trap/core/types"
 
     "time"
+    "net"
 )
 
 type Hitting struct {
@@ -38,4 +39,17 @@ type Data struct {
     Outbound        []byte
     Hitting         Hitting
     Time            time.Time
+}
+
+type ClientExport struct {
+    Address                 net.IP
+
+    FirstSeen               time.Time
+    LastSeen                time.Time
+
+    Count                   types.UInt32
+
+    Data                    []Data
+
+    Marked                  bool
 }

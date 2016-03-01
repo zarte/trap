@@ -186,7 +186,7 @@ func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
         SessionedJSON:      controller.SessionedJSON{
                                 Verify:         this.verifyUser,
                             },
-        GetClients:         func() ([]client.Client) {
+        GetClients:         func() ([]client.ClientExport) {
                                 return this.server.Clients()
                             },
     })
@@ -230,10 +230,14 @@ func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
         Handler:            httpMux,
         WriteTimeout:       32 * time.Second,
         ReadTimeout:        16 * time.Second,
+        TLSNextProto:       nil,
+        TLSConfig:          nil,
     }, nil
 }
 
 func (this *Status) up() (*types.Throw) {
+    var tlsConfig *tls.Config = nil
+
     // Check if the server is down before start a new one
     if this.status != nil || this.statusListener != nil {
         return status.ErrServerAlreadyUp.Throw()
@@ -273,7 +277,7 @@ func (this *Status) up() (*types.Throw) {
             return types.ConvertError(tctErr)
         }
 
-        tlsConfig       :=  &tls.Config{
+        tlsConfig       =   &tls.Config{
                                 InsecureSkipVerify: true,
                                 Certificates: []tls.Certificate{tlsCert},
                             }
@@ -292,6 +296,8 @@ func (this *Status) up() (*types.Throw) {
         this.logger.Infof("Serving `Status` server at: %s", listenOn)
 
         this.statusListener =   listener
+
+        this.status.TLSConfig = tlsConfig
 
         servErr             :=  this.status.Serve(listener)
 
