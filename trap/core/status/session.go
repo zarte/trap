@@ -135,7 +135,7 @@ func (s Sessions) Add(ip net.IP,
     return s[ipStr + ":" + newSession.Key], nil
 }
 
-func (s Sessions) Delete(sessionKey types.String) (*types.Throw){
+func (s Sessions) Delete(sessionKey types.String) (*types.Throw) {
     for key, val := range s {
         if val.Key != sessionKey {
             continue
