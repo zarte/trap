@@ -36,13 +36,17 @@ type Client struct {
 
     count                   types.UInt32
 
-    data                    []Data
+    records                 []Record
 
     marked                  bool
 
     onMark                  func(*Client)
     onUnmark                func(*Client)
-    onRecord                func(*Client, Data)
+    onRecord                func(*Client, Record)
+
+    tolerateCount           types.UInt32
+    tolerateExpire          time.Duration
+    restrictExpire          time.Duration
 }
 
 func (c *Client) Address() (net.IP) {
@@ -61,12 +65,24 @@ func (c *Client) Count() (types.UInt32) {
     return c.count
 }
 
-func (c *Client) Data() ([]Data) {
-    return c.data
-}
-
 func (c *Client) Marked() (bool) {
     return c.marked
+}
+
+func (c *Client) Record(record Record, maxLen types.UInt16) {
+    dataLen                 :=  types.Int32(len(c.records)).UInt16()
+
+    c.records               =   append(c.records, record)
+
+    if dataLen > maxLen {
+        c.records           =   c.records[dataLen - maxLen:]
+    }
+
+    c.onRecord(c, record)
+}
+
+func (c *Client) Records() ([]Record) {
+    return c.records
 }
 
 func (c *Client) Mark() {
@@ -90,136 +106,39 @@ func (c *Client) Unmark() {
 }
 
 func (c *Client) Bump() {
+    c.lastSeen              =   time.Now()
+
     if c.count + 1 > types.UINT32_MAX_UINT32 {
         return
     }
 
     c.count                 +=  1
+}
+
+func (c *Client) Rebump() {
+    c.count                 =   1
     c.lastSeen              =   time.Now()
 }
 
-func (c *Client) AppendData(data Data, maxLen types.UInt16) {
-    dataLen                 :=  types.Int32(len(c.data)).UInt16()
+func (c *Client) Tolerate(count types.UInt32, expire time.Duration,
+    restrict time.Duration) {
+    c.tolerateCount         =   count
+    c.tolerateExpire        =   expire
+    c.restrictExpire        =   restrict
+}
 
-    c.data                  =   append(c.data, data)
+func (c *Client) Expired(now time.Time) (bool) {
+    expireTime              :=  c.lastSeen.Add(c.tolerateExpire)
 
-    if dataLen > maxLen {
-        c.data              =   c.data[dataLen - maxLen:]
+    if !now.After(expireTime) {
+        return false
     }
 
-    c.onRecord(c, data)
-}
+    restrictTime            :=  expireTime.Add(c.restrictExpire)
 
-type Clients struct {
-    clients                 map[types.IP]*Client
-
-    onMark                  func(*Client)
-    onUnmark                func(*Client)
-    onRecord                func(*Client, Data)
-}
-
-func NewClients(config *Config) (*Clients) {
-    return &Clients{
-        clients:            map[types.IP]*Client{},
-        onMark:             config.OnMark,
-        onUnmark:           config.OnUnmark,
-        onRecord:           config.OnRecord,
-    }
-}
-
-func (c *Clients) Get(ip types.IP) (*Client, bool) {
-    isNew                   :=  false
-
-    if _, ok := c.clients[ip]; !ok {
-        c.clients[ip]       =   &Client{
-            address:            ip.IP(),
-            firstSeen:          time.Now(),
-            lastSeen:           time.Now(),
-            count:              0,
-            data:               []Data{},
-            marked:             false,
-            onMark:             c.onMark,
-            onUnmark:           c.onUnmark,
-            onRecord:           c.onRecord,
-        }
-
-        isNew               =   true
-    }
-
-    return c.clients[ip], isNew
-}
-
-func (c *Clients) Has(ip types.IP) (bool) {
-    if _, ok := c.clients[ip]; !ok {
+    if c.count >= c.tolerateCount && !now.After(restrictTime) {
         return false
     }
 
     return true
-}
-
-func (c *Clients) Len() (int) {
-    return len(c.clients)
-}
-
-func (c *Clients) Delete(ip types.IP) (*types.Throw) {
-    if !c.Has(ip) {
-        return ErrClientNotFound.Throw(ip)
-    }
-
-    if c.clients[ip].marked {
-        c.clients[ip].Unmark()
-    }
-
-    delete(c.clients, ip)
-
-    return nil
-}
-
-func (c *Clients) Scan(callback func(types.IP, *Client) (*types.Throw)) (*types.Throw) {
-    var err *types.Throw    =   nil
-
-    for key, val := range c.clients {
-        callbackErr         :=  callback(key, val)
-
-        if callbackErr == nil {
-            continue
-        }
-
-        err = callbackErr
-
-        break
-    }
-
-    return err
-}
-
-func (c *Clients) Clear() (*types.Throw) {
-    var err *types.Throw    =   nil
-
-    for key, _ := range c.clients {
-        deleteErr           :=  c.Delete(key)
-
-        if deleteErr != nil {
-            err = deleteErr
-        }
-    }
-
-    return err
-}
-
-func (c *Clients) Export() ([]ClientExport) {
-    clients                 :=  []ClientExport{}
-
-    for _, clientInfo := range c.clients {
-        clients             =   append(clients, ClientExport{
-            Address:            clientInfo.Address(),
-            FirstSeen:          clientInfo.FirstSeen(),
-            LastSeen:           clientInfo.LastSeen(),
-            Count:              clientInfo.Count(),
-            Data:               clientInfo.Data(),
-            Marked:             clientInfo.Marked(),
-        })
-    }
-
-    return clients
 }

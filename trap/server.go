@@ -230,7 +230,7 @@ func (this *Server) clients() (*client.Clients) {
         return this.clientMaps
     }
 
-    this.clientMaps = client.NewClients(&client.Config{
+    this.clientMaps = client.NewClients(client.Config{
         OnMark: func(client *client.Client) {
             p := event.Parameters{}
 
@@ -247,7 +247,7 @@ func (this *Server) clients() (*client.Clients) {
                                                 client.Address().String())).
                 AddUInt32("Count",          client.Count()))
         },
-        OnRecord: func(client *client.Client, data client.Data) {
+        OnRecord: func(client *client.Client, data client.Record) {
             p := event.Parameters{}
 
             this.Event().Trigger("on.client.hitting",
@@ -278,6 +278,9 @@ func (this *Server) insertClient(c listen.ConnectionInfo,
     if newClientRec {
         this.totalInbound       +=  1
         historyRecord.Inbound   +=  1
+
+        clientRecord.Tolerate(this.tolerate, this.tolerateExpire,
+            this.tolerateRestrict)
     }
 
     // Don't plus hit as we don't have actual hit here
@@ -290,7 +293,7 @@ func (this *Server) insertClient(c listen.ConnectionInfo,
 
     portDis.Hit                 +=  1
 
-    clientRecord.AppendData(client.Data{
+    clientRecord.Record(client.Record{
         Inbound:                []byte{},
         Outbound:               []byte{},
         Hitting:                client.Hitting{
@@ -329,6 +332,9 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     if newClientRec {
         this.totalInbound       +=  1
         historyRecord.Inbound   +=  1
+
+        clientRecord.Tolerate(this.tolerate, this.tolerateExpire,
+            this.tolerateRestrict)
     }
 
     this.totalHit               +=  1
@@ -340,7 +346,7 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
 
     portDis.Hit                 +=  1
 
-    clientRecord.AppendData(client.Data{
+    clientRecord.Record(client.Record{
         Inbound:                func(r *listen.RespondedResult) ([]byte) {
             if types.Int32(len(r.ReceivedSample)).UInt32() > this.clientMaxRecordMaxBytes {
                 return r.ReceivedSample[:this.clientMaxRecordMaxBytes]
@@ -362,7 +368,12 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
         Time:                   nowTime,
     }, this.clientMaxRecords)
 
-    clientRecord.Bump() // Update count and last seen
+    // Check expiration here, allowing faster expire reset
+    if clientRecord.Expired(nowTime) {
+        clientRecord.Rebump() // Reset count
+    } else {
+        clientRecord.Bump() // Update count and last seen
+    }
 
     // Check the connection tolerate limit
     if clientRecord.Count() < this.tolerate {
@@ -408,15 +419,7 @@ func (this *Server) clientCron() {
                 this.clientRWLock.Exec(func() {
                     this.clients().Scan(func(clientID types.IP,
                         clientInfo *client.Client) (*types.Throw) {
-                        if !nowTime.After(clientInfo.LastSeen().Add(
-                            this.tolerateExpire)) {
-                            return nil
-                        }
-
-                        // Check if the client still within restrict time
-                        if clientInfo.Count() >= this.tolerate && !nowTime.After(
-                            clientInfo.LastSeen().Add(this.tolerateExpire).Add(
-                            this.tolerateRestrict)) {
+                        if !clientInfo.Expired(nowTime) {
                             return nil
                         }
 

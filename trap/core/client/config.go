@@ -24,5 +24,5 @@ package client
 type Config struct {
     OnMark                  func(*Client)
     OnUnmark                func(*Client)
-    OnRecord                func(*Client, Data)
+    OnRecord                func(*Client, Record)
 }

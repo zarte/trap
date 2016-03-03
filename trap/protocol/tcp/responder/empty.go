@@ -41,6 +41,7 @@ func (e *Empty) Handle(conn *net.TCPConn,
     result                      :=  listen.RespondedResult{
                                         Suggestion: listen.RESPOND_SUGGEST_MARK,
                                         ReceivedSample: []byte{},
+                                        RespondedData: []byte{},
                                     }
 
     totalLen                    :=  uint(0)

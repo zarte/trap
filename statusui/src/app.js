@@ -372,7 +372,7 @@
                     return clients;
                 },
                 set: function(clientList) {
-                    var updateableAttributes = ['LastSeen', 'Count', 'Data', 'Marked'],
+                    var updateableAttributes = ['LastSeen', 'Count', 'Records', 'Marked'],
                         newClientKeys = {},
                         parseClientData = function(clientData) {
                             return {
@@ -380,10 +380,10 @@
                                 LastSeen:       new Date(Date.parse(clientList[i].LastSeen)),
                                 FirstSeen:      new Date(Date.parse(clientList[i].FirstSeen)),
                                 Count:          clientList[i].Count,
-                                Data:           clientList[i].Data,
+                                Records:        clientList[i].Records,
                                 Marked:         clientList[i].Marked,
 
-                                Records:        [],
+                                RecordData:        [],
                                 Expended:       false,
                                 Deleting:       false
                             };
@@ -418,7 +418,7 @@
 
                         // If current client record is expanded, update clientRecord as well
                         if (this.records.source.clients.clientMap[eClient.Address].Expended) {
-                            this.records.source.clients.clientMap[eClient.Address].Records =
+                            this.records.source.clients.clientMap[eClient.Address].RecordData =
                                 this.parseClientRecords(eClient.Data);
                         }
                     }
@@ -637,7 +637,7 @@
                     return;
                 }
 
-                client.Records = this.parseClientRecords(client.Data);
+                client.RecordData = this.parseClientRecords(client.Data);
 
                 client.Expended = true;
 

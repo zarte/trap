@@ -34,7 +34,7 @@ type Hitting struct {
     Type            types.String
 }
 
-type Data struct {
+type Record struct {
     Inbound         []byte
     Outbound        []byte
     Hitting         Hitting
@@ -42,14 +42,14 @@ type Data struct {
 }
 
 type ClientExport struct {
-    Address                 net.IP
+    Address         net.IP
 
-    FirstSeen               time.Time
-    LastSeen                time.Time
+    FirstSeen       time.Time
+    LastSeen        time.Time
 
-    Count                   types.UInt32
+    Count           types.UInt32
 
-    Data                    []Data
+    Records         []Record
 
-    Marked                  bool
+    Marked          bool
 }

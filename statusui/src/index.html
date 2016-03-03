@@ -187,13 +187,13 @@
                                 </header>
 
                                 <div id="status-marked-client-data-{{$index}}" class="c-record">
-                                    <section class="paperbox1" v-if="client.Records.length > 0">
+                                    <section class="paperbox1" v-if="client.RecordData.length > 0">
                                         <h3 class="ppb-title tlt-mid-subtitle1">
                                             <span>Report</span>
                                         </h3>
 
                                         <div class="records">
-                                            <div class="record" v-for="data in client.Records">
+                                            <div class="record" v-for="data in client.RecordData">
                                                 <div class="record-cover">
                                                     <div class="rc-date">
                                                         <h4 class="rctitle tlt-mid-subtitle1">
