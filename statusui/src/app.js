@@ -383,7 +383,7 @@
                                 Records:        clientList[i].Records,
                                 Marked:         clientList[i].Marked,
 
-                                RecordData:        [],
+                                RecordData:     [],
                                 Expended:       false,
                                 Deleting:       false
                             };
@@ -419,7 +419,7 @@
                         // If current client record is expanded, update clientRecord as well
                         if (this.records.source.clients.clientMap[eClient.Address].Expended) {
                             this.records.source.clients.clientMap[eClient.Address].RecordData =
-                                this.parseClientRecords(eClient.Data);
+                                this.parseClientRecords(eClient.Records);
                         }
                     }
 
@@ -637,7 +637,7 @@
                     return;
                 }
 
-                client.RecordData = this.parseClientRecords(client.Data);
+                client.RecordData = this.parseClientRecords(client.Records);
 
                 client.Expended = true;
 
