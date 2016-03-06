@@ -317,13 +317,13 @@ func TestClientTolerateExpired(t *testing.T) {
 
     client.Bump()
 
-    if client.Expired(time.Now()) {
+    if client.Expired(time.Now()) != CLIENT_EXPIRED_NO {
         t.Error("The client should not be expired for now")
 
         return
     }
 
-    if !client.Expired(time.Now().Add(3 * time.Second)) {
+    if client.Expired(time.Now().Add(3 * time.Second)) != CLIENT_EXPIRED_YES {
         t.Error("The client should be expired by now")
 
         return
@@ -332,8 +332,14 @@ func TestClientTolerateExpired(t *testing.T) {
     client.Bump()
     client.Bump()
 
-    if client.Expired(time.Now().Add(5 * time.Second)) {
+    if client.Expired(time.Now().Add(5 * time.Second)) != CLIENT_EXPIRED_RESTRICTED {
         t.Error("The client should not be expired for now")
+
+        return
+    }
+
+    if client.Expired(time.Now().Add(10 * time.Second)) != CLIENT_EXPIRED_YES {
+        t.Error("The client should be expired by now")
 
         return
     }
