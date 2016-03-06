@@ -369,7 +369,7 @@ func (this *Server) bumpClient(c listen.ConnectionInfo,
     }, this.clientMaxRecords)
 
     // Check expiration here, allowing faster expire reset
-    if clientRecord.Expired(nowTime) {
+    if clientRecord.Expired(nowTime) == client.CLIENT_EXPIRED_YES {
         clientRecord.Rebump() // Reset count
     } else {
         clientRecord.Bump() // Update count and last seen
@@ -419,12 +419,19 @@ func (this *Server) clientCron() {
                 this.clientRWLock.Exec(func() {
                     this.clients().Scan(func(clientID types.IP,
                         clientInfo *client.Client) (*types.Throw) {
-                        if !clientInfo.Expired(nowTime) {
-                            return nil
+                        switch clientInfo.Expired(nowTime) {
+                            case client.CLIENT_EXPIRED_NO:
+                                return nil
+
+                            case client.CLIENT_EXPIRED_RESTRICTED:
+                                clientInfo.Unmark()
+                                return nil
+
+                            case client.CLIENT_EXPIRED_YES:
+                                return this.clients().Delete(clientID)
                         }
 
-                        // Delete the client if it's expired the restrict too
-                        return this.clients().Delete(clientID)
+                        return nil
                     })
                 })
         }

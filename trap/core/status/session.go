@@ -91,8 +91,8 @@ func (s Sessions) scanExpired() {
     }
 }
 
-func (s Sessions) Add(ip net.IP,
-    pass types.String, account *Account, expire time.Duration) (*Session, *types.Throw) {
+func (s Sessions) Add(ip net.IP, account *Account,
+    expire time.Duration) (*Session, *types.Throw) {
     maxRetry                        :=  3
     ipStr                           :=  types.String(ip.String())
 

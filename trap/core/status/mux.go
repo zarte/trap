@@ -33,7 +33,7 @@ type Mux struct {
 
 func NewMux() (*Mux) {
     return &Mux{
-        server: http.NewServeMux(),
+        server:     http.NewServeMux(),
     }
 }
 

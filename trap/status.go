@@ -146,8 +146,8 @@ func (this *Status) authUser(ip net.IP,
     this.logger.Infof("A new session has been binded with '%s'", ip)
 
     this.sessionRWLock.Exec(func() {
-        result, resultErr       =   this.sessions.Add(ip, pass,
-                                        account, 12 * time.Hour)
+        result, resultErr       =   this.sessions.Add(ip, account,
+                                        12 * time.Hour)
     })
 
     return result, resultErr

@@ -28,6 +28,12 @@ import (
     "net"
 )
 
+const (
+    CLIENT_EXPIRED_NO       =   iota
+    CLIENT_EXPIRED_YES
+    CLIENT_EXPIRED_RESTRICTED
+)
+
 type Client struct {
     address                 net.IP
 
@@ -127,18 +133,18 @@ func (c *Client) Tolerate(count types.UInt32, expire time.Duration,
     c.restrictExpire        =   restrict
 }
 
-func (c *Client) Expired(now time.Time) (bool) {
+func (c *Client) Expired(now time.Time) (int) {
     expireTime              :=  c.lastSeen.Add(c.tolerateExpire)
 
     if !now.After(expireTime) {
-        return false
+        return CLIENT_EXPIRED_NO
     }
 
     restrictTime            :=  expireTime.Add(c.restrictExpire)
 
     if c.count >= c.tolerateCount && !now.After(restrictTime) {
-        return false
+        return CLIENT_EXPIRED_RESTRICTED
     }
 
-    return true
+    return CLIENT_EXPIRED_YES
 }
