@@ -52,9 +52,7 @@ type fakeProtocol struct {
 
     config              *ProtocolConfig
 
-    ip                  net.IP
-    port                types.UInt16
-    additionalSettings  types.String
+    settings            types.String
 }
 
 func (f *fakeProtocol) Init(cfg *ProtocolConfig) (*types.Throw) {
@@ -71,22 +69,24 @@ func (f *fakeProtocol) Init(cfg *ProtocolConfig) (*types.Throw) {
     return nil
 }
 
-func (f *fakeProtocol) Spawn(ip net.IP, port types.UInt16,
-    additionalSettings types.String) (Listener, *types.Throw) {
+func (f *fakeProtocol) Spawn(setting types.String) (Listener, *types.Throw) {
     f.spawnCalled       =   true
 
     if f.returnError {
         return nil, ErrProtocolFakeErr2.Throw()
     }
 
-    f.ip                    =   ip
-    f.port                  =   port
-    f.additionalSettings    =   additionalSettings
+    ipStr, portStr      :=  setting.SpiltWith("@")
+
+    ip                  :=  net.ParseIP(ipStr.String())
+
+    if ip == nil {
+        ip              =   net.ParseIP("0.0.0.0")
+    }
 
     return &fakeListener{
-        ip:                 f.ip,
-        port:               f.port,
-        additionalSettings: f.additionalSettings,
+        ip:                 ip,
+        port:               portStr.UInt16(),
     }, nil
 }
 
@@ -98,7 +98,6 @@ var (
 type fakeListener struct {
     ip                  net.IP
     port                types.UInt16
-    additionalSettings  types.String
 
     upCalled            bool
     downCalled          bool
@@ -321,7 +320,7 @@ func TestListenAdd(t *testing.T) {
         return
     }
 
-    ptcErr      :=  listen.Add("test", net.ParseIP("0.0.0.0"), 8080, "")
+    ptcErr      :=  listen.Add("test", "8080@0.0.0.0")
 
     if ptcErr != nil {
         t.Error("Unexpected error when trying to register fake listener")
@@ -331,7 +330,7 @@ func TestListenAdd(t *testing.T) {
 
     // Try add another one with non-registered protocol type,
     // should return an error for me
-    ptcErr      =   listen.Add("test2", net.ParseIP("0.0.0.0"), 8080, "")
+    ptcErr      =   listen.Add("test2", "8080@0.0.0.0")
 
     if ptcErr == nil || !ptcErr.Is(ErrProtocolNotSupported) {
         t.Error("Expected error didn't happen")
@@ -341,7 +340,7 @@ func TestListenAdd(t *testing.T) {
 
     fakePl.returnError = true
 
-    ptcErr      =   listen.Add("test", net.ParseIP("0.0.0.0"), 8080, "")
+    ptcErr      =   listen.Add("test", "8080@0.0.0.0")
 
     if ptcErr == nil || !ptcErr.Is(ErrProtocolFakeErr2) {
         t.Error("Protocol.Spawn() didn't return the expected error")
@@ -386,7 +385,7 @@ func TestListenServ(t *testing.T) {
         return
     }
 
-    ptcErr  :=  listen.Add("test", net.ParseIP("0.0.0.0"), 8080, "")
+    ptcErr  :=  listen.Add("test", "8080@0.0.0.0")
 
     if ptcErr != nil {
         t.Error("listen.Add() failed due to error: %s", regErr)
@@ -459,7 +458,7 @@ func TestListenDown(t *testing.T) {
         return
     }
 
-    ptcErr  :=  listen.Add("test", net.ParseIP("0.0.0.0"), 8080, "")
+    ptcErr  :=  listen.Add("test", "8080@0.0.0.0")
 
     if ptcErr != nil {
         t.Error("listen.Add() failed due to error: %s", regErr)

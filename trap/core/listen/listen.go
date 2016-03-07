@@ -117,18 +117,17 @@ func (this *Listen) Register(pType types.String, protocol Protocol) (*types.Thro
     return nil
 }
 
-func (this *Listen) Add(pType types.String, ip net.IP, port types.UInt16,
-    setting types.String) (*types.Throw) {
+func (this *Listen) Add(pType types.String, setting types.String) (*types.Throw) {
     if _, ok := this.protocols[pType]; !ok {
         addErr      :=  ErrProtocolNotSupported.Throw(pType)
 
-        this.logger.Warningf("Can't add `Listener` '%s:%d' to `Protocol` " +
-            "'%s' due to error: %s", ip, port, pType, addErr)
+        this.logger.Warningf("Can't add `Listener` '%s' to `Protocol` " +
+            "'%s' due to error: %s", setting, pType, addErr)
 
         return addErr
     }
 
-    listener, lErr  :=  this.protocols[pType].Spawn(ip, port, setting)
+    listener, lErr  :=  this.protocols[pType].Spawn(setting)
 
     if lErr != nil {
         this.logger.Errorf("Spawn `Listener` with error: %s", lErr)
@@ -138,8 +137,8 @@ func (this *Listen) Add(pType types.String, ip net.IP, port types.UInt16,
 
     this.listeners  =   append(this.listeners, listener)
 
-    this.logger.Debugf("New `Listener` '%d' has been added at '%s:%d'",
-        len(this.listeners) - 1, ip, port)
+    this.logger.Debugf("New `Listener` '%d' has been added at '%s'",
+        len(this.listeners) - 1, setting)
 
     return nil
 }

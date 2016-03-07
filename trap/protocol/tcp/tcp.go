@@ -25,30 +25,32 @@ import (
     "github.com/raincious/trap/trap/core/types"
     "github.com/raincious/trap/trap/core/listen"
     "github.com/raincious/trap/trap/core/logger"
+    "github.com/raincious/trap/trap/protocol/net"
 
     "time"
-    "net"
     "math/rand"
 )
 
 type TCP struct {
-    responders      []Responder
+    net.Net
 
-    onError         func(listen.ConnectionInfo, *types.Throw)
-    onPick          func(listen.ConnectionInfo, listen.RespondedResult)
+    responders          []Responder
 
-    maxBytes        types.UInt32
+    onError             func(listen.ConnectionInfo, *types.Throw)
+    onPick              func(listen.ConnectionInfo, listen.RespondedResult)
 
-    readTimeout     time.Duration
-    writeTimeout    time.Duration
-    totalTimeout    time.Duration
+    maxBytes            types.UInt32
 
-    inited          bool
+    readTimeout         time.Duration
+    writeTimeout        time.Duration
+    totalTimeout        time.Duration
 
-    logger          *logger.Logger
-    concurrent      types.UInt16
+    inited              bool
 
-    rand            *rand.Rand
+    logger              *logger.Logger
+    concurrent          types.UInt16
+
+    rand                *rand.Rand
 }
 
 func (t *TCP) Init(c *listen.ProtocolConfig) (*types.Throw) {
@@ -56,48 +58,45 @@ func (t *TCP) Init(c *listen.ProtocolConfig) (*types.Throw) {
         return listen.ErrProtocolAlreadyInited.Throw()
     }
 
-    t.inited = true
+    t.inited            =   true
 
-    t.logger            = c.Logger.NewContext("TCP")
+    t.logger            =   c.Logger.NewContext("TCP")
 
-    t.maxBytes          = c.MaxBytes
+    t.maxBytes          =   c.MaxBytes
 
-    t.onError           = c.OnError
-    t.onPick            = c.OnPick
+    t.onError           =   c.OnError
+    t.onPick            =   c.OnPick
 
-    t.readTimeout       = c.ReadTimeout
-    t.writeTimeout      = c.WriteTimeout
-    t.totalTimeout      = c.TotalTimeout
-    t.concurrent        = c.Concurrent
+    t.readTimeout       =   c.ReadTimeout
+    t.writeTimeout      =   c.WriteTimeout
+    t.totalTimeout      =   c.TotalTimeout
+    t.concurrent        =   c.Concurrent
 
-    t.rand              = rand.New(rand.NewSource(time.Now().UnixNano()))
+    t.rand              =   rand.New(rand.NewSource(time.Now().UnixNano()))
 
     return nil
 }
 
 func (t *TCP) Responder(resp Responder) (listen.Protocol) {
-    t.responders    = append(t.responders, resp)
+    t.responders        =   append(t.responders, resp)
 
     return t
 }
 
 func (t *TCP) getRandomResponder() (Responder, *types.Throw) {
-    totalLen        := len(t.responders)
+    totalLen            :=  len(t.responders)
 
     if totalLen <= 0 {
         return nil, ErrNoAnyResponder.Throw()
     }
 
-    randKey         := t.rand.Intn(totalLen)
+    randKey             :=  t.rand.Intn(totalLen)
 
     return t.responders[randKey], nil
 }
 
-func (t *TCP) Spawn(ip net.IP, port types.UInt16,
-    setting types.String) (listen.Listener, *types.Throw) {
-    listener := &Listener{}
-
-    resp, rspErr := t.getRandomResponder()
+func (t *TCP) Spawn(setting types.String) (listen.Listener, *types.Throw) {
+    resp, rspErr        :=  t.getRandomResponder()
 
     if rspErr != nil {
         t.logger.Warningf("Can't spawn the new TCP `Listener` due to error: %s",
@@ -105,6 +104,14 @@ func (t *TCP) Spawn(ip net.IP, port types.UInt16,
 
         return nil, rspErr
     }
+
+    ip, port, parseErr  :=  t.ParseConfig(setting)
+
+    if parseErr != nil {
+        return nil, parseErr
+    }
+
+    listener            :=  &Listener{}
 
     listener.Init(ListenerConfig{
         ListenerConfig:     listen.ListenerConfig{

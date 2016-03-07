@@ -23,13 +23,11 @@ package listen
 
 import (
     "github.com/raincious/trap/trap/core/types"
-
-    "net"
 )
 
 type Protocol interface {
     Init(*ProtocolConfig) (*types.Throw)
-    Spawn(net.IP, types.UInt16, types.String) (Listener, *types.Throw)
+    Spawn(types.String) (Listener, *types.Throw)
 }
 
 type Listener interface {

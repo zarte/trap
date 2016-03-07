@@ -12,11 +12,13 @@
      *                         with setting 'a'
      *
      */
-    "listen_ports": [
+    "listens": [
         "udp:8088@0.0.0.0",
+        "tcp:8088@0.0.0.0",
         "tcp:8087@127.0.0.1",
         "tcp:8086",
-        "tcp:8080"
+        "tcp:8080",
+        "file:file_monitering_config.json"
     ],
 
     /**!

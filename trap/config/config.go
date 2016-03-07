@@ -2,15 +2,11 @@ package config
 
 import (
     "github.com/raincious/trap/trap/core/types"
-
-    "net"
 )
 
 type Listen struct {
-    Type                types.String
-    IP                  net.IP
-    Port                types.UInt16
-    Additional          types.String
+    Protocol            types.String
+    Setting             types.String
 }
 
 type Parameter struct {

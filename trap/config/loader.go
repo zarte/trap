@@ -3,7 +3,6 @@ package config
 import (
     "github.com/raincious/trap/trap/core/types"
 
-    "net"
     "regexp"
     "os/exec"
     "io/ioutil"
@@ -17,7 +16,7 @@ type rawServerKVMap map[types.String]types.String
 type rawConfig struct {
     Log                 types.String        `json:"log"`
 
-    Listens             []types.String      `json:"listen_ports"`
+    Listens             []types.String      `json:"listens"`
 
     AttemptTimeout      types.UInt32        `json:"attempt_timeout"`
     AttemptMaxBytes     types.UInt32        `json:"attempt_max_bytes"`
@@ -73,38 +72,12 @@ func Parse(configStr []byte) (*Config, *types.Throw) {
     config.Listens  =  Listens{}
 
     for _, lsten := range rawConfig.Listens {
-        lSettings, lAdditional  :=  lsten.SpiltWith("|")
+        lProtocol, lSetting     :=  lsten.SpiltWith(":")
 
-        lType, lHost            :=  lSettings.SpiltWith(":")
-
-        listenItem              :=  Listen{}
-
-        lPort, lIP              :=  types.String(""), types.String("")
-
-        // If `lHost` is empty, use `lType` as the host
-        if lHost == "" {
-            lPort, lIP          =   lType.SpiltWith("@")
-            listenItem.Type     =   "tcp"
-        } else {
-            lPort, lIP          =   lHost.SpiltWith("@")
-            listenItem.Type     =   lType.Lower().Trim()
-        }
-
-        if lIP != "" {
-            listenItem.IP       =   net.ParseIP(lIP.Lower().Trim().String())
-            listenItem.Port     =   lPort.Trim().UInt16()
-        } else {
-            listenItem.IP       =   net.ParseIP("0.0.0.0")
-            listenItem.Port     =   lPort.Trim().UInt16()
-        }
-
-        if listenItem.Type == "" || listenItem.Port == 0 || listenItem.IP == nil {
-            return nil, ErrParseInvalidItem.Throw(lsten, "listen_ports")
-        }
-
-        listenItem.Additional   =   lAdditional
-
-        config.Listens          =   append(config.Listens, listenItem)
+        config.Listens          =   append(config.Listens, Listen{
+            Protocol:               lProtocol,
+            Setting:                lSetting,
+        })
     }
 
     // Parse `AttemptTimeout` Field

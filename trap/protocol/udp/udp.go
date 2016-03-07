@@ -25,12 +25,14 @@ import (
     "github.com/raincious/trap/trap/core/types"
     "github.com/raincious/trap/trap/core/listen"
     "github.com/raincious/trap/trap/core/logger"
+    "github.com/raincious/trap/trap/protocol/net"
 
     "time"
-    "net"
 )
 
 type UDP struct {
+    net.Net
+
     onError         func(listen.ConnectionInfo, *types.Throw)
     onPick          func(listen.ConnectionInfo, listen.RespondedResult)
 
@@ -68,9 +70,14 @@ func (t *UDP) Init(c *listen.ProtocolConfig) (*types.Throw) {
     return nil
 }
 
-func (t *UDP) Spawn(ip net.IP, port types.UInt16,
-    setting types.String) (listen.Listener, *types.Throw) {
-    listener := &Listener{}
+func (t *UDP) Spawn(setting types.String) (listen.Listener, *types.Throw) {
+    ip, port, parseErr  :=  t.ParseConfig(setting)
+
+    if parseErr != nil {
+        return nil, parseErr
+    }
+
+    listener            :=  &Listener{}
 
     listener.Init(ListenerConfig{
         listen.ListenerConfig{

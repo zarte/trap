@@ -44,7 +44,6 @@ import (
     "flag"
     "syscall"
     "time"
-    "net"
     "log"
     "fmt"
     "bufio"
@@ -125,16 +124,14 @@ func initConfig(server *trap.Server, status *trap.Status) {
 
     // Register ports
     for _, listenPort := range cfg.Listens {
-        sAddErr := server.Listen().Add(listenPort.Type,
-            net.ParseIP(listenPort.IP.String()), listenPort.Port,
-            listenPort.Additional)
+        sAddErr := server.Listen().Add(listenPort.Protocol, listenPort.Setting)
 
         if sAddErr == nil {
             continue
         }
 
-        panic(fmt.Errorf("Error registering '%s' listener '%s,%d': %s",
-            listenPort.Type, listenPort.IP, listenPort.Port, sAddErr))
+        panic(fmt.Errorf("Error registering '%s' listener '%s': %s",
+            listenPort.Protocol, listenPort.Setting, sAddErr))
     }
 
     // Register events
