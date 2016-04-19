@@ -22,326 +22,372 @@
 package main
 
 import (
-    "github.com/raincious/trap/trap"
-    "github.com/raincious/trap/trap/core"
+	"github.com/raincious/trap/trap"
+	"github.com/raincious/trap/trap/core"
 
-    "github.com/raincious/trap/trap/core/event"
-    "github.com/raincious/trap/trap/core/types"
-    statusPkg "github.com/raincious/trap/trap/core/status"
-    "github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/event"
+	"github.com/raincious/trap/trap/core/logger"
+	statusPkg "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "github.com/raincious/trap/trap/protocol/tcp"
-    tcpResponder "github.com/raincious/trap/trap/protocol/tcp/responder"
+	"github.com/raincious/trap/trap/protocol/tcp"
+	tcpResponder "github.com/raincious/trap/trap/protocol/tcp/responder"
 
-    "github.com/raincious/trap/trap/protocol/udp"
+	"github.com/raincious/trap/trap/protocol/udp"
 
-    logPrinter "github.com/raincious/trap/trap/logger"
-    "github.com/raincious/trap/trap/config"
+	"github.com/raincious/trap/trap/config"
+	logPrinter "github.com/raincious/trap/trap/logger"
 
-    "os/signal"
-    "os/exec"
-    "os"
-    "flag"
-    "syscall"
-    "time"
-    "log"
-    "fmt"
-    "bufio"
-    "path/filepath"
-    "runtime/pprof"
+	"bufio"
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"runtime/pprof"
+	"syscall"
+	"time"
 )
 
 var (
-    logFile         =   ""
-    silentRun       =   false
-    cfgFile         =   ""
-    cpuPrfFile      =   ""
-    memPrfFile      =   ""
+	logFile    = ""
+	silentRun  = false
+	cfgFile    = ""
+	cpuPrfFile = ""
+	memPrfFile = ""
 )
 
 func init() {
-    flag.StringVar(&cfgFile, "config", "",
-        "Load configuration from specified file, must be defined.")
+	flag.StringVar(&cfgFile, "config", "",
+		"Load configuration from specified file, must be defined.")
 
-    flag.StringVar(&logFile, "log", "",
-        "Save log data to specified file, " +
-        "keep it default to disable file logger.")
+	flag.StringVar(&logFile, "log", "",
+		"Save log data to specified file, "+
+			"keep it default to disable file logger.")
 
-    flag.StringVar(&cpuPrfFile, "profiling-cpu", "",
-        "Dump CPU profile data to specified file, " +
-        "keep it blank to disable profiling.")
+	flag.StringVar(&cpuPrfFile, "profiling-cpu", "",
+		"Dump CPU profile data to specified file, "+
+			"keep it blank to disable profiling.")
 
-    flag.StringVar(&memPrfFile, "profiling-mem", "",
-        "Dump memory profile data to specified file, " +
-        "keep it blank to disable profiling.")
+	flag.StringVar(&memPrfFile, "profiling-mem", "",
+		"Dump memory profile data to specified file, "+
+			"keep it blank to disable profiling.")
 
-    flag.BoolVar(&silentRun, "silent", false,
-        "Do not generate any output")
+	flag.BoolVar(&silentRun, "silent", false,
+		"Do not generate any output")
 
-    flag.Parse()
+	flag.Parse()
 }
 
-func initConfig(server *trap.Server, status *trap.Status) {
-    if cfgFile == "" {
-        panic(fmt.Errorf("Configuration is not specified. " +
-            "Please use command `%s -help` for more information",
-            filepath.Base(os.Args[0])))
-    }
+func initConfig(server *trap.Server, status *trap.Status, sync *trap.Sync) {
+	if cfgFile == "" {
+		panic(fmt.Errorf("Configuration is not specified. "+
+			"Please use command `%s -help` for more information",
+			filepath.Base(os.Args[0])))
+	}
 
-    cfg, err    :=  config.Load(cfgFile)
+	cfg, err := config.Load(cfgFile)
 
-    if err != nil {
-        panic(fmt.Errorf("Can't load configuration file '%s' under error: %s",
-            cfgFile, err))
-    }
+	if err != nil {
+		panic(fmt.Errorf("Can't load configuration file '%s' under error: %s",
+			cfgFile, err))
+	}
 
-    if cfg.AttemptTimeout > 0 {
-        server.SetTimeout(time.Duration(cfg.AttemptTimeout) * time.Second)
-    }
+	if cfg.AttemptTimeout > 0 {
+		server.SetTimeout(time.Duration(cfg.AttemptTimeout) * time.Second)
+	}
 
-    if cfg.AttemptMaxBytes > 0 {
-        server.SetClientRecordDataLimit(cfg.AttemptMaxBytes)
-    }
+	if cfg.AttemptMaxBytes > 0 {
+		server.SetClientRecordDataLimit(cfg.AttemptMaxBytes)
+	}
 
-    if cfg.AttemptThershold > 0 && cfg.AttemptExpire > 0 {
-        server.SetTolerate(cfg.AttemptThershold,
-            time.Duration(cfg.AttemptExpire.Int64()) * time.Second,
-            time.Duration(cfg.AttemptRestrict.Int64()) * time.Second)
-    }
+	if cfg.AttemptThershold > 0 && cfg.AttemptExpire > 0 {
+		server.SetTolerate(cfg.AttemptThershold,
+			time.Duration(cfg.AttemptExpire.Int64())*time.Second,
+			time.Duration(cfg.AttemptRestrict.Int64())*time.Second)
+	}
 
-    server.SetConcurrentLimit(100)
+	server.SetConcurrentLimit(100)
 
-    // Init TCP Protocol
-    tcpProtocol :=  &tcp.TCP{}
+	// Init TCP Protocol
+	tcpProtocol := &tcp.TCP{}
 
-    tcpProtocol.Responder(&tcpResponder.Echo{})
-    tcpProtocol.Responder(&tcpResponder.Empty{})
+	tcpProtocol.Responder(&tcpResponder.Echo{})
+	tcpProtocol.Responder(&tcpResponder.Empty{})
 
-    server.Listen().Register("tcp", tcpProtocol)
+	server.Listen().Register("tcp", tcpProtocol)
 
-    // Init UDP Protocol
-    server.Listen().Register("udp", &udp.UDP{})
+	// Init UDP Protocol
+	server.Listen().Register("udp", &udp.UDP{})
 
-    // Register ports
-    for _, listenPort := range cfg.Listens {
-        sAddErr := server.Listen().Add(listenPort.Protocol, listenPort.Setting)
+	// Register ports
+	for _, listenPort := range cfg.Listens {
+		sAddErr := server.Listen().Add(listenPort.Protocol, listenPort.Setting)
 
-        if sAddErr == nil {
-            continue
-        }
+		if sAddErr == nil {
+			continue
+		}
 
-        panic(fmt.Errorf("Error registering '%s' listener '%s': %s",
-            listenPort.Protocol, listenPort.Setting, sAddErr))
-    }
+		panic(fmt.Errorf("Error registering '%s' listener '%s': %s",
+			listenPort.Protocol, listenPort.Setting, sAddErr))
+	}
 
-    // Register events
-    for eventName, eventCommands := range cfg.Commands {
-        for _, eventCommand := range eventCommands {
-            func(eName types.String, eCmd config.Command) {
-                server.Event().Register(eName,
-                    func(p *event.Parameters) (*types.Throw) {
-                        var params []string
+	// Register events
+	for eventName, eventCommands := range cfg.Commands {
+		for _, eventCommand := range eventCommands {
+			func(eName types.String, eCmd config.Command) {
+				server.Event().Register(eName,
+					func(p *event.Parameters) *types.Throw {
+						var params []string
 
-                        for _, cmdParam := range eCmd.Parameters {
-                            params = append(params, p.Parse(cmdParam.Format,
-                                cmdParam.Labels).String())
-                        }
+						for _, cmdParam := range eCmd.Parameters {
+							params = append(params, p.Parse(cmdParam.Format,
+								cmdParam.Labels).String())
+						}
 
-                        cmd := exec.Command(eCmd.Command.String(),
-                            params...)
+						cmd := exec.Command(eCmd.Command.String(),
+							params...)
 
-                        err := cmd.Run()
+						err := cmd.Run()
 
-                        if err != nil {
-                            return types.ConvertError(err)
-                        }
+						if err != nil {
+							return types.ConvertError(err)
+						}
 
-                        return nil
-                    })
-            }(eventName, eventCommand)
-        }
-    }
+						return nil
+					})
+			}(eventName, eventCommand)
+		}
+	}
 
-    // Start `Status` Server to display some of the status of the server
-    if cfg.StatusPort > 0 {
-        status.SetServer(server)
+	// Start `Status` Server to display some of the status of the server
+	if cfg.StatusPort > 0 {
+		status.SetServer(server)
 
-        status.Port(cfg.StatusPort)
+		status.Port(cfg.StatusPort)
 
-        if !cfg.StatusInterface.IsEmpty() {
-            status.IP(cfg.StatusInterface)
-        }
+		if !cfg.StatusInterface.IsEmpty() {
+			status.IP(cfg.StatusInterface)
+		}
 
-        if cfg.StatusTLSCert != "" && cfg.StatusTLSCertKey != "" {
-            status.LoadCert(cfg.StatusTLSCert, cfg.StatusTLSCertKey)
-        }
+		if cfg.StatusTLSCert != "" && cfg.StatusTLSCertKey != "" {
+			status.LoadCert(cfg.StatusTLSCert, cfg.StatusTLSCertKey)
+		}
 
-        for account, permissions := range cfg.StatusAccounts {
-            _, sAccErr := status.Account(account, permissions)
+		for account, permissions := range cfg.StatusAccounts {
+			_, sAccErr := status.Account(account, permissions)
 
-            if sAccErr == nil {
-                continue
-            }
+			if sAccErr == nil {
+				continue
+			}
 
-            panic(fmt.Errorf("Error registering status account '%s' due to error: %s",
-                account, sAccErr))
-        }
+			panic(fmt.Errorf("Error registering status account '%s' due to error: %s",
+				account, sAccErr))
+		}
 
-        server.OnUpDown(func() (*types.Throw) {
-            return status.Serv()
-        }, func() (*types.Throw) {
-            return status.Down()
-        })
-    }
+		server.OnUpDown(func() *types.Throw {
+			return status.Serv()
+		}, func() *types.Throw {
+			return status.Down()
+		})
+	}
+
+	// Start `Sync` Server for status sync
+	if cfg.SyncPort > 0 {
+		sync.SetPort(cfg.SyncPort)
+
+		if !cfg.SyncInterface.IsEmpty() {
+			sync.SetInterface(cfg.SyncInterface)
+		}
+
+		if cfg.SyncConnTimeout != 0 {
+			sync.SetConnectionTimeout(cfg.SyncConnTimeout)
+		}
+
+		if cfg.SyncLooseTimeout != 0 {
+			sync.SetLooseTimeout(cfg.SyncLooseTimeout)
+		}
+
+		if cfg.SyncReqTimeout != 0 {
+			sync.SetRequestTimeout(cfg.SyncReqTimeout)
+		}
+
+		certLoadErr := sync.LoadCert(cfg.SyncCert, cfg.SyncCertKey)
+
+		if certLoadErr != nil {
+			panic(fmt.Errorf("Can't load sync server certificate '%s'"+
+				" and key '%s' due to error: %s",
+				cfg.SyncCert, cfg.SyncCertKey, certLoadErr))
+		}
+
+		if cfg.SyncPass != "" {
+			sync.SetPassphrase(cfg.SyncPass)
+		}
+
+		for _, syncClient := range cfg.SyncWith {
+			sync.AddNode(syncClient.Address, syncClient.Passphrase)
+		}
+
+		server.OnUpDown(func() *types.Throw {
+			return sync.Serv()
+		}, func() *types.Throw {
+			return sync.Down()
+		})
+	}
 }
 
 func main() {
-    // Enable CPU profiling
-    if cpuPrfFile != "" {
-        cpuPrfFileFile, cpuPrfFileErr :=  os.OpenFile(cpuPrfFile,
-            os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
-            0600)
+	// Enable CPU profiling
+	if cpuPrfFile != "" {
+		cpuPrfFileFile, cpuPrfFileErr := os.OpenFile(cpuPrfFile,
+			os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
+			0600)
 
-        if cpuPrfFileErr != nil {
-            panic(fmt.Errorf("Can't create CPU profiling file due to error: %s",
-                cpuPrfFileErr))
-        }
+		if cpuPrfFileErr != nil {
+			panic(fmt.Errorf("Can't create CPU profiling file due to error: %s",
+				cpuPrfFileErr))
+		}
 
-        pprof.StartCPUProfile(cpuPrfFileFile)
+		pprof.StartCPUProfile(cpuPrfFileFile)
 
-        defer func() {
-            pprof.StopCPUProfile()
+		defer func() {
+			pprof.StopCPUProfile()
 
-            cpuPrfFileFile.Close()
-        }()
-    }
+			cpuPrfFileFile.Close()
+		}()
+	}
 
-    // Enable Memory profiling
-    if memPrfFile != "" {
-        memPrfFileFile, memFileErr :=  os.OpenFile(memPrfFile,
-            os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
-            0600)
+	// Enable Memory profiling
+	if memPrfFile != "" {
+		memPrfFileFile, memFileErr := os.OpenFile(memPrfFile,
+			os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
+			0600)
 
-        if memFileErr != nil {
-            panic(fmt.Errorf("Can't create Mem profiling file due to error: %s",
-                memFileErr))
-        }
+		if memFileErr != nil {
+			panic(fmt.Errorf("Can't create Mem profiling file due to error: %s",
+				memFileErr))
+		}
 
-        defer func() {
-            pprof.WriteHeapProfile(memPrfFileFile)
+		defer func() {
+			pprof.WriteHeapProfile(memPrfFileFile)
 
-            memPrfFileFile.Close()
-        }()
-    }
+			memPrfFileFile.Close()
+		}()
+	}
 
-    if !silentRun {
-        fmt.Printf(core.TRAP_COMMAND_BANNDER, core.TRAP_DESCRIPTION,
-            core.TRAP_COPYRIGHT, core.TRAP_VERSION, core.TRAP_LICENSE,
-            core.TRAP_LICENSEURL, core.TRAP_PROJECTURL, core.TRAP_SOURCEURL)
-    }
+	if !silentRun {
+		fmt.Printf(core.TRAP_COMMAND_BANNDER, core.TRAP_DESCRIPTION,
+			core.TRAP_COPYRIGHT, core.TRAP_VERSION, core.TRAP_LICENSE,
+			core.TRAP_LICENSEURL, core.TRAP_PROJECTURL, core.TRAP_SOURCEURL)
+	}
 
-    logging         :=  logger.NewLogger()
+	logging := logger.NewLogger()
 
-    log.SetOutput(logging.NewContext("System"))
+	log.SetOutput(logging.NewContext("System"))
 
-    // Register file logger if variable `logFile` is filled
-    if logFile != "" {
-        logFileHander, logFErr  :=  os.OpenFile(logFile,
-            os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
-            0600)
+	// Register file logger if variable `logFile` is filled
+	if logFile != "" {
+		logFileHander, logFErr := os.OpenFile(logFile,
+			os.O_CREATE|os.O_TRUNC|os.O_APPEND|os.O_WRONLY,
+			0600)
 
-        if logFErr != nil {
-            panic(fmt.Errorf("Can't open log file '%s' due to error: %s",
-                logFile, logFErr))
-        }
+		if logFErr != nil {
+			panic(fmt.Errorf("Can't open log file '%s' due to error: %s",
+				logFile, logFErr))
+		}
 
-        loggerBuffer            :=  bufio.NewWriter(logFileHander)
+		loggerBuffer := bufio.NewWriter(logFileHander)
 
-        defer func() {
-            loggerBuffer.Flush()
+		defer func() {
+			loggerBuffer.Flush()
 
-            logFileHander.Close()
-        }()
+			logFileHander.Close()
+		}()
 
-        fileLogPrinter, fLPErr  :=  logPrinter.NewFilePrinter(loggerBuffer)
+		fileLogPrinter, fLPErr := logPrinter.NewFilePrinter(loggerBuffer)
 
-        if fLPErr != nil {
-            panic(fmt.Errorf("Can't create File logger due to error: %s",
-                fLPErr))
-        }
+		if fLPErr != nil {
+			panic(fmt.Errorf("Can't create File logger due to error: %s",
+				fLPErr))
+		}
 
-        logging.Register(fileLogPrinter)
-    } else if (!silentRun) {
-        // Or, register screen logger instead
-        logging.Register(logPrinter.NewScreenPrinter())
-    }
+		logging.Register(fileLogPrinter)
+	} else if !silentRun {
+		// Or, register screen logger instead
+		logging.Register(logPrinter.NewScreenPrinter())
+	}
 
-    // Start booting
-    server      :=  trap.NewServer()
+	// Start booting
+	server := trap.NewServer()
 
-    defer server.Down()
+	defer server.Down()
 
-    server.SetLogger(logging)
+	server.SetLogger(logging)
 
-    // Init Status server
-    status      :=  trap.NewStatus()
+	// Init Status server
+	status := trap.NewStatus()
 
-    status.SetLogger(logging)
+	status.SetLogger(logging)
 
-    initConfig(server, status)
+	// Init Sync server
+	sync := trap.NewSync()
 
-    servErr     :=  server.Serv()
+	sync.SetLogger(logging)
 
-    if servErr != nil {
-        server.Down()
+	initConfig(server, status, sync)
 
-        panic(fmt.Errorf("Encountered at least one error while " +
-            "server is booting up: %s", servErr))
-    }
+	servErr := server.Serv()
 
-    // Catch system signals
-    signalCall  :=  make(chan os.Signal, 1)
+	if servErr != nil {
+		server.Down()
 
-    defer close(signalCall)
+		panic(fmt.Errorf("Encountered at least one error while "+
+			"server is booting up: %s", servErr))
+	}
 
-    // Register system signal handlers
-    signal.Notify(signalCall,
-        syscall.SIGHUP,    // For Reload
-        syscall.SIGINT,
-        syscall.SIGTERM)    // Control + C
+	// Catch system signals
+	signalCall := make(chan os.Signal, 1)
 
-    // Loop for system signal
-    for {
-        signalExit := false
+	// Register system signal handlers
+	signal.Notify(signalCall,
+		syscall.SIGHUP, // For Reload
+		syscall.SIGINT,
+		syscall.SIGTERM) // Control + C
 
-        callSignal := <-signalCall
+	// Loop for system signal
+	for {
+		signalExit := false
 
-        switch {
-            case callSignal == syscall.SIGHUP:
-                server.Reload(func(s *trap.Server) (*types.Throw) {
-                    statusErr := status.Reset()
+		callSignal := <-signalCall
 
-                    if statusErr != nil &&
-                    !statusErr.Is(statusPkg.ErrServerNotDownable) {
-                        return statusErr
-                    }
+		switch {
+		case callSignal == syscall.SIGHUP:
+			server.Reload(func(s *trap.Server) *types.Throw {
+				statusErr := status.Reset()
 
-                    initConfig(s, status)
+				if statusErr != nil &&
+					!statusErr.Is(statusPkg.ErrServerNotDownable) {
+					return statusErr
+				}
 
-                    return nil
-                })
+				initConfig(s, status, sync)
 
-            case callSignal == syscall.SIGINT || callSignal == syscall.SIGTERM:
-                logging.Infof("Exit signal picked up")
+				return nil
+			})
 
-                signalExit = true
+		case callSignal == syscall.SIGINT || callSignal == syscall.SIGTERM:
+			logging.Infof("Exit signal picked up")
 
-            default:
-                logging.Infof("Unknown signal")
-        }
+			signalExit = true
 
-        if signalExit {
-            break
-        }
-    }
+		default:
+			logging.Infof("Unknown signal")
+		}
+
+		if signalExit {
+			break
+		}
+	}
 }

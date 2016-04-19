@@ -478,39 +478,40 @@ func (this *Server) Client(addr types.IP) (*client.Client, *types.Throw) {
     return clientCopy, nil
 }
 
-func (this *Server) AddClient(addr types.IP,
-    clientConInfo server.ClientConInfo) (*client.Client, *types.Throw) {
+func (this *Server) AddClient(
+    clientData server.ClientInfo) (*client.Client, *types.Throw) {
     var c *client.Client        =   nil
     var e *types.Throw          =   nil
 
-    if addr.IsEmpty() {
-        return nil, server.ErrInvalidClientAddress.Throw(addr.IP())
+    if clientData.Client.IsEmpty() {
+        return nil, server.ErrInvalidClientAddress.Throw(clientData.Client.IP())
     }
 
-    if clientConInfo.Server.IsEmpty() {
+    if clientData.Server.IsEmpty() {
         return nil, server.ErrInvalidServerAddress.Throw(
-            clientConInfo.Server.IP, clientConInfo.Server.Port)
+            clientData.Server.IP, clientData.Server.Port)
     }
 
-    if clientConInfo.Type == "" {
-        return nil, server.ErrInvalidConnectionType.Throw(addr.IP())
+    if clientData.Type == "" {
+        return nil, server.ErrInvalidConnectionType.Throw(
+            clientData.Client.IP())
     }
 
     this.clientRWLock.Exec(func() {
         // Check if it already existed
-        if this.clients().Has(addr) {
+        if this.clients().Has(clientData.Client) {
             e                   =   server.ErrClientAlreadyExisted.Throw(
-                                        addr.IP())
+                                        clientData.Client.IP())
 
             return
         }
 
         // Add client to data set
         newClient, newClientErr :=  this.insertClient(listen.ConnectionInfo{
-                                        ClientIP:       addr,
-                                        ServerAddress:  clientConInfo.Server,
-                                        Type:           clientConInfo.Type,
-                                    }, clientConInfo.Marked)
+                                        ClientIP:       clientData.Client,
+                                        ServerAddress:  clientData.Server,
+                                        Type:           clientData.Type,
+                                    }, clientData.Marked)
 
         if newClientErr != nil {
             e                   =   newClientErr
@@ -650,8 +651,8 @@ func (this *Server) shutdown() (*types.Throw) {
         e := this.onUpDownCommands[downCmdLoop].Beta()
 
         if e != nil {
-            this.logger.Errorf("The last `UpDown` command throws an error: %s",
-                e)
+            this.logger.Errorf("The last `UpDown` command " +
+                "throws an error: %s", e)
         }
     }
 

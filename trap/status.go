@@ -129,7 +129,8 @@ func (this *Status) authUser(ip net.IP,
     account, accountErr         :=  this.accounts.Get(pass)
 
     if accountErr != nil {
-        this.server.AddClient(types.ConvertIP(ip), server.ClientConInfo{
+        this.server.AddClient(server.ClientInfo{
+            Client:             types.ConvertIP(ip),
             Server:             types.IPAddress{
                                     IP:             types.IP{},
                                     Port:           this.port,
@@ -197,10 +198,9 @@ func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
         GetClient:          func(addr types.IP) (*client.Client, *types.Throw) {
                                 return this.server.Client(addr)
                             },
-        AddClient:          func(addr types.IP,
-                                cCon server.ClientConInfo) (*client.Client,
+        AddClient:          func(cCon server.ClientInfo) (*client.Client,
                                 *types.Throw) {
-                                return this.server.AddClient(addr, cCon)
+                                return this.server.AddClient(cCon)
                             },
         DelClient:          func(addr types.IP) (*types.Throw) {
                                 return this.server.RemoveClient(addr)

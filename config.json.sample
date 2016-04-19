@@ -106,11 +106,13 @@
      * Synchronizing mark and mark out commands
      *
      */
+    "synchronize_interface": "0.0.0.0",
     "synchronize_port": 8191,
-    "synchronize_passphrase":
-        "asdjiwu9fp,puMU&)#Y({#$NEU&$({NWF&$(WY(GN$Y(N&)N]839[n96y(BP#7b39p",
+    "synchronize_certificate": "",
+    "synchronize_certificate_key": "",
+    "synchronize_passphrase": "asdjiwu9fp,puMU&)#Y({#$NEU&$({NWF",
     "synchronize_with": {
-        "server1:8192": "IMmui3-mUM80fum*m*YN{f8wn8s80",
-        "server2:8192": "IMmui3-mUM80fum*m*YN{f8wn8s80"
+        "192.168.1.1:8191": "IMmui3-mUM80fum*m*YN{f8wn8s80",
+        "192.168.1.2:8191": "0nyt68s8N79y3r&_&n03GF44gt4wd"
     }
 }

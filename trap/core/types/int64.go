@@ -23,6 +23,7 @@ package types
 
 import (
     "strconv"
+    "encoding/binary"
 )
 
 type Int64 int64
@@ -81,6 +82,30 @@ func (i Int64) UInt64() (UInt64) {
     }
 
     return UInt64(i)
+}
+
+func (i Int64) Serialize() ([]byte, *Throw) {
+    buf := make([]byte, 10)
+
+    binary.PutVarint(buf, i.Int64())
+
+    return buf, nil
+}
+
+func (i *Int64) Unserialize(text []byte) (*Throw) {
+    if len(text) != 10 {
+        return ErrTypesUnserializeInvalidDataLength.Throw(10)
+    }
+
+    num, n := binary.Varint(text)
+
+    if n <= 0 {
+        return ErrTypesUnserializeInvalidResult.Throw()
+    }
+
+    *i = Int64(num)
+
+    return nil
 }
 
 type Int64Slice []Int64

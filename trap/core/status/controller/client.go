@@ -35,7 +35,7 @@ type Client struct {
     SessionedJSON
 
     GetClient   func(addr types.IP) (*client.Client, *types.Throw)
-    AddClient   func(addr types.IP, cCon server.ClientConInfo) (*client.Client, *types.Throw)
+    AddClient   func(cCon server.ClientInfo) (*client.Client, *types.Throw)
     DelClient   func(addr types.IP) (*types.Throw)
 }
 
@@ -110,7 +110,7 @@ func (c *Client) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Client) Post(w http.ResponseWriter, r *http.Request) {
-    var clientConField              server.ClientConInfo
+    var clientConField              server.ClientInfo
 
     clientIP, clientIPErr           :=  types.ConvertIPFromString(
                                             types.String(
@@ -138,7 +138,9 @@ func (c *Client) Post(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    clientInfo, clientErr           :=  c.AddClient(clientIP, clientConField)
+    clientConField.Client           =   clientIP
+
+    clientInfo, clientErr           :=  c.AddClient(clientConField)
 
     if clientErr != nil {
         code                        :=  500

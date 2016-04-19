@@ -161,3 +161,18 @@ func TestInt64ToUInt64(t *testing.T) {
             minInt64, UInt64(0), minInt64.UInt64())
     }
 }
+
+func TestInt64SerializeUnserialize(t *testing.T) {
+    maxInt64        :=  Int64(MAX_INT64)
+
+    n, _            :=  maxInt64.Serialize()
+
+    num             :=  Int64(0)
+
+    num.Unserialize(n)
+
+    if maxInt64 != num {
+        t.Errorf("Int64.Serialize() or  Int64.Serialize() is failed. " +
+            "Excepting result to be '%d', got '%d'", maxInt64, num)
+    }
+}

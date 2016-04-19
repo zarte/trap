@@ -23,6 +23,7 @@ package types
 
 import (
     "strconv"
+    "encoding/binary"
 )
 
 type UInt16 uint16
@@ -57,4 +58,22 @@ func (i UInt16) UInt32() (UInt32) {
 
 func (i UInt16) UInt64() (UInt64) {
     return UInt64(i)
+}
+
+func (i UInt16) Serialize() ([]byte, *Throw) {
+    uint16Byte :=  make([]byte, 2)
+
+    binary.LittleEndian.PutUint16(uint16Byte, uint16(i))
+
+    return uint16Byte, nil
+}
+
+func (i *UInt16) Unserialize(data []byte) (*Throw) {
+    if len(data) != 2 {
+        return ErrTypesUnserializeInvalidDataLength.Throw(2)
+    }
+
+    *i = UInt16(binary.LittleEndian.Uint16(data[:]))
+
+    return nil
 }
