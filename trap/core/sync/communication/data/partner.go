@@ -22,53 +22,53 @@
 package data
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Partner struct {
-    Base
+	Base
 
-    Removed             types.IPAddresses
-    Added               types.IPAddresses
+	Removed types.IPAddresses
+	Added   types.IPAddresses
 }
 
-func (d *Partner) Parse(msg [][]byte) (*types.Throw) {
-    verifyErr           :=  d.Verify(msg, 2)
+func (d *Partner) Parse(msg [][]byte) *types.Throw {
+	verifyErr := d.Verify(msg, 2)
 
-    if verifyErr != nil {
-        return verifyErr
-    }
+	if verifyErr != nil {
+		return verifyErr
+	}
 
-    removedPartnerErr   :=  d.Removed.Unserialize(msg[1])
+	removedPartnerErr := d.Removed.Unserialize(msg[0])
 
-    if removedPartnerErr != nil {
-        return removedPartnerErr
-    }
+	if removedPartnerErr != nil {
+		return removedPartnerErr
+	}
 
-    addedPartnerErr     :=  d.Added.Unserialize(msg[1])
+	addedPartnerErr := d.Added.Unserialize(msg[1])
 
-    if addedPartnerErr != nil {
-        return addedPartnerErr
-    }
+	if addedPartnerErr != nil {
+		return addedPartnerErr
+	}
 
-    return nil
+	return nil
 }
 
 func (d *Partner) Build() ([][]byte, *types.Throw) {
-    removedBy, rmBErr   :=  d.Removed.Serialize()
+	removedBy, rmBErr := d.Removed.Serialize()
 
-    if rmBErr != nil {
-        return [][]byte{}, rmBErr
-    }
+	if rmBErr != nil {
+		return [][]byte{}, rmBErr
+	}
 
-    addedBy, adBErr     :=  d.Added.Serialize()
+	addedBy, adBErr := d.Added.Serialize()
 
-    if adBErr != nil {
-        return [][]byte{}, adBErr
-    }
+	if adBErr != nil {
+		return [][]byte{}, adBErr
+	}
 
-    return [][]byte{
-        removedBy,
-        addedBy,
-    }, nil
+	return [][]byte{
+		removedBy,
+		addedBy,
+	}, nil
 }

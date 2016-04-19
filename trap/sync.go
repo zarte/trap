@@ -43,7 +43,7 @@ type Sync struct {
 	passphrase        types.String
 	syncNodes         *sync.Nodes
 	syncServer        *communication.Server
-	activeClients     map[string]bool
+	activeClients     *sync.ActiveClientsTable
 	requestTimeout    time.Duration
 	connectionTimeout time.Duration
 	looseTimeout      time.Duration
@@ -61,7 +61,7 @@ func NewSync() *Sync {
 		passphrase:        "",
 		syncNodes:         nil,
 		syncServer:        nil,
-		activeClients:     map[string]bool{},
+		activeClients:     sync.NewActiveClientsTable(),
 		requestTimeout:    6 * time.Second,
 		connectionTimeout: 120 * time.Second,
 		looseTimeout:      120 * time.Second,
@@ -78,7 +78,7 @@ func (s *Sync) nodes() *sync.Nodes {
 	client := controller.Client{
 		Common: controller.Common{
 			GetPartners: func() types.IPAddresses {
-				return types.IPAddresses{}
+				return s.nodes().Partners()
 			},
 			IsAuthed: func(clientAddr net.Addr) bool {
 				return true
@@ -91,22 +91,15 @@ func (s *Sync) nodes() *sync.Nodes {
 			},
 		},
 		AddPartners: func(ips types.IPAddresses) *types.Throw {
-			return nil
+			return s.server().BroadcastNewPartners(ips)
 		},
 		RemovePartners: func(ips types.IPAddresses) *types.Throw {
-			return nil
+			return s.server().BroadcastDetachedPartners(ips)
 		},
 	}
-	handle := messager.Callbacks{}
-
-	handle.Register(messager.SYNC_SIGNAL_PARTNER_ADD, client.PartnersAdded)
-	handle.Register(
-		messager.SYNC_SIGNAL_PARTNER_REMOVE, client.PartnersRemoved)
-	handle.Register(messager.SYNC_SIGNAL_CLIENT_MARK, client.ClientsMarked)
-	handle.Register(messager.SYNC_SIGNAL_CLIENT_UNMARK, client.ClientsUnmarked)
 
 	s.syncNodes = sync.NewNodes(
-		handle,
+		client,
 		s.requestTimeout,
 		s.connectionTimeout,
 	)
@@ -114,28 +107,18 @@ func (s *Sync) nodes() *sync.Nodes {
 	return s.syncNodes
 }
 
-func (s *Sync) startServer() (*communication.Server, *types.Throw) {
+func (s *Sync) server() *communication.Server {
 	if s.syncServer != nil {
-		return s.syncServer, nil
+		return s.syncServer
 	}
 
 	contrl := controller.Server{
 		Common: controller.Common{
 			GetPartners: func() types.IPAddresses {
-				return types.IPAddresses{}
+				return s.nodes().Partners()
 			},
 			IsAuthed: func(clientAddr net.Addr) bool {
-				addrStr := clientAddr.String()
-
-				if _, ok := s.activeClients[addrStr]; !ok {
-					return false
-				}
-
-				if !s.activeClients[addrStr] {
-					return false
-				}
-
-				return true
+				return s.activeClients.HasAddr(clientAddr)
 			},
 			MarkClients: func(
 				ips []server.ClientInfo,
@@ -148,10 +131,8 @@ func (s *Sync) startServer() (*communication.Server, *types.Throw) {
 				return nil
 			},
 		},
-		OnAuthed: func(conn *conn.Conn) {
-			clientAddr := conn.RemoteAddr().String()
-
-			s.activeClients[clientAddr] = true
+		OnAuthed: func(connection *conn.Conn) {
+			s.activeClients.Add(connection)
 		},
 		OnAuthFailed: func(net.Addr) {
 			// Call when auth is failed
@@ -167,36 +148,23 @@ func (s *Sync) startServer() (*communication.Server, *types.Throw) {
 			return s.looseTimeout
 		},
 	}
+
 	handle := messager.Callbacks{}
 
 	handle.Register(messager.SYNC_SIGNAL_HELLO, contrl.Auth)
 	handle.Register(messager.SYNC_SIGNAL_HEATBEAT, contrl.Heatbeat)
 
 	comServer := &communication.Server{
-		OnConnected: func(conn *conn.Conn) {
-			clientAddr := conn.RemoteAddr().String()
-
-			s.activeClients[clientAddr] = false
-		},
+		OnConnected: func(conn *conn.Conn) {},
 		OnDisconnected: func(conn *conn.Conn) {
-			delete(s.activeClients, conn.RemoteAddr().String())
+			s.activeClients.Remove(conn)
 		},
-	}
-
-	listenErr := comServer.Listen(
-		s.listenOn,
-		handle,
-		s.tlsCert,
-		s.connectionTimeout,
-	)
-
-	if listenErr != nil {
-		return nil, listenErr
+		Responders: handle,
 	}
 
 	s.syncServer = comServer
 
-	return s.syncServer, nil
+	return s.syncServer
 }
 
 func (s *Sync) SetLogger(l *logger.Logger) {
@@ -257,7 +225,7 @@ func (s *Sync) cron() {
 		case <-s.cronDownChan:
 			return
 
-		case <-time.After(5 * time.Second):
+		case <-time.After(10 * time.Second):
 			s.tryConnectToAllNodes()
 		}
 	}
@@ -273,12 +241,49 @@ func (s *Sync) connectAllNodes() {
 			return nil
 		}
 
+		if s.nodes().IsPartner(node.Address()) {
+			return nil
+		}
+
 		connectErr := node.Connect(s.nodes().Partners(),
 			func(conn *conn.Conn) {
-				s.logger.Errorf("Node '%s' is connected",
+				defer func() {
+					newPartners := types.IPAddresses{}
+					connIP, connIPErr := types.ConvertIPAddress(conn.RemoteAddr())
+
+					if connIPErr != nil {
+						s.logger.Errorf("Can't convert IP of node '%s': %s",
+							node.Address().String(), connIPErr)
+
+						return
+					}
+
+					newPartners = append(newPartners, connIP)
+
+					s.server().BroadcastNewPartners(newPartners)
+				}()
+
+				s.logger.Debugf("Node '%s' is connected",
 					node.Address().String())
 			},
 			func(conn *conn.Conn, err *types.Throw) {
+				defer func() {
+					deletePartners := types.IPAddresses{}
+					connIP, connIPErr := types.ConvertIPAddress(
+						conn.RemoteAddr())
+
+					if connIPErr != nil {
+						s.logger.Errorf("Can't convert IP of node '%s': %s",
+							node.Address().String(), connIPErr)
+
+						return
+					}
+
+					deletePartners = append(deletePartners, connIP)
+
+					s.server().BroadcastDetachedPartners(deletePartners)
+				}()
+
 				if err != nil {
 					s.logger.Debugf("Node '%s' is dropped due to error: %s",
 						node.Address().String(), err)
@@ -341,7 +346,11 @@ func (s *Sync) AddNode(nodeAddr types.IPAddress,
 }
 
 func (s *Sync) Serv() *types.Throw {
-	_, sErr := s.startServer()
+	sErr := s.server().Listen(
+		s.listenOn,
+		s.tlsCert,
+		s.connectionTimeout,
+	)
 
 	if sErr != nil {
 		s.logger.Debugf("Can't serve due to error: %s", sErr)
@@ -363,13 +372,11 @@ func (s *Sync) Serv() *types.Throw {
 func (s *Sync) Down() *types.Throw {
 	s.downing = true
 
-	server, sErr := s.startServer()
+	sErr := s.server().Down()
 
 	if sErr != nil {
 		return sErr
 	}
-
-	server.Down()
 
 	s.disconnectAllNodes()
 

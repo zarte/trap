@@ -24,13 +24,13 @@ package controller
 import (
 	"github.com/raincious/trap/trap/core/sync/communication/data"
 	"github.com/raincious/trap/trap/core/sync/communication/messager"
-
 	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-	ErrControllerPartnerConflicted *types.Error = types.NewError("We already connect at least one " +
-		"of the partners of '%s'")
+	ErrControllerPartnerConflicted *types.Error = types.NewError(
+		"We already connect at least one " +
+			"of the partners of '%s'")
 )
 
 type Client struct {

@@ -22,7 +22,7 @@
 package sync
 
 import (
-	"github.com/raincious/trap/trap/core/sync/communication/messager"
+	"github.com/raincious/trap/trap/core/sync/communication/controller"
 	"github.com/raincious/trap/trap/core/types"
 
 	"time"
@@ -40,23 +40,23 @@ var (
 )
 
 const (
-	MAX_NODE_CONNECT_RETRY_FCT = 32
+	MAX_NODE_CONNECT_RETRY = 32
 )
 
 type Nodes struct {
-	nodeList map[types.String]*Node
-
-	responders messager.Callbacks
-
+	nodeList          map[types.String]*Node
+	nodeLock          types.Mutex
+	controller        controller.Client
 	requestTimeout    time.Duration
 	connectionTimeout time.Duration
 }
 
-func NewNodes(defaultResponders messager.Callbacks,
+func NewNodes(defaultResponders controller.Client,
 	requestTimeout time.Duration, connectionTimeout time.Duration) *Nodes {
 	return &Nodes{
-		responders:        defaultResponders,
+		controller:        defaultResponders,
 		nodeList:          map[types.String]*Node{},
+		nodeLock:          types.Mutex{},
 		requestTimeout:    requestTimeout,
 		connectionTimeout: connectionTimeout,
 	}
@@ -71,69 +71,96 @@ func (n *Nodes) has(nodeKey types.String) bool {
 }
 
 func (n *Nodes) Has(node types.IPAddress) bool {
-	if !n.has(node.String()) {
-		return false
-	}
+	var hasIt bool = false
 
-	return true
+	n.nodeLock.Exec(func() {
+		if !n.has(node.String()) {
+			return
+		}
+
+		hasIt = true
+	})
+
+	return hasIt
 }
 
 func (n *Nodes) Remove(node types.IPAddress) *types.Throw {
+	var err *types.Throw = nil
+
 	nodeKey := node.String()
 
-	if n.has(nodeKey) {
-		return ErrNodeNotExisted.Throw(nodeKey)
-	}
+	n.nodeLock.Exec(func() {
+		if n.has(nodeKey) {
+			err = ErrNodeNotExisted.Throw(nodeKey)
 
-	selectedNode := n.nodeList[nodeKey]
-
-	disErr := selectedNode.Disconnect()
-
-	if disErr != nil {
-		if disErr.Is(ErrNodeNotConnected) {
-			return nil
+			return
 		}
 
-		return disErr
-	}
+		selectedNode := n.nodeList[nodeKey]
 
-	delete(n.nodeList, nodeKey)
+		disErr := selectedNode.Disconnect()
 
-	return nil
+		if disErr != nil {
+			if disErr.Is(ErrNodeNotConnected) {
+				return
+			}
+
+			err = disErr
+
+			return
+		}
+
+		delete(n.nodeList, nodeKey)
+	})
+
+	return err
 }
 
 func (n *Nodes) Register(ipAddr types.IPAddress,
 	pass types.String) *types.Throw {
+	var err *types.Throw = nil
+
 	nodeKey := ipAddr.String()
 
-	if n.has(nodeKey) {
-		return ErrNodeAlreadyExisted.Throw(nodeKey)
-	}
+	n.nodeLock.Exec(func() {
+		if n.has(nodeKey) {
+			err = ErrNodeAlreadyExisted.Throw(nodeKey)
 
-	n.nodeList[nodeKey] = &Node{
-		addr:                  ipAddr,
-		password:              pass,
-		client:                nil,
-		callbacks:             n.responders,
-		requestTimeout:        n.requestTimeout,
-		connectionTimeout:     n.connectionTimeout,
-		connectRetryPeriod:    n.connectionTimeout,
-		maxConnectRetryPeriod: n.connectionTimeout * MAX_NODE_CONNECT_RETRY_FCT,
-		nextConnectAfter:      time.Time{},
-		connectionFailedCount: 0,
-		partners:              NodeMap{},
-		partnersLock:          types.Mutex{},
-	}
+			return
+		}
 
-	return nil
+		n.nodeList[nodeKey] = &Node{
+			addr:                  ipAddr,
+			password:              pass,
+			client:                nil,
+			controller:            &n.controller,
+			requestTimeout:        n.requestTimeout,
+			connectionTimeout:     n.connectionTimeout,
+			connectRetryPeriod:    n.connectionTimeout,
+			maxConnectRetryPeriod: n.connectionTimeout * MAX_NODE_CONNECT_RETRY,
+			nextConnectAfter:      time.Time{},
+			connectionFailedCount: 0,
+			partners:              NodeMap{},
+			partnersLock:          types.Mutex{},
+		}
+	})
+
+	return err
 }
 
 func (n *Nodes) scan(
 	scanner func(types.String, *Node) *types.Throw) *types.Throw {
 	var scanResult *types.Throw = nil
 	var err *types.Throw = nil
+	var nodes map[types.String]*Node = map[types.String]*Node{}
 
-	for key, node := range n.nodeList {
+	n.nodeLock.Exec(func() {
+		for key, node := range n.nodeList {
+			nodes[key] = node
+		}
+	})
+
+	for key, node := range nodes {
 		scanResult = scanner(key, node)
 
 		if scanResult == nil {

@@ -43,17 +43,19 @@ var (
 type Server struct {
 	Common
 
-	timeout        time.Duration
-	server         net.Listener
-	wait           sync.WaitGroup
-	callbacks      messager.Callbacks
+	timeout   time.Duration
+	server    net.Listener
+	wait      sync.WaitGroup
+	callbacks messager.Callbacks
+	sessions  *Sessions
+
+	Responders     messager.Callbacks
 	OnConnected    func(*conn.Conn)
 	OnDisconnected func(*conn.Conn)
-	sessions       *Sessions
 }
 
-func (s *Server) Listen(listenOn net.TCPAddr, responders messager.Callbacks,
-	cert tls.Certificate, timeout time.Duration) *types.Throw {
+func (s *Server) Listen(listenOn net.TCPAddr, cert tls.Certificate,
+	timeout time.Duration) *types.Throw {
 	if s.server != nil {
 		return ErrServerAlreadyUp.Throw(listenOn.String())
 	}
@@ -61,7 +63,7 @@ func (s *Server) Listen(listenOn net.TCPAddr, responders messager.Callbacks,
 	// Init variables
 	s.wait = sync.WaitGroup{}
 	s.timeout = timeout
-	s.sessions = NewSessions(responders, timeout, func() {
+	s.sessions = NewSessions(s.Responders, timeout, func() {
 		s.wait.Add(1)
 	}, func() {
 		s.wait.Done()
@@ -151,11 +153,9 @@ func (s *Server) serve() {
 	}
 }
 
-func (s *Server) Scan(excludedConns []*conn.Conn) *types.Throw {
-	return s.sessions.Scan(excludedConns,
-		func(key string, sess *Session) *types.Throw {
-			return nil
-		})
+func (s *Server) Scan(excludedConns []*conn.Conn,
+	callback func(string, *Session) *types.Throw) *types.Throw {
+	return s.sessions.Scan(excludedConns, callback)
 }
 
 func (s *Server) Down() *types.Throw {
@@ -170,4 +170,28 @@ func (s *Server) Down() *types.Throw {
 	}
 
 	return nil
+}
+
+func (s *Server) BroadcastNewPartners(ips types.IPAddresses) *types.Throw {
+	var err *types.Throw = nil
+
+	s.Scan([]*conn.Conn{}, func(key string, sess *Session) *types.Throw {
+		err = sess.AddPartners(ips)
+
+		return nil
+	})
+
+	return err
+}
+
+func (s *Server) BroadcastDetachedPartners(ips types.IPAddresses) *types.Throw {
+	var err *types.Throw = nil
+
+	s.Scan([]*conn.Conn{}, func(key string, sess *Session) *types.Throw {
+		err = sess.RemovePartners(ips)
+
+		return nil
+	})
+
+	return err
 }

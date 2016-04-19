@@ -32,9 +32,11 @@ import (
 )
 
 var (
-	ErrControllerInvalidData *types.Error = types.NewError("Failed to parse data sent by '%s': %s")
+	ErrControllerInvalidData *types.Error = types.NewError(
+		"Failed to parse data sent by '%s': %s")
 
-	ErrControllerServerClientNotLoggedIn *types.Error = types.NewError("Client '%s' is not logged in")
+	ErrControllerServerClientNotLoggedIn *types.Error = types.NewError(
+		"Client '%s' is not logged in")
 )
 
 type Common struct {

@@ -22,161 +22,175 @@
 package communication
 
 import (
-    "github.com/raincious/trap/trap/core/sync/communication/messager"
-    "github.com/raincious/trap/trap/core/sync/communication/conn"
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/sync/communication/conn"
+	"github.com/raincious/trap/trap/core/sync/communication/messager"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net"
+	"net"
+	"time"
 )
 
 type Sessions struct {
-    defaultResponders       messager.Callbacks
+	defaultResponders messager.Callbacks
 
-    reqTimeout              time.Duration
-    sessions                map[string]*Session
-    sessionLock             types.Mutex
+	reqTimeout  time.Duration
+	sessions    map[string]*Session
+	sessionLock types.Mutex
 
-    onRegister              func()
-    onUnregister            func()
+	onRegister   func()
+	onUnregister func()
 }
 
 func NewSessions(defaultResponders messager.Callbacks, reqTimeout time.Duration,
-    onRegister, onUnregister func()) (*Sessions) {
-    return &Sessions{
-        defaultResponders:  defaultResponders,
+	onRegister, onUnregister func()) *Sessions {
+	return &Sessions{
+		defaultResponders: defaultResponders,
 
-        reqTimeout:         reqTimeout,
-        sessions:           map[string]*Session{},
-        sessionLock:        types.Mutex{},
+		reqTimeout:  reqTimeout,
+		sessions:    map[string]*Session{},
+		sessionLock: types.Mutex{},
 
-        onRegister:         onRegister,
-        onUnregister:       onUnregister,
-    }
+		onRegister:   onRegister,
+		onUnregister: onUnregister,
+	}
 }
 
-func (s *Sessions) Has(conn net.Conn) (bool) {
-    var hasIt bool      =   false
+func (s *Sessions) Has(conn net.Conn) bool {
+	var hasIt bool = false
 
-    s.sessionLock.Exec(func() {
-        hasIt           =   s.hasByKey(conn.RemoteAddr().String())
-    })
+	s.sessionLock.Exec(func() {
+		hasIt = s.hasByKey(conn.RemoteAddr().String())
+	})
 
-    return hasIt
+	return hasIt
 }
 
-func (s *Sessions) hasByKey(key string) (bool) {
-    if _, ok := s.sessions[key]; !ok {
-        return false
-    }
+func (s *Sessions) hasByKey(key string) bool {
+	if _, ok := s.sessions[key]; !ok {
+		return false
+	}
 
-    return true
+	return true
 }
 
 func (s *Sessions) Register(connection *conn.Conn) (*Session, *types.Throw) {
-    var er *types.Throw =   nil
+	var er *types.Throw = nil
 
-    session             :=  &Session{
-        conn:               connection,
-        messager:           messager.NewMessager(s.defaultResponders),
-        requestTimeout:     s.reqTimeout,
-    }
+	session := &Session{
+		conn:           connection,
+		messager:       messager.NewMessager(s.defaultResponders),
+		requestTimeout: s.reqTimeout,
+	}
 
-    regErr              :=  session.registering()
+	regErr := session.registering()
 
-    if regErr != nil {
-        return nil, regErr
-    }
+	if regErr != nil {
+		return nil, regErr
+	}
 
-    add                 :=  connection.RemoteAddr().String()
+	add := connection.RemoteAddr().String()
 
-    s.sessionLock.Exec(func() {
-        if s.hasByKey(add) {
-            er          =   ErrSessionAlreadyRegistered.Throw(add)
+	s.sessionLock.Exec(func() {
+		if s.hasByKey(add) {
+			er = ErrSessionAlreadyRegistered.Throw(add)
 
-            return
-        }
+			return
+		}
 
-        s.sessions[add] =   session
+		s.sessions[add] = session
 
-        s.onRegister()
-    })
+		s.onRegister()
+	})
 
-    if er != nil {
-        return nil, er
-    }
+	if er != nil {
+		return nil, er
+	}
 
-    return session, nil
+	return session, nil
 }
 
-func (s *Sessions) Unregister(connection *conn.Conn) (*types.Throw) {
-    var er *types.Throw =   nil
+func (s *Sessions) Unregister(connection *conn.Conn) *types.Throw {
+	var er *types.Throw = nil
 
-    s.sessionLock.Exec(func() {
-        addr            :=  connection.RemoteAddr().String()
+	s.sessionLock.Exec(func() {
+		addr := connection.RemoteAddr().String()
 
-        if !s.hasByKey(addr) {
-            er          =   ErrSessionNotRegistered.Throw(addr)
+		if !s.hasByKey(addr) {
+			er = ErrSessionNotRegistered.Throw(addr)
 
-            return
-        }
+			return
+		}
 
-        s.sessions[addr].unregistering()
+		s.sessions[addr].unregistering()
 
-        delete(s.sessions, addr)
+		delete(s.sessions, addr)
 
-        s.onUnregister()
-    })
+		s.onUnregister()
+	})
 
-    return er
+	return er
 }
 
 func (s *Sessions) Scan(excludedConns []*conn.Conn,
-    callback func(string, *Session) (*types.Throw)) (*types.Throw) {
-    var err *types.Throw = nil
-    var excludes []string = []string{}
+	callback func(string, *Session) *types.Throw) *types.Throw {
+	var err *types.Throw = nil
+	var excludes []string = []string{}
+	var sMinor map[string]*Session = map[string]*Session{}
 
-    for _, conn := range excludedConns {
-        excludes        =   append(excludes, conn.RemoteAddr().String())
-    }
+	for _, conn := range excludedConns {
+		excludes = append(excludes, conn.RemoteAddr().String())
+	}
 
-    for sessKey, session := range s.sessions {
-        skipThis        :=  false
+	s.sessionLock.Exec(func() {
+		for k, v := range s.sessions {
+			sMinor[k] = v
+		}
+	})
 
-        for _, excludedKey := range excludes {
-            if excludedKey != sessKey {
-                continue
-            }
+	for sessKey, session := range sMinor {
+		skipThis := false
 
-            skipThis    =   true
-        }
+		for _, excludedKey := range excludes {
+			if excludedKey != sessKey {
+				continue
+			}
 
-        if skipThis {
-            continue
-        }
+			skipThis = true
+		}
 
-        err             =   callback(sessKey, session)
+		if skipThis {
+			continue
+		}
 
-        if err != nil {
-            return err
-        }
-    }
+		err = callback(sessKey, session)
 
-    return nil
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }
 
-func (s *Sessions) Clear() (*types.Throw) {
-    var e *types.Throw  =   nil
+func (s *Sessions) Clear() *types.Throw {
+	var e *types.Throw = nil
+	var sMinor map[string]*Session = map[string]*Session{}
 
-    for _, sess := range s.sessions {
-        delErr          :=  s.Unregister(sess.conn)
+	s.sessionLock.Exec(func() {
+		for k, v := range s.sessions {
+			sMinor[k] = v
+		}
+	})
 
-        if delErr == nil {
-            continue
-        }
+	for _, sess := range sMinor {
+		delErr := s.Unregister(sess.conn)
 
-        e               =   delErr
-    }
+		if delErr == nil {
+			continue
+		}
 
-    return e
+		e = delErr
+	}
+
+	return e
 }
