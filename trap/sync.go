@@ -259,10 +259,10 @@ func (s *Sync) connectAllNodes() {
 					node.Address().String())
 			},
 			func(c *conn.Conn, ips types.IPAddresses) {
-				s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
-
 				s.logger.Debugf("Logged in to node '%s'",
 					node.Address().String())
+
+				s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
 			},
 			func(rmPartners types.IPAddresses, c *conn.Conn, err *types.Throw) {
 				if err != nil {

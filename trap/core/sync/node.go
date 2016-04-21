@@ -84,9 +84,7 @@ func (n *Node) Client() *communication.Client {
 
 			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
 				for _, partner := range ips {
-					nAddr := node.Address()
-
-					if !nAddr.IsEqual(&partner) {
+					if !node.addr.IsEqual(&partner) {
 						continue
 					}
 
@@ -120,9 +118,7 @@ func (n *Node) Client() *communication.Client {
 
 			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
 				for _, partner := range ips {
-					nAddr := node.Address()
-
-					if !nAddr.IsEqual(&partner) {
+					if !node.addr.IsEqual(&partner) {
 						continue
 					}
 
@@ -206,7 +202,8 @@ func (n *Node) Connect(
 	connectedPartners types.IPAddresses,
 	onConnected func(*conn.Conn),
 	onAuthed func(*conn.Conn, types.IPAddresses),
-	onDisconnected func(types.IPAddresses, *conn.Conn, *types.Throw)) *types.Throw {
+	onDisconnected func(types.IPAddresses, *conn.Conn, *types.Throw),
+) *types.Throw {
 	currentTime := time.Now()
 
 	if n.IsConnected() {
@@ -229,7 +226,7 @@ func (n *Node) Connect(
 			oldPartners := types.IPAddresses{}
 
 			n.partnersLock.Exec(func() {
-				for _, pVal := range oldPartners {
+				for _, pVal := range n.partners {
 					oldPartners = append(oldPartners, pVal)
 				}
 
@@ -262,9 +259,7 @@ func (n *Node) Connect(
 
 			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
 				for _, partner := range ips {
-					nAddr := node.Address()
-
-					if !nAddr.IsEqual(&partner) {
+					if !node.addr.IsEqual(&partner) {
 						continue
 					}
 
