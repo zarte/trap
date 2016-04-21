@@ -27,6 +27,7 @@ import (
 	"github.com/raincious/trap/trap/core/types"
 
 	"net"
+	"sync"
 	"time"
 )
 
@@ -79,7 +80,10 @@ func (s *Sessions) Register(connection *conn.Conn) (*Session, *types.Throw) {
 	session := &Session{
 		conn:           connection,
 		messager:       messager.NewMessager(s.defaultResponders),
+		wait:           sync.WaitGroup{},
 		requestTimeout: s.reqTimeout,
+		enabled:        false,
+		enabledLock:    types.Mutex{},
 	}
 
 	regErr := session.registering()
@@ -134,12 +138,7 @@ func (s *Sessions) Unregister(connection *conn.Conn) *types.Throw {
 func (s *Sessions) Scan(excludedConns []*conn.Conn,
 	callback func(string, *Session) *types.Throw) *types.Throw {
 	var err *types.Throw = nil
-	var excludes []string = []string{}
 	var sMinor map[string]*Session = map[string]*Session{}
-
-	for _, conn := range excludedConns {
-		excludes = append(excludes, conn.RemoteAddr().String())
-	}
 
 	s.sessionLock.Exec(func() {
 		for k, v := range s.sessions {
@@ -150,8 +149,8 @@ func (s *Sessions) Scan(excludedConns []*conn.Conn,
 	for sessKey, session := range sMinor {
 		skipThis := false
 
-		for _, excludedKey := range excludes {
-			if excludedKey != sessKey {
+		for _, excluded := range excludedConns {
+			if excluded != session.conn {
 				continue
 			}
 
@@ -162,10 +161,71 @@ func (s *Sessions) Scan(excludedConns []*conn.Conn,
 			continue
 		}
 
+		if !session.Enabled() {
+			continue
+		}
+
 		err = callback(sessKey, session)
 
 		if err != nil {
 			return err
+		}
+	}
+
+	return err
+}
+
+func (s *Sessions) Broadcast(excludedConns []*conn.Conn,
+	callback func(string, *Session) *types.Throw, retry uint16) *types.Throw {
+	var err *types.Throw = nil
+	var sendList []sessionBroadcastRetryTable = nil
+
+	wait := sync.WaitGroup{}
+
+	s.Scan(excludedConns, func(key string, sess *Session) *types.Throw {
+		sendList = append(sendList, sessionBroadcastRetryTable{
+			Key:     key,
+			Session: sess,
+			Error:   nil,
+			Retried: retry,
+		})
+
+		return nil
+	})
+
+	for {
+		remain := len(sendList)
+
+		if remain <= 0 {
+			break
+		}
+
+		wait.Add(remain)
+
+		for index := remain - 1; index >= 0; index-- {
+			go func(i int) {
+				defer wait.Done()
+
+				sendList[i].Error = callback(sendList[i].Key,
+					sendList[i].Session)
+
+			}(index)
+		}
+
+		wait.Wait()
+
+		for index := remain - 1; index >= 0; index-- {
+			if sendList[index].Error != nil {
+				if sendList[index].Retried > 0 {
+					sendList[index].Retried--
+
+					continue
+				}
+
+				err = sendList[index].Error
+			}
+
+			sendList = append(sendList[:index], sendList[index+1:]...)
 		}
 	}
 

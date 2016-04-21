@@ -77,6 +77,7 @@ func (s *Sync) nodes() *sync.Nodes {
 
 	client := controller.Client{
 		Common: controller.Common{
+			Logger: s.logger.NewContext("Client"),
 			GetPartners: func() types.IPAddresses {
 				return s.nodes().Partners()
 			},
@@ -90,11 +91,15 @@ func (s *Sync) nodes() *sync.Nodes {
 				return nil
 			},
 		},
-		AddPartners: func(ips types.IPAddresses) *types.Throw {
-			return s.server().BroadcastNewPartners(ips)
+		AddPartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
+			s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
+
+			return nil
 		},
-		RemovePartners: func(ips types.IPAddresses) *types.Throw {
-			return s.server().BroadcastDetachedPartners(ips)
+		RemovePartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
+			s.server().BroadcastDetachedPartners([]*conn.Conn{}, ips)
+
+			return nil
 		},
 	}
 
@@ -114,6 +119,7 @@ func (s *Sync) server() *communication.Server {
 
 	contrl := controller.Server{
 		Common: controller.Common{
+			Logger: s.logger.NewContext("Server"),
 			GetPartners: func() types.IPAddresses {
 				return s.nodes().Partners()
 			},
@@ -245,45 +251,20 @@ func (s *Sync) connectAllNodes() {
 			return nil
 		}
 
+		s.logger.Debugf("Connecting to node '%s'", node.Address().String())
+
 		connectErr := node.Connect(s.nodes().Partners(),
-			func(conn *conn.Conn) {
-				defer func() {
-					newPartners := types.IPAddresses{}
-					connIP, connIPErr := types.ConvertIPAddress(conn.RemoteAddr())
-
-					if connIPErr != nil {
-						s.logger.Errorf("Can't convert IP of node '%s': %s",
-							node.Address().String(), connIPErr)
-
-						return
-					}
-
-					newPartners = append(newPartners, connIP)
-
-					s.server().BroadcastNewPartners(newPartners)
-				}()
-
+			func(c *conn.Conn) {
 				s.logger.Debugf("Node '%s' is connected",
 					node.Address().String())
 			},
-			func(conn *conn.Conn, err *types.Throw) {
-				defer func() {
-					deletePartners := types.IPAddresses{}
-					connIP, connIPErr := types.ConvertIPAddress(
-						conn.RemoteAddr())
+			func(c *conn.Conn, ips types.IPAddresses) {
+				s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
 
-					if connIPErr != nil {
-						s.logger.Errorf("Can't convert IP of node '%s': %s",
-							node.Address().String(), connIPErr)
-
-						return
-					}
-
-					deletePartners = append(deletePartners, connIP)
-
-					s.server().BroadcastDetachedPartners(deletePartners)
-				}()
-
+				s.logger.Debugf("Logged in to node '%s'",
+					node.Address().String())
+			},
+			func(rmPartners types.IPAddresses, c *conn.Conn, err *types.Throw) {
 				if err != nil {
 					s.logger.Debugf("Node '%s' is dropped due to error: %s",
 						node.Address().String(), err)
@@ -293,6 +274,9 @@ func (s *Sync) connectAllNodes() {
 
 				s.logger.Debugf("Node '%s' is disconnected",
 					node.Address().String())
+
+				s.server().BroadcastDetachedPartners([]*conn.Conn{},
+					rmPartners)
 			})
 
 		if connectErr != nil {
@@ -309,6 +293,8 @@ func (s *Sync) disconnectAllNodes() {
 		if !node.IsConnected() {
 			return nil
 		}
+
+		s.logger.Debugf("Disconnecting from node '%s'", node.Address().String())
 
 		dconnectErr := node.Disconnect()
 
@@ -346,6 +332,8 @@ func (s *Sync) AddNode(nodeAddr types.IPAddress,
 }
 
 func (s *Sync) Serv() *types.Throw {
+	s.logger.Debugf("Booting up")
+
 	sErr := s.server().Listen(
 		s.listenOn,
 		s.tlsCert,
@@ -358,7 +346,7 @@ func (s *Sync) Serv() *types.Throw {
 		return sErr
 	}
 
-	s.logger.Debugf("`Sync` Server is serving at '%s'", s.listenOn.String())
+	s.logger.Infof("`Sync` Server is serving at '%s'", s.listenOn.String())
 
 	s.downing = false
 
@@ -366,11 +354,19 @@ func (s *Sync) Serv() *types.Throw {
 
 	go s.cron()
 
+	s.logger.Debugf("`Sync` is up")
+
 	return nil
 }
 
 func (s *Sync) Down() *types.Throw {
 	s.downing = true
+
+	s.logger.Debugf("Disconnect from nodes")
+
+	s.disconnectAllNodes()
+
+	s.logger.Debugf("Shutting down server")
 
 	sErr := s.server().Down()
 
@@ -378,7 +374,7 @@ func (s *Sync) Down() *types.Throw {
 		return sErr
 	}
 
-	s.disconnectAllNodes()
+	s.logger.Debugf("`Sync` is down")
 
 	return nil
 }

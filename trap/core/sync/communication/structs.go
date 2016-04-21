@@ -19,42 +19,13 @@
  * limitations under the License.
  */
 
-package data
+package communication
 
-import (
-	"github.com/raincious/trap/trap/core/types"
-)
+import "github.com/raincious/trap/trap/core/types"
 
-type HelloConflict struct {
-	Base
-
-	Confilct types.IPAddresses
-}
-
-func (d *HelloConflict) Parse(msg [][]byte) *types.Throw {
-	verifyErr := d.Verify(msg, 1)
-
-	if verifyErr != nil {
-		return verifyErr
-	}
-
-	connectedErr := d.Confilct.Unserialize(msg[0])
-
-	if connectedErr != nil {
-		return connectedErr
-	}
-
-	return nil
-}
-
-func (d *HelloConflict) Build() ([][]byte, *types.Throw) {
-	ipByte, cIPErr := d.Confilct.Serialize()
-
-	if cIPErr != nil {
-		return [][]byte{}, cIPErr
-	}
-
-	return [][]byte{
-		ipByte,
-	}, nil
+type sessionBroadcastRetryTable struct {
+	Key     string
+	Session *Session
+	Retried uint16
+	Error   *types.Throw
 }

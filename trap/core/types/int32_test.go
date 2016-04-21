@@ -31,14 +31,14 @@ func TestInt32ToString(t *testing.T) {
 	maxInt32 := Int32(MAX_INT32)
 
 	if maxInt32.String().String() != strconv.FormatInt(int64(MAX_INT32), 10) {
-		t.Error("Int32.String() failed convert number '%d' to string", maxInt32.Int32())
+		t.Errorf("Int32.String() failed convert number '%d' to string", maxInt32.Int32())
 	}
 
 	// Try min
 	minInt32 := Int32(MIN_INT32)
 
 	if minInt32.String().String() != strconv.FormatInt(int64(MIN_INT32), 10) {
-		t.Error("Int32.String() failed convert number '%d' to string", minInt32.Int32())
+		t.Errorf("Int32.String() failed convert number '%d' to string", minInt32.Int32())
 	}
 }
 

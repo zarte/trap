@@ -35,12 +35,20 @@ var (
 	ErrNodeNotConnected *types.Error = types.NewError(
 		"The node '%s' is not been connected")
 
+	ErrNodeAlreadyConnected *types.Error = types.NewError(
+		"The node '%s' is already been connected")
+
+	ErrNodeIsMutexed *types.Error = types.NewError(
+		"The node '%s' has been mutexed by another active node")
+
 	ErrNodeRetryAfterTime *types.Error = types.NewError(
 		"The node '%s' can only be connected after '%s'")
 )
 
 type Node struct {
+	nodes                 *Nodes
 	addr                  types.IPAddress
+	addrStr               types.String
 	password              types.String
 	client                *communication.Client
 	controller            *controller.Client
@@ -52,6 +60,7 @@ type Node struct {
 	connectionFailedCount uint64
 	partners              NodeMap
 	partnersLock          types.Mutex
+	mutexWith             map[types.String]*Node
 }
 
 func (n *Node) Client() *communication.Client {
@@ -59,25 +68,71 @@ func (n *Node) Client() *communication.Client {
 		return n.client
 	}
 
+	commonController := n.controller.Common
+
+	commonController.Logger = n.controller.Common.Logger.NewContext(
+		n.addr.String())
+
 	clientController := controller.Client{
-		Common: n.controller.Common,
-		AddPartners: func(ips types.IPAddresses) *types.Throw {
+		Common: commonController,
+		AddPartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
 			n.partnersLock.Exec(func() {
 				for _, partner := range ips {
 					n.partners[partner.String()] = partner
 				}
 			})
 
-			return n.controller.AddPartners(ips)
+			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
+				for _, partner := range ips {
+					nAddr := node.Address()
+
+					if !nAddr.IsEqual(&partner) {
+						continue
+					}
+
+					n.addMutexWith(node)
+				}
+
+				return nil
+			})
+
+			return n.controller.AddPartners(c, ips)
 		},
-		RemovePartners: func(ips types.IPAddresses) *types.Throw {
+		ConfilctedPartners: func(confilctedPartners types.IPAddresses) {
+			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
+				for _, partner := range confilctedPartners {
+					if !node.IsPartner(partner) {
+						continue
+					}
+
+					node.addMutexWith(n)
+				}
+
+				return nil
+			})
+		},
+		RemovePartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
 			n.partnersLock.Exec(func() {
 				for _, partner := range ips {
 					delete(n.partners, partner.String())
 				}
 			})
 
-			return n.controller.RemovePartners(ips)
+			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
+				for _, partner := range ips {
+					nAddr := node.Address()
+
+					if !nAddr.IsEqual(&partner) {
+						continue
+					}
+
+					n.removeMutexWith(node)
+				}
+
+				return nil
+			})
+
+			return n.controller.RemovePartners(c, ips)
 		},
 	}
 
@@ -101,6 +156,40 @@ func (n *Node) Client() *communication.Client {
 	return n.client
 }
 
+func (n *Node) addMutexWith(node *Node) {
+	n.partnersLock.Exec(func() {
+		n.mutexWith[node.addrStr] = node
+	})
+}
+
+func (n *Node) removeMutexWith(node *Node) {
+	n.partnersLock.Exec(func() {
+		delete(n.mutexWith, node.addrStr)
+	})
+}
+
+func (n *Node) isMutexWith(target *Node) bool {
+	var hasIt bool = false
+
+	if !n.IsConnected() {
+		return false
+	}
+
+	n.partnersLock.Exec(func() {
+		if _, ok := n.mutexWith[target.addrStr]; !ok {
+			return
+		}
+
+		if n.mutexWith[target.addrStr] != target {
+			return
+		}
+
+		hasIt = true
+	})
+
+	return hasIt
+}
+
 func (n *Node) addConnectAfterWait(nowTime time.Time) {
 	retryPeriod := n.connectRetryPeriod * time.Duration(n.connectionFailedCount)
 
@@ -116,8 +205,17 @@ func (n *Node) addConnectAfterWait(nowTime time.Time) {
 func (n *Node) Connect(
 	connectedPartners types.IPAddresses,
 	onConnected func(*conn.Conn),
-	onDisconnected func(*conn.Conn, *types.Throw)) *types.Throw {
+	onAuthed func(*conn.Conn, types.IPAddresses),
+	onDisconnected func(types.IPAddresses, *conn.Conn, *types.Throw)) *types.Throw {
 	currentTime := time.Now()
+
+	if n.IsConnected() {
+		return ErrNodeAlreadyConnected.Throw(n.addr.String())
+	}
+
+	if n.IsMutexed() {
+		return ErrNodeIsMutexed.Throw(n.addr.String())
+	}
 
 	if !currentTime.After(n.nextConnectAfter) {
 		return ErrNodeRetryAfterTime.Throw(n.addr.String(), n.nextConnectAfter)
@@ -125,22 +223,21 @@ func (n *Node) Connect(
 
 	e := n.Client().Connect(n.addr,
 		func(conn *conn.Conn) {
-			ipRemote, ipErr := types.ConvertIPAddress(conn.RemoteAddr())
-
-			if ipErr == nil {
-				n.partnersLock.Exec(func() {
-					n.partners[ipRemote.String()] = ipRemote
-				})
-			}
-
 			onConnected(conn)
 		},
 		func(conn *conn.Conn, err *types.Throw) {
+			oldPartners := types.IPAddresses{}
+
 			n.partnersLock.Exec(func() {
+				for _, pVal := range oldPartners {
+					oldPartners = append(oldPartners, pVal)
+				}
+
 				n.partners = NodeMap{}
+				n.mutexWith = map[types.String]*Node{}
 			})
 
-			onDisconnected(conn, err)
+			onDisconnected(oldPartners, conn, err)
 		})
 
 	if e != nil {
@@ -149,19 +246,58 @@ func (n *Node) Connect(
 		return e
 	}
 
-	partners, authErr := n.Client().Auth(n.password, connectedPartners)
+	partners, authErr := n.Client().Auth(
+		n.password,
+		connectedPartners,
+		func(conn *conn.Conn, ips types.IPAddresses) {
+			newPartnerIPs := ips
+
+			n.partnersLock.Exec(func() {
+				for _, partner := range ips {
+					n.partners[partner.String()] = partner
+				}
+
+				n.partners[n.addrStr] = n.addr
+			})
+
+			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
+				for _, partner := range ips {
+					nAddr := node.Address()
+
+					if !nAddr.IsEqual(&partner) {
+						continue
+					}
+
+					n.addMutexWith(node)
+				}
+
+				return nil
+			})
+
+			newPartnerIPs = append(newPartnerIPs, n.addr)
+
+			onAuthed(conn, newPartnerIPs)
+		})
 
 	if authErr != nil {
+		if authErr.Is(communication.ErrSessionAuthFailedConflicted) {
+			n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
+				for _, partner := range partners {
+					if !node.IsPartner(partner) {
+						continue
+					}
+
+					node.addMutexWith(n)
+				}
+
+				return nil
+			})
+		}
+
 		n.addConnectAfterWait(currentTime)
 
 		return authErr
 	}
-
-	n.partnersLock.Exec(func() {
-		for _, partner := range partners {
-			n.partners[partner.String()] = partner
-		}
-	})
 
 	n.connectionFailedCount = 0
 
@@ -189,7 +325,27 @@ func (n *Node) IsReconnectable() bool {
 		return false
 	}
 
+	if n.IsMutexed() {
+		return false
+	}
+
 	return true
+}
+
+func (n *Node) IsMutexed() bool {
+	var isMutexed bool = false
+
+	n.nodes.Scan(func(key types.String, node *Node) *types.Throw {
+		if !node.isMutexWith(n) {
+			return nil
+		}
+
+		isMutexed = true
+
+		return ErrNodeScanBreakScan.Throw()
+	})
+
+	return isMutexed
 }
 
 func (n *Node) Address() types.IPAddress {

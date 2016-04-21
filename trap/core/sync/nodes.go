@@ -130,7 +130,9 @@ func (n *Nodes) Register(ipAddr types.IPAddress,
 		}
 
 		n.nodeList[nodeKey] = &Node{
+			nodes:                 n,
 			addr:                  ipAddr,
+			addrStr:               ipAddr.String(),
 			password:              pass,
 			client:                nil,
 			controller:            &n.controller,
@@ -142,6 +144,7 @@ func (n *Nodes) Register(ipAddr types.IPAddress,
 			connectionFailedCount: 0,
 			partners:              NodeMap{},
 			partnersLock:          types.Mutex{},
+			mutexWith:             map[types.String]*Node{},
 		}
 	})
 

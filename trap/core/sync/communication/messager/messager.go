@@ -93,21 +93,16 @@ func NewMessager(defaultResponders Callbacks) *Messager {
 		messages: slots{
 			initLock: &types.Mutex{},
 		},
-
-		readerReady: make(messageSignalChan),
-		writerReady: make(messageSignalChan),
-
-		writeable:     false,
-		writeableLock: types.Mutex{},
-
+		readerReady:       make(messageSignalChan),
+		writerReady:       make(messageSignalChan),
+		writeable:         false,
+		writeableLock:     types.Mutex{},
 		writerChan:        make(chan *message, MAX_MESSAGES_HOLDING_SIZE),
 		exitChan:          make(messageSignalChan),
 		defaultResponders: defaultResponders,
-
-		transmited: 0,
-		received:   0,
-
-		syncCtlCharTable: controlCharTable,
+		transmited:        0,
+		received:          0,
+		syncCtlCharTable:  controlCharTable,
 	}
 }
 
@@ -576,11 +571,11 @@ func (m *Messager) writer(wConn *conn.Conn) {
 	// Init the message container
 	m.messages.Init()
 
-	m.writerReady <- true
-
 	m.writeableLock.Exec(func() {
 		m.writeable = true
 	})
+
+	m.writerReady <- true
 
 	for {
 		select {

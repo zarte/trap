@@ -24,6 +24,7 @@ package controller
 import (
 	"net"
 
+	"github.com/raincious/trap/trap/core/logger"
 	"github.com/raincious/trap/trap/core/server"
 	"github.com/raincious/trap/trap/core/sync/communication/data"
 	"github.com/raincious/trap/trap/core/sync/communication/messager"
@@ -40,10 +41,9 @@ var (
 )
 
 type Common struct {
-	GetPartners func() types.IPAddresses
-
-	IsAuthed func(net.Addr) bool
-
+	Logger        *logger.Logger
+	GetPartners   func() types.IPAddresses
+	IsAuthed      func(net.Addr) bool
 	MarkClients   func([]server.ClientInfo) *types.Throw
 	UnmarkClients func([]server.ClientInfo) *types.Throw
 }
@@ -56,6 +56,8 @@ func (c *Common) ClientsMarked(req messager.Request) *types.Throw {
 
 		req.Close()
 
+		c.Logger.Debugf("No permission to mark client")
+
 		return ErrControllerServerClientNotLoggedIn.Throw(req.RemoteAddr())
 	}
 
@@ -66,6 +68,9 @@ func (c *Common) ClientsMarked(req messager.Request) *types.Throw {
 
 		req.Close()
 
+		c.Logger.Debugf("Failed to parse `ClientMark` data '%d' from '%s': %s",
+			req.Data(), req.RemoteAddr(), parseErr)
+
 		return ErrControllerInvalidData.Throw(req.RemoteAddr(), parseErr)
 	}
 
@@ -75,6 +80,9 @@ func (c *Common) ClientsMarked(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_CLIENT_MARK_DENIED, &data.Undefined{})
 
 		req.Close()
+
+		c.Logger.Debugf("Failed to mark clients '%v' from '%s' due to error: %s",
+			marked.Addresses, req.RemoteAddr(), markErr)
 
 		return markErr
 	}
@@ -90,6 +98,8 @@ func (c *Common) ClientsUnmarked(req messager.Request) *types.Throw {
 
 		req.Close()
 
+		c.Logger.Debugf("No permission to unmark client")
+
 		return ErrControllerServerClientNotLoggedIn.Throw(req.RemoteAddr())
 	}
 
@@ -100,6 +110,9 @@ func (c *Common) ClientsUnmarked(req messager.Request) *types.Throw {
 
 		req.Close()
 
+		c.Logger.Debugf("Failed to parse `ClientUnmark` data '%d' "+
+			"from '%s': %s", req.Data(), req.RemoteAddr(), parseErr)
+
 		return ErrControllerInvalidData.Throw(req.RemoteAddr(), parseErr)
 	}
 
@@ -109,6 +122,9 @@ func (c *Common) ClientsUnmarked(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_CLIENT_UNMARK_DENIED, &data.Undefined{})
 
 		req.Close()
+
+		c.Logger.Debugf("Failed to unmark clients '%v' from '%s' "+
+			"due to error: %s", unmarked.Addresses, req.RemoteAddr(), unmarkErr)
 
 		return unmarkErr
 	}

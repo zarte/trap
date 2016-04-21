@@ -46,28 +46,28 @@ var (
 		"Current client is conflicted with target server '%s'")
 
 	ErrSessionHeatBeatDenied *types.Error = types.NewError(
-		"Server refused to reply 'Heatbeat' request")
+		"'%s' refused to reply 'Heatbeat' request")
 
 	ErrSessionPartnerAddDenied *types.Error = types.NewError(
-		"Server refused to handle 'Partner Add' request")
+		"'%s' refused to handle 'Partner Add' request")
 
 	ErrSessionPartnerRemoveDenied *types.Error = types.NewError(
-		"Server refused to handle 'Partner Remove' request")
+		"'%s' refused to handle 'Partner Remove' request")
 
 	ErrSessionClientMarkDenied *types.Error = types.NewError(
-		"Server refused to handle 'Client Mark' request")
+		"'%s' refused to handle 'Client Mark' request")
 
 	ErrSessionClientUnmarkDenied *types.Error = types.NewError(
-		"Server refused to handle 'Client Unmark' request")
+		"'%s' refused to handle 'Client Unmark' request")
 )
 
 type Session struct {
-	conn *conn.Conn
-
-	messager *messager.Messager
-
+	conn           *conn.Conn
+	messager       *messager.Messager
 	wait           sync.WaitGroup
 	requestTimeout time.Duration
+	enabled        bool
+	enabledLock    types.Mutex
 }
 
 func (s *Session) Serve(serving chan bool) *types.Throw {
@@ -78,7 +78,17 @@ func (s *Session) Serve(serving chan bool) *types.Throw {
 	s.wait.Add(1)
 
 	go func() {
-		defer s.wait.Done()
+		defer func() {
+			s.enabledLock.Exec(func() {
+				s.enabled = false
+			})
+
+			s.wait.Done()
+		}()
+
+		s.enabledLock.Exec(func() {
+			s.enabled = true
+		})
 
 		err = s.messager.Listen(s.conn, listenReady)
 	}()
@@ -106,6 +116,20 @@ func (s *Session) Close() *types.Throw {
 	return nil
 }
 
+func (s *Session) Enabled() bool {
+	var enabled bool = false
+
+	s.enabledLock.Exec(func() {
+		if !s.enabled {
+			return
+		}
+
+		enabled = true
+	})
+
+	return enabled
+}
+
 func (s *Session) registering() *types.Throw {
 	s.wait = sync.WaitGroup{}
 
@@ -118,10 +142,14 @@ func (s *Session) unregistering() *types.Throw {
 	return nil
 }
 
-func (s *Session) Auth(password types.String, connects types.IPAddresses) (
-	time.Duration, types.IPAddresses, *types.Throw) {
+func (s *Session) Auth(
+	password types.String,
+	connects types.IPAddresses,
+	onAuthed func(*conn.Conn, types.IPAddresses),
+) (time.Duration, types.IPAddresses, *types.Throw) {
 	heatbeatPeriod := time.Duration(0)
 	newPartners := types.IPAddresses{}
+	confilctedPartners := types.IPAddresses{}
 
 	hello := &data.Hello{
 		Password:  password,
@@ -155,6 +183,16 @@ func (s *Session) Auth(password types.String, connects types.IPAddresses) (
 
 	handle.Register(messager.SYNC_SIGNAL_HELLO_CONFLICT,
 		func(req messager.Request) *types.Throw {
+			confilct := data.HelloConflict{}
+
+			confilctErr := confilct.Parse(req.Data())
+
+			if confilctErr != nil {
+				return confilctErr
+			}
+
+			confilctedPartners = confilct.Confilct
+
 			return ErrSessionAuthFailedConflicted.Throw(req.RemoteAddr())
 		})
 
@@ -167,8 +205,14 @@ func (s *Session) Auth(password types.String, connects types.IPAddresses) (
 	)
 
 	if reqErr != nil {
+		if reqErr.Is(ErrSessionAuthFailedConflicted) {
+			return time.Duration(0), confilctedPartners, reqErr
+		}
+
 		return time.Duration(0), types.IPAddresses{}, reqErr
 	}
+
+	onAuthed(s.conn, newPartners)
 
 	return heatbeatPeriod, newPartners, nil
 }
@@ -188,7 +232,7 @@ func (s *Session) Heatbeat() (time.Duration, *types.Throw) {
 
 	handle.Register(messager.SYNC_SIGNAL_HEATBEAT_DENIED,
 		func(req messager.Request) *types.Throw {
-			return ErrSessionHeatBeatDenied.Throw()
+			return ErrSessionHeatBeatDenied.Throw(req.RemoteAddr())
 		})
 
 	startTime = time.Now()
@@ -221,7 +265,7 @@ func (s *Session) AddPartners(partners types.IPAddresses) *types.Throw {
 
 	handle.Register(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED,
 		func(req messager.Request) *types.Throw {
-			return ErrSessionPartnerAddDenied.Throw()
+			return ErrSessionPartnerAddDenied.Throw(req.RemoteAddr())
 		})
 
 	reqErr := s.Request().Query(
@@ -252,7 +296,7 @@ func (s *Session) RemovePartners(partners types.IPAddresses) *types.Throw {
 
 	handle.Register(messager.SYNC_SIGNAL_PARTNER_REMOVE_DENIED,
 		func(req messager.Request) *types.Throw {
-			return ErrSessionPartnerRemoveDenied.Throw()
+			return ErrSessionPartnerRemoveDenied.Throw(req.RemoteAddr())
 		})
 
 	reqErr := s.Request().Query(
@@ -281,7 +325,7 @@ func (s *Session) MarkClients(clients []server.ClientInfo) *types.Throw {
 
 	handle.Register(messager.SYNC_SIGNAL_CLIENT_MARK_DENIED,
 		func(req messager.Request) *types.Throw {
-			return ErrSessionClientMarkDenied.Throw()
+			return ErrSessionClientMarkDenied.Throw(req.RemoteAddr())
 		})
 
 	mark.Addresses = clients
@@ -312,7 +356,7 @@ func (s *Session) UnmarkClients(clients []server.ClientInfo) *types.Throw {
 
 	handle.Register(messager.SYNC_SIGNAL_CLIENT_UNMARK_DENIED,
 		func(req messager.Request) *types.Throw {
-			return ErrSessionClientUnmarkDenied.Throw()
+			return ErrSessionClientUnmarkDenied.Throw(req.RemoteAddr())
 		})
 
 	um.ClientMark.Addresses = clients

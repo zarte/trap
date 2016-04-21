@@ -74,7 +74,10 @@ func TestClientConnect(t *testing.T) {
 		},
 	}
 
-	serverPartners, authErr := client.Auth("PASSWORD", parentPath)
+	serverPartners, authErr := client.Auth("PASSWORD", parentPath,
+		func(conn *conn.Conn, ips types.IPAddresses) {
+
+		})
 
 	if authErr != nil {
 		log.Printf("Auth failed: %s", authErr)

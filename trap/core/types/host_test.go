@@ -531,7 +531,7 @@ func TestConvertIPAddressesContains(t *testing.T) {
 
 	if ips.Contains(&ips2) != 0 {
 		t.Errorf("IPAddresses.Contains() failed to count the right " +
-			"amount of companion object")
+			"amount of companion objects")
 
 		return
 	}
@@ -541,7 +541,47 @@ func TestConvertIPAddressesContains(t *testing.T) {
 
 	if ips.Contains(&ips2) != 2 {
 		t.Errorf("IPAddresses.Contains() failed to count the right " +
-			"amount of companion object")
+			"amount of companion objects")
+
+		return
+	}
+}
+
+func TestConvertIPAddressesIntersection(t *testing.T) {
+	ips := IPAddresses{}
+	ips2 := IPAddresses{}
+
+	testIPAddress, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.1:8080",
+	})
+
+	testIPAddress2, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.2:8080",
+	})
+
+	ips = append(ips, testIPAddress)
+	ips2 = append(ips2, testIPAddress2)
+
+	if len(ips.Intersection(&ips2)) != 0 {
+		t.Errorf("IPAddresses.Intersection() failed to pickup the right " +
+			"amount of companion objects")
+
+		return
+	}
+
+	ips2 = append(ips2, testIPAddress)
+
+	intersection := ips.Intersection(&ips2)
+
+	if len(intersection) != 1 {
+		t.Errorf("IPAddresses.Intersection() failed to pickup the right " +
+			"amount of companion objects")
+
+		return
+	}
+
+	if !intersection[0].IsEqual(&testIPAddress) {
+		t.Errorf("IPAddresses.Intersection() failed to pickup the right result")
 
 		return
 	}

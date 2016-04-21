@@ -41,22 +41,21 @@ const (
 )
 
 var (
-	ErrslotsChannelFailed *types.Error = types.NewError(
+	ErrSlotsChannelFailed *types.Error = types.NewError(
 		"Can't get channel data from slot %d")
 
-	ErrslotsDisabled *types.Error = types.NewError(
-		"`slots` has been disabled")
+	ErrSlotsDisabled *types.Error = types.NewError(
+		"`Slots` has been disabled")
 
-	ErrslotsNotFound *types.Error = types.NewError(
+	ErrSlotsNotFound *types.Error = types.NewError(
 		"Can't found message %d")
 )
 
 type slots struct {
-	inited   bool
-	initLock *types.Mutex
-	initWait sync.WaitGroup
-
-	messages           [MAX_MESSAGES_HOLDING_SIZE]messageSlot
+	inited             bool
+	initLock           *types.Mutex
+	initWait           sync.WaitGroup
+	messages           [MAX_MESSAGES_HOLDING_SIZE]*messageSlot
 	messageEnabled     bool
 	messageEnabledLock *types.Mutex
 	messageIndex       byte
@@ -92,7 +91,7 @@ func (m *slots) init() *types.Throw {
 
 	m.inited = true
 
-	m.messages = [MAX_MESSAGES_HOLDING_SIZE]messageSlot{}
+	m.messages = [MAX_MESSAGES_HOLDING_SIZE]*messageSlot{}
 	m.messageIndex = byte(0)
 	m.messageIndexLock = &types.Mutex{}
 	m.messageEnabledLock = &types.Mutex{}
@@ -101,14 +100,14 @@ func (m *slots) init() *types.Throw {
 	m.monitoringExit = make(messageSignalChan)
 
 	for id, _ := range m.messages {
-		m.messages[id] = messageSlot{
+		m.messages[id] = &messageSlot{
 			msg: nil,
 
 			enabled:    false,
 			busyChan:   make(messageSignalChan),
 			expire:     time.Time{},
-			lock:       &types.Mutex{},
-			insertLock: &types.Mutex{},
+			lock:       types.Mutex{},
+			insertLock: types.Mutex{},
 			deleter:    nil,
 		}
 	}
@@ -216,7 +215,7 @@ func (m *slots) delete(id byte, rs MessageDeleteReason, err *types.Throw) {
 
 func (m *slots) scan(callback func(id byte, msg *messageSlot)) {
 	for i := int(MAX_MESSAGES_HOLDING_SIZE) - 1; i >= 0; i-- {
-		callback(byte(i), &m.messages[byte(i)])
+		callback(byte(i), m.messages[byte(i)])
 	}
 }
 
@@ -289,7 +288,7 @@ func (m *slots) Drop(id byte, error *types.Throw) *types.Throw {
 
 	m.messages[id].lock.Exec(func() {
 		if !m.has(id) {
-			err = ErrslotsNotFound.Throw(id)
+			err = ErrSlotsNotFound.Throw(id)
 
 			return
 		}
@@ -306,7 +305,7 @@ func (m *slots) Take(id byte) (*message, *types.Throw) {
 
 	m.messages[id].lock.Exec(func() {
 		if !m.has(id) {
-			err = ErrslotsNotFound.Throw(id)
+			err = ErrSlotsNotFound.Throw(id)
 
 			return
 		}
@@ -333,7 +332,7 @@ func (m *slots) Hold(msg *message, expire time.Duration,
 				return
 			}
 
-			err = ErrslotsDisabled.Throw()
+			err = ErrSlotsDisabled.Throw()
 		})
 	})
 
@@ -348,7 +347,7 @@ func (m *slots) Hold(msg *message, expire time.Duration,
 				return
 			}
 
-			err = ErrslotsDisabled.Throw()
+			err = ErrSlotsDisabled.Throw()
 		})
 
 		if err != nil {
@@ -356,7 +355,7 @@ func (m *slots) Hold(msg *message, expire time.Duration,
 		}
 
 		if !m.messages[idx].enabled {
-			err = ErrslotsDisabled.Throw()
+			err = ErrSlotsDisabled.Throw()
 
 			return
 		}
@@ -375,7 +374,7 @@ func (m *slots) Hold(msg *message, expire time.Duration,
 			select {
 			case _, ok := <-waitChan:
 				if !ok {
-					err = ErrslotsChannelFailed.Throw(idx)
+					err = ErrSlotsChannelFailed.Throw(idx)
 
 					return
 				}

@@ -293,8 +293,11 @@ func (c *Client) heatbeat() *types.Throw {
 	return err
 }
 
-func (c *Client) Auth(password types.String,
-	connects types.IPAddresses) (types.IPAddresses, *types.Throw) {
+func (c *Client) Auth(
+	password types.String,
+	connects types.IPAddresses,
+	onAuthed func(*conn.Conn, types.IPAddresses),
+) (types.IPAddresses, *types.Throw) {
 	var err *types.Throw = nil
 	var serverPartners types.IPAddresses = nil
 
@@ -307,10 +310,11 @@ func (c *Client) Auth(password types.String,
 			return
 		}
 
-		heatb, ips, authErr := sess.Auth(password, connects)
+		heatb, ips, authErr := sess.Auth(password, connects, onAuthed)
 
 		if authErr != nil {
 			err = authErr
+			serverPartners = ips
 
 			return
 		}

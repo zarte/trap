@@ -158,6 +158,11 @@ func (s *Server) Scan(excludedConns []*conn.Conn,
 	return s.sessions.Scan(excludedConns, callback)
 }
 
+func (s *Server) Broadcast(excludedConns []*conn.Conn,
+	callback func(string, *Session) *types.Throw) *types.Throw {
+	return s.sessions.Broadcast(excludedConns, callback, 3)
+}
+
 func (s *Server) Down() *types.Throw {
 	if s.server == nil {
 		return ErrServerNotUp.Throw()
@@ -172,10 +177,13 @@ func (s *Server) Down() *types.Throw {
 	return nil
 }
 
-func (s *Server) BroadcastNewPartners(ips types.IPAddresses) *types.Throw {
+func (s *Server) BroadcastNewPartners(
+	excludes []*conn.Conn,
+	ips types.IPAddresses,
+) *types.Throw {
 	var err *types.Throw = nil
 
-	s.Scan([]*conn.Conn{}, func(key string, sess *Session) *types.Throw {
+	s.Broadcast(excludes, func(key string, sess *Session) *types.Throw {
 		err = sess.AddPartners(ips)
 
 		return nil
@@ -184,10 +192,13 @@ func (s *Server) BroadcastNewPartners(ips types.IPAddresses) *types.Throw {
 	return err
 }
 
-func (s *Server) BroadcastDetachedPartners(ips types.IPAddresses) *types.Throw {
+func (s *Server) BroadcastDetachedPartners(
+	excludes []*conn.Conn,
+	ips types.IPAddresses,
+) *types.Throw {
 	var err *types.Throw = nil
 
-	s.Scan([]*conn.Conn{}, func(key string, sess *Session) *types.Throw {
+	s.Broadcast(excludes, func(key string, sess *Session) *types.Throw {
 		err = sess.RemovePartners(ips)
 
 		return nil

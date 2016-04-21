@@ -266,6 +266,22 @@ func (ipAddrs *IPAddresses) Contains(companions *IPAddresses) Int64 {
 	return result
 }
 
+func (ipAddrs *IPAddresses) Intersection(companions *IPAddresses) IPAddresses {
+	intersection := IPAddresses{}
+
+	for _, ipAddr := range *ipAddrs {
+		for _, companion := range *companions {
+			if !companion.IsEqual(&ipAddr) {
+				continue
+			}
+
+			intersection = append(intersection, companion)
+		}
+	}
+
+	return intersection
+}
+
 func ConvertAddress(addr net.Addr) (HostAddress, *Throw) {
 	aHost, aPort, aErr := net.SplitHostPort(addr.String())
 

@@ -31,11 +31,11 @@ func TestUInt32ToString(t *testing.T) {
 	min := UInt32(MIN_UINT32)
 
 	if max.String().String() != strconv.FormatUint(uint64(MAX_UINT32), 10) {
-		t.Error("UInt32.String() failed convert number '%d' to string", max.UInt32())
+		t.Errorf("UInt32.String() failed convert number '%d' to string", max.UInt32())
 	}
 
 	if min.String().String() != strconv.FormatUint(uint64(MIN_UINT32), 10) {
-		t.Error("UInt32.String() failed convert number '%d' to string", min.UInt32())
+		t.Errorf("UInt32.String() failed convert number '%d' to string", min.UInt32())
 	}
 }
 

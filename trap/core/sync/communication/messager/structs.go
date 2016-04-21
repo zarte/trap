@@ -22,18 +22,17 @@
 package messager
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
+	"time"
 )
 
 type messageSlot struct {
-    msg                         *message
-
-    enabled                     bool
-    busyChan                    messageSignalChan
-    expire                      time.Time
-    lock                        *types.Mutex
-    insertLock                  *types.Mutex
-    deleter                     func(MessageDeleteReason, *types.Throw)
+	msg        *message
+	enabled    bool
+	busyChan   messageSignalChan
+	expire     time.Time
+	lock       types.Mutex
+	insertLock types.Mutex
+	deleter    func(MessageDeleteReason, *types.Throw)
 }
