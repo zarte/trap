@@ -92,12 +92,22 @@ func (s *Sync) nodes() *sync.Nodes {
 			},
 		},
 		AddPartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
-			s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
+			err := s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
+
+			if err != nil {
+				s.logger.Debugf("Can't broadcast `AddPartners` "+
+					"information due to error: %s", err)
+			}
 
 			return nil
 		},
 		RemovePartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
-			s.server().BroadcastDetachedPartners([]*conn.Conn{}, ips)
+			err := s.server().BroadcastDetachedPartners([]*conn.Conn{}, ips)
+
+			if err != nil {
+				s.logger.Debugf("Can't broadcast `RemovePartners` "+
+					"information due to error: %s", err)
+			}
 
 			return nil
 		},
@@ -265,6 +275,9 @@ func (s *Sync) connectAllNodes() {
 				s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
 			},
 			func(rmPartners types.IPAddresses, c *conn.Conn, err *types.Throw) {
+				defer s.server().BroadcastDetachedPartners([]*conn.Conn{},
+					rmPartners)
+
 				if err != nil {
 					s.logger.Debugf("Node '%s' is dropped due to error: %s",
 						node.Address().String(), err)
@@ -274,9 +287,6 @@ func (s *Sync) connectAllNodes() {
 
 				s.logger.Debugf("Node '%s' is disconnected",
 					node.Address().String())
-
-				s.server().BroadcastDetachedPartners([]*conn.Conn{},
-					rmPartners)
 			})
 
 		if connectErr != nil {

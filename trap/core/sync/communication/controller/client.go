@@ -106,7 +106,7 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 func (c *Client) PartnersRemoved(req messager.Request) *types.Throw {
 	partner := &data.Partner{}
 
-	if !c.Common.IsAuthed(req.RemoteAddr()) {
+	if !c.IsAuthed(req.RemoteAddr()) {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_REMOVE_DENIED, &data.Undefined{})
 
 		req.Close()
