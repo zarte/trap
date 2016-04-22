@@ -22,7 +22,14 @@
 package sync
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
-type NodeMap                map[types.String]types.IPAddress
+type nodeMap types.SearchableIPAddresses
+
+type nodeMutex struct {
+	With *Node
+	Due  types.SearchableIPAddresses
+}
+
+type nodeMutexes map[types.String]nodeMutex

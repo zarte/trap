@@ -42,7 +42,7 @@ var (
 
 type Common struct {
 	Logger        *logger.Logger
-	GetPartners   func() types.IPAddresses
+	GetPartners   func() types.SearchableIPAddresses
 	IsAuthed      func(net.Addr) bool
 	MarkClients   func([]server.ClientInfo) *types.Throw
 	UnmarkClients func([]server.ClientInfo) *types.Throw

@@ -142,9 +142,9 @@ func (n *Nodes) Register(ipAddr types.IPAddress,
 			maxConnectRetryPeriod: n.connectionTimeout * MAX_NODE_CONNECT_RETRY,
 			nextConnectAfter:      time.Time{},
 			connectionFailedCount: 0,
-			partners:              NodeMap{},
+			partners:              types.NewSearchableIPAddresses(),
 			partnersLock:          types.Mutex{},
-			mutexWith:             map[types.String]*Node{},
+			mutexWith:             nodeMutexes{},
 		}
 	})
 
@@ -187,11 +187,13 @@ func (n *Nodes) Scan(
 	return n.scan(scanner)
 }
 
-func (n *Nodes) IsPartner(addr types.IPAddress) bool {
+func (n *Nodes) HasPartner(addr types.IPAddress) bool {
 	var isPartner bool = false
 
+	sAddr := addr.Wrapped()
+
 	n.scan(func(key types.String, node *Node) *types.Throw {
-		if !node.IsPartner(addr) {
+		if !node.HasPartner(&sAddr) {
 			return nil
 		}
 
@@ -203,11 +205,20 @@ func (n *Nodes) IsPartner(addr types.IPAddress) bool {
 	return isPartner
 }
 
-func (n *Nodes) Partners() types.IPAddresses {
-	partners := types.IPAddresses{}
+func (n *Nodes) Partners() types.SearchableIPAddresses {
+	partners := types.NewSearchableIPAddresses()
 
 	n.scan(func(key types.String, node *Node) *types.Throw {
-		partners = append(partners, node.Partners()...)
+		p := node.Partners()
+
+		p.Through(func(
+			key types.IPAddressString,
+			val types.IPAddressWrapped,
+		) *types.Throw {
+			partners.Insert(val)
+
+			return nil
+		})
 
 		return nil
 	})

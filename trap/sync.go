@@ -78,7 +78,7 @@ func (s *Sync) nodes() *sync.Nodes {
 	client := controller.Client{
 		Common: controller.Common{
 			Logger: s.logger.NewContext("Client"),
-			GetPartners: func() types.IPAddresses {
+			GetPartners: func() types.SearchableIPAddresses {
 				return s.nodes().Partners()
 			},
 			IsAuthed: func(clientAddr net.Addr) bool {
@@ -91,8 +91,9 @@ func (s *Sync) nodes() *sync.Nodes {
 				return nil
 			},
 		},
-		AddPartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
-			err := s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
+		AddPartners: func(
+			c *conn.Conn, ips types.SearchableIPAddresses) *types.Throw {
+			err := s.server().BroadcastNewPartners([]*conn.Conn{}, ips.Export())
 
 			if err != nil {
 				s.logger.Debugf("Can't broadcast `AddPartners` "+
@@ -101,8 +102,10 @@ func (s *Sync) nodes() *sync.Nodes {
 
 			return nil
 		},
-		RemovePartners: func(c *conn.Conn, ips types.IPAddresses) *types.Throw {
-			err := s.server().BroadcastDetachedPartners([]*conn.Conn{}, ips)
+		RemovePartners: func(
+			c *conn.Conn, ips types.SearchableIPAddresses) *types.Throw {
+			err := s.server().BroadcastDetachedPartners(
+				[]*conn.Conn{}, ips.Export())
 
 			if err != nil {
 				s.logger.Debugf("Can't broadcast `RemovePartners` "+
@@ -130,7 +133,7 @@ func (s *Sync) server() *communication.Server {
 	contrl := controller.Server{
 		Common: controller.Common{
 			Logger: s.logger.NewContext("Server"),
-			GetPartners: func() types.IPAddresses {
+			GetPartners: func() types.SearchableIPAddresses {
 				return s.nodes().Partners()
 			},
 			IsAuthed: func(clientAddr net.Addr) bool {
@@ -257,10 +260,6 @@ func (s *Sync) connectAllNodes() {
 			return nil
 		}
 
-		if s.nodes().IsPartner(node.Address()) {
-			return nil
-		}
-
 		s.logger.Debugf("Connecting to node '%s'", node.Address().String())
 
 		connectErr := node.Connect(s.nodes().Partners(),
@@ -269,10 +268,10 @@ func (s *Sync) connectAllNodes() {
 					node.Address().String())
 			},
 			func(c *conn.Conn, ips types.IPAddresses) {
+				defer s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
+
 				s.logger.Debugf("Logged in to node '%s'",
 					node.Address().String())
-
-				s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
 			},
 			func(rmPartners types.IPAddresses, c *conn.Conn, err *types.Throw) {
 				defer s.server().BroadcastDetachedPartners([]*conn.Conn{},

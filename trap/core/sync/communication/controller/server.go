@@ -93,13 +93,14 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 	}
 
 	serverPartners := s.GetPartners()
+	sConnected := helloData.Connected.Searchable()
 
-	intersection := serverPartners.Intersection(&helloData.Connected)
+	intersection := serverPartners.Intersection(&sConnected)
 
-	if len(intersection) > 0 {
+	if intersection.Len() > 0 {
 		rqErr = req.Reply(messager.SYNC_SIGNAL_HELLO_CONFLICT,
 			&data.HelloConflict{
-				Confilct: intersection,
+				Confilct: intersection.Export(),
 			})
 
 		s.OnAuthFailed(req.RemoteAddr())
@@ -118,7 +119,7 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 	rqErr = req.Reply(messager.SYNC_SIGNAL_HELLO_ACCEPT, &data.HelloAccept{
 		HeatBeatPeriod: s.GetLooseTimeout() / 2,
 		Timeout:        s.GetLooseTimeout(),
-		Connected:      serverPartners,
+		Connected:      serverPartners.Export(),
 	})
 
 	s.OnAuthed(req.Conn())

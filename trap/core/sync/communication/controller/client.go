@@ -37,9 +37,9 @@ var (
 type Client struct {
 	Common
 
-	AddPartners        func(*conn.Conn, types.IPAddresses) *types.Throw
-	ConfilctedPartners func(types.IPAddresses)
-	RemovePartners     func(*conn.Conn, types.IPAddresses) *types.Throw
+	AddPartners        func(*conn.Conn, types.SearchableIPAddresses) *types.Throw
+	ConfilctedPartners func(types.SearchableIPAddresses)
+	RemovePartners     func(*conn.Conn, types.SearchableIPAddresses) *types.Throw
 }
 
 func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
@@ -71,9 +71,10 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 
 	serverPartners := c.GetPartners()
 
-	intersection := serverPartners.Intersection(&partner.Added)
+	searchableNewPartners := partner.Added.Searchable()
+	intersection := serverPartners.Intersection(&searchableNewPartners)
 
-	if len(intersection) > 0 {
+	if intersection.Len() > 0 {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED, &data.Undefined{})
 
 		req.Close()
@@ -87,7 +88,7 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 		return ErrControllerPartnerConflicted.Throw(req.RemoteAddr())
 	}
 
-	addErr := c.AddPartners(req.Conn(), partner.Added)
+	addErr := c.AddPartners(req.Conn(), searchableNewPartners)
 
 	if addErr != nil {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED, &data.Undefined{})
@@ -130,7 +131,7 @@ func (c *Client) PartnersRemoved(req messager.Request) *types.Throw {
 		return ErrControllerInvalidData.Throw(req.RemoteAddr(), parseErr)
 	}
 
-	delErr := c.RemovePartners(req.Conn(), partner.Removed)
+	delErr := c.RemovePartners(req.Conn(), partner.Removed.Searchable())
 
 	if delErr != nil {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED, &data.Undefined{})
