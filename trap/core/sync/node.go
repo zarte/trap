@@ -254,10 +254,6 @@ func (n *Node) isMutexWith(target *Node) bool {
 	return hasIt
 }
 
-func (n *Node) compareAndDrop(competitor *Node) (resumed, dropped *Node) {
-	return nil, nil
-}
-
 func (n *Node) addConnectAfterWait(nowTime time.Time) {
 	retryPeriod := n.connectRetryPeriod * time.Duration(n.connectionFailedCount)
 
@@ -338,6 +334,10 @@ func (n *Node) Connect(
 						n.addMutexWithPastners(node, &searchableNewPartners)
 					}
 
+					if node.IsConnected() {
+						node.Disconnect()
+					}
+
 					return nil
 				})
 
@@ -410,6 +410,10 @@ func (n *Node) Disconnect() *types.Throw {
 	}
 
 	return n.client().Disconnect()
+}
+
+func (n *Node) Delay() time.Duration {
+	return n.client().Delay()
 }
 
 func (n *Node) IsConnected() bool {

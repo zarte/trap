@@ -146,10 +146,12 @@ func (s *Session) Auth(
 	password types.String,
 	connects types.IPAddresses,
 	onAuthed func(*conn.Conn, types.IPAddresses),
-) (time.Duration, types.IPAddresses, *types.Throw) {
+) (time.Duration, time.Duration, types.IPAddresses, *types.Throw) {
 	heatbeatPeriod := time.Duration(0)
 	newPartners := types.IPAddresses{}
-	confilctedPartners := types.IPAddresses{}
+	confilcteds := types.IPAddresses{}
+	startTime := time.Time{}
+	endTime := time.Time{}
 
 	hello := &data.Hello{
 		Password:  password,
@@ -173,6 +175,8 @@ func (s *Session) Auth(
 
 			req.Conn().SetTimeout(accept.Timeout)
 
+			endTime = time.Now()
+
 			return nil
 		})
 
@@ -191,10 +195,12 @@ func (s *Session) Auth(
 				return confilctErr
 			}
 
-			confilctedPartners = confilct.Confilct
+			confilcteds = confilct.Confilct
 
 			return ErrSessionAuthFailedConflicted.Throw(req.RemoteAddr())
 		})
+
+	startTime = time.Now()
 
 	reqErr := s.Request().Query(
 		messager.SYNC_SIGNAL_HELLO,
@@ -206,15 +212,15 @@ func (s *Session) Auth(
 
 	if reqErr != nil {
 		if reqErr.Is(ErrSessionAuthFailedConflicted) {
-			return time.Duration(0), confilctedPartners, reqErr
+			return time.Duration(0), time.Duration(0), confilcteds, reqErr
 		}
 
-		return time.Duration(0), types.IPAddresses{}, reqErr
+		return time.Duration(0), time.Duration(0), types.IPAddresses{}, reqErr
 	}
 
 	onAuthed(s.conn, newPartners)
 
-	return heatbeatPeriod, newPartners, nil
+	return endTime.Sub(startTime), heatbeatPeriod, newPartners, nil
 }
 
 func (s *Session) Heatbeat() (time.Duration, *types.Throw) {

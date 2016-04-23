@@ -310,7 +310,7 @@ func (c *Client) Auth(
 			return
 		}
 
-		heatb, ips, authErr := sess.Auth(password, connects, onAuthed)
+		delay, heatb, ips, authErr := sess.Auth(password, connects, onAuthed)
 
 		if authErr != nil {
 			err = authErr
@@ -323,6 +323,8 @@ func (c *Client) Auth(
 			c.heatbeatTicker = time.Tick(heatb)
 
 			c.clientAuthed = true
+
+			c.connDelay = delay
 		})
 
 		serverPartners = ips
