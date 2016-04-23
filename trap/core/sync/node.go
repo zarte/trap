@@ -50,7 +50,7 @@ type Node struct {
 	addr                  types.IPAddress
 	addrStr               types.String
 	password              types.String
-	client                *communication.Client
+	nclient               *communication.Client
 	controller            *controller.Client
 	requestTimeout        time.Duration
 	connectionTimeout     time.Duration
@@ -63,9 +63,9 @@ type Node struct {
 	mutexWith             nodeMutexes
 }
 
-func (n *Node) Client() *communication.Client {
-	if n.client != nil {
-		return n.client
+func (n *Node) client() *communication.Client {
+	if n.nclient != nil {
+		return n.nclient
 	}
 
 	commonController := n.controller.Common
@@ -88,12 +88,13 @@ func (n *Node) Client() *communication.Client {
 				) *types.Throw {
 					partnerAddr := partner.IPAddress()
 
-					if !node.addr.IsEqual(&partnerAddr) &&
-						!node.HasPartner(&partner) {
-						return nil
+					if node.addr.IsEqual(&partnerAddr) {
+						n.addMutexWith(node)
 					}
 
-					n.addMutexWith(node, &ips)
+					if node.HasPartner(&partner) {
+						n.addMutexWithPastners(node, &ips)
+					}
 
 					return nil
 				})
@@ -127,12 +128,13 @@ func (n *Node) Client() *communication.Client {
 				) *types.Throw {
 					partnerAddr := partner.IPAddress()
 
-					if !node.addr.IsEqual(&partnerAddr) &&
-						!node.HasPartner(&partner) {
-						return nil
+					if node.addr.IsEqual(&partnerAddr) {
+						node.addMutexWith(n)
 					}
 
-					node.addMutexWith(n, &confilctedPartners)
+					if node.HasPartner(&partner) {
+						node.addMutexWithPastners(n, &confilctedPartners)
+					}
 
 					return nil
 				})
@@ -192,22 +194,29 @@ func (n *Node) Client() *communication.Client {
 	handle.Register(messager.SYNC_SIGNAL_CLIENT_UNMARK,
 		clientController.ClientsUnmarked)
 
-	n.client = communication.NewClient(
+	n.nclient = communication.NewClient(
 		handle,
 		n.requestTimeout,
 		n.connectionTimeout,
 	)
 
-	return n.client
+	return n.nclient
 }
 
-func (n *Node) addMutexWith(
+func (n *Node) addMutexWith(node *Node) {
+	n.partnersLock.Exec(func() {
+		addrs := types.NewSearchableIPAddresses()
+
+		addrs.Insert(node.addr.Wrapped())
+
+		n.mutexWith.Append(node, addrs)
+	})
+}
+
+func (n *Node) addMutexWithPastners(
 	node *Node, confilcted *types.SearchableIPAddresses) {
 	n.partnersLock.Exec(func() {
-		n.mutexWith[node.addrStr] = nodeMutex{
-			With: node,
-			Due:  n.partners.Intersection(confilcted),
-		}
+		n.mutexWith.Append(node, n.partners.Intersection(confilcted))
 	})
 }
 
@@ -245,6 +254,10 @@ func (n *Node) isMutexWith(target *Node) bool {
 	return hasIt
 }
 
+func (n *Node) compareAndDrop(competitor *Node) (resumed, dropped *Node) {
+	return nil, nil
+}
+
 func (n *Node) addConnectAfterWait(nowTime time.Time) {
 	retryPeriod := n.connectRetryPeriod * time.Duration(n.connectionFailedCount)
 
@@ -277,7 +290,7 @@ func (n *Node) Connect(
 		return ErrNodeRetryAfterTime.Throw(n.addr.String(), n.nextConnectAfter)
 	}
 
-	e := n.Client().Connect(n.addr,
+	e := n.client().Connect(n.addr,
 		func(conn *conn.Conn) {
 			onConnected(conn)
 		},
@@ -300,7 +313,7 @@ func (n *Node) Connect(
 		return e
 	}
 
-	partners, authErr := n.Client().Auth(
+	partners, authErr := n.client().Auth(
 		n.password,
 		connectedPartners.Export(),
 		func(conn *conn.Conn, ips types.IPAddresses) {
@@ -317,12 +330,13 @@ func (n *Node) Connect(
 				) *types.Throw {
 					partnerAddr := partner.IPAddress()
 
-					if !node.addr.IsEqual(&partnerAddr) &&
-						!node.HasPartner(&partner) {
-						return nil
+					if node.addr.IsEqual(&partnerAddr) {
+						n.addMutexWith(node)
 					}
 
-					n.addMutexWith(node, &searchableNewPartners)
+					if node.HasPartner(&partner) {
+						n.addMutexWithPastners(node, &searchableNewPartners)
+					}
 
 					return nil
 				})
@@ -331,6 +345,8 @@ func (n *Node) Connect(
 			})
 
 			n.partnersLock.Exec(func() {
+				n.partners.Insert(n.addr.Wrapped())
+
 				searchableNewPartners.Through(func(
 					key types.IPAddressString,
 					partner types.IPAddressWrapped,
@@ -339,8 +355,6 @@ func (n *Node) Connect(
 
 					return nil
 				})
-
-				n.partners.Insert(n.addr.Wrapped())
 			})
 
 			newPartnerIPs := ips
@@ -361,16 +375,17 @@ func (n *Node) Connect(
 
 				searchableNewPartners.Through(func(
 					key types.IPAddressString,
-					partner types.IPAddressWrapped,
+					p types.IPAddressWrapped,
 				) *types.Throw {
-					partnerAddr := partner.IPAddress()
+					partnerAddr := p.IPAddress()
 
-					if !node.addr.IsEqual(&partnerAddr) &&
-						!node.HasPartner(&partner) {
-						return nil
+					if node.addr.IsEqual(&partnerAddr) {
+						node.addMutexWith(n)
 					}
 
-					node.addMutexWith(n, &searchableNewPartners)
+					if node.HasPartner(&p) {
+						node.addMutexWithPastners(n, &searchableNewPartners)
+					}
 
 					return nil
 				})
@@ -390,15 +405,15 @@ func (n *Node) Connect(
 }
 
 func (n *Node) Disconnect() *types.Throw {
-	if n.client == nil {
+	if n.nclient == nil {
 		return ErrNodeNotConnected.Throw(n.addr.String())
 	}
 
-	return n.Client().Disconnect()
+	return n.client().Disconnect()
 }
 
 func (n *Node) IsConnected() bool {
-	return n.Client().Connected()
+	return n.client().Connected()
 }
 
 func (n *Node) IsReconnectable() bool {

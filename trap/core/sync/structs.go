@@ -33,3 +33,33 @@ type nodeMutex struct {
 }
 
 type nodeMutexes map[types.String]nodeMutex
+
+func (m nodeMutexes) has(n *Node) bool {
+	if _, ok := m[n.addrStr]; !ok {
+		return false
+	}
+
+	return true
+}
+
+func (m nodeMutexes) Append(n *Node, ip types.SearchableIPAddresses) {
+	if !m.has(n) {
+		m[n.addrStr] = nodeMutex{
+			With: n,
+			Due:  types.NewSearchableIPAddresses(),
+		}
+	}
+
+	mut := m[n.addrStr]
+
+	ip.Through(func(
+		key types.IPAddressString,
+		val types.IPAddressWrapped,
+	) *types.Throw {
+		mut.Due.Insert(val)
+
+		return nil
+	})
+
+	m[n.addrStr] = mut
+}
