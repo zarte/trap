@@ -22,6 +22,7 @@
 package communication
 
 import (
+	"github.com/raincious/trap/trap/core/logger"
 	"github.com/raincious/trap/trap/core/sync/communication/conn"
 	"github.com/raincious/trap/trap/core/sync/communication/messager"
 	"github.com/raincious/trap/trap/core/types"
@@ -32,27 +33,29 @@ import (
 )
 
 type Sessions struct {
-	defaultResponders messager.Callbacks
-
-	reqTimeout  time.Duration
-	sessions    map[string]*Session
-	sessionLock types.Mutex
-
-	onRegister   func()
-	onUnregister func()
+	maxIncommingDataSize types.UInt16
+	reqTimeout           time.Duration
+	logger               *logger.Logger
+	sessions             map[string]*Session
+	sessionLock          types.Mutex
+	onRegister           func()
+	onUnregister         func()
 }
 
-func NewSessions(defaultResponders messager.Callbacks, reqTimeout time.Duration,
-	onRegister, onUnregister func()) *Sessions {
+func NewSessions(
+	logger *logger.Logger,
+	maxIncommingDataSize types.UInt16,
+	reqTimeout time.Duration,
+	onRegister, onUnregister func(),
+) *Sessions {
 	return &Sessions{
-		defaultResponders: defaultResponders,
-
-		reqTimeout:  reqTimeout,
-		sessions:    map[string]*Session{},
-		sessionLock: types.Mutex{},
-
-		onRegister:   onRegister,
-		onUnregister: onUnregister,
+		maxIncommingDataSize: maxIncommingDataSize,
+		logger:               logger,
+		reqTimeout:           reqTimeout,
+		sessions:             map[string]*Session{},
+		sessionLock:          types.Mutex{},
+		onRegister:           onRegister,
+		onUnregister:         onUnregister,
 	}
 }
 
@@ -74,12 +77,17 @@ func (s *Sessions) hasByKey(key string) bool {
 	return true
 }
 
-func (s *Sessions) Register(connection *conn.Conn) (*Session, *types.Throw) {
+func (s *Sessions) Register(connection *conn.Conn,
+	responders messager.Callbacks) (*Session, *types.Throw) {
 	var er *types.Throw = nil
 
 	session := &Session{
-		conn:           connection,
-		messager:       messager.NewMessager(s.defaultResponders),
+		conn: connection,
+		messager: messager.NewMessager(
+			responders,
+			s.maxIncommingDataSize,
+			s.logger.NewContext(types.String(connection.RemoteAddr().String())),
+		),
 		wait:           sync.WaitGroup{},
 		requestTimeout: s.reqTimeout,
 		enabled:        false,

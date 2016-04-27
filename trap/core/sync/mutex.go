@@ -19,19 +19,45 @@
  * limitations under the License.
  */
 
-package data
+package sync
 
 import (
 	"github.com/raincious/trap/trap/core/types"
 )
 
-type Base struct {
+type nodeMutex struct {
+	With *Node
+	Due  types.SearchableIPAddresses
 }
 
-func (b *Base) Verify(data [][]byte, minCount int) *types.Throw {
-	if len(data) < minCount {
-		return ErrDataInvalidAmountOfParameters.Throw()
+type nodeMutexes map[types.String]nodeMutex
+
+func (m nodeMutexes) has(n *Node) bool {
+	if _, ok := m[n.addrStr]; !ok {
+		return false
 	}
 
-	return nil
+	return true
+}
+
+func (m nodeMutexes) Append(n *Node, ip types.SearchableIPAddresses) {
+	if !m.has(n) {
+		m[n.addrStr] = nodeMutex{
+			With: n,
+			Due:  types.NewSearchableIPAddresses(),
+		}
+	}
+
+	mut := m[n.addrStr]
+
+	ip.Through(func(
+		key types.IPAddressString,
+		val types.IPAddressWrapped,
+	) *types.Throw {
+		mut.Due.Insert(val)
+
+		return nil
+	})
+
+	m[n.addrStr] = mut
 }

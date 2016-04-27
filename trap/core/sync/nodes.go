@@ -22,6 +22,10 @@
 package sync
 
 import (
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/sync/communication"
+	"github.com/raincious/trap/trap/core/sync/communication/conn"
 	"github.com/raincious/trap/trap/core/sync/communication/controller"
 	"github.com/raincious/trap/trap/core/types"
 
@@ -44,21 +48,31 @@ const (
 )
 
 type Nodes struct {
-	nodeList          map[types.String]*Node
-	nodeLock          types.Mutex
-	controller        controller.Client
-	requestTimeout    time.Duration
-	connectionTimeout time.Duration
+	nodeList           map[types.String]*Node
+	nodeLock           types.Mutex
+	sessions           *communication.Sessions
+	maxReceivedDataLen types.UInt16
+	controller         controller.Client
+	requestTimeout     time.Duration
+	connectionTimeout  time.Duration
 }
 
-func NewNodes(defaultResponders controller.Client,
+func NewNodes(defaultResponders controller.Client, logger *logger.Logger,
+	maxReceivedDataLen types.UInt16,
 	requestTimeout time.Duration, connectionTimeout time.Duration) *Nodes {
 	return &Nodes{
-		controller:        defaultResponders,
-		nodeList:          map[types.String]*Node{},
-		nodeLock:          types.Mutex{},
-		requestTimeout:    requestTimeout,
-		connectionTimeout: connectionTimeout,
+		controller: defaultResponders,
+		nodeList:   map[types.String]*Node{},
+		nodeLock:   types.Mutex{},
+		sessions: communication.NewSessions(
+			logger.NewContext("Node"),
+			maxReceivedDataLen,
+			requestTimeout,
+			func() {}, func() {},
+		),
+		maxReceivedDataLen: maxReceivedDataLen,
+		requestTimeout:     requestTimeout,
+		connectionTimeout:  connectionTimeout,
 	}
 }
 
@@ -90,15 +104,13 @@ func (n *Nodes) Remove(node types.IPAddress) *types.Throw {
 	nodeKey := node.String()
 
 	n.nodeLock.Exec(func() {
-		if n.has(nodeKey) {
+		if !n.has(nodeKey) {
 			err = ErrNodeNotExisted.Throw(nodeKey)
 
 			return
 		}
 
-		selectedNode := n.nodeList[nodeKey]
-
-		disErr := selectedNode.Disconnect()
+		disErr := n.nodeList[nodeKey].Disconnect()
 
 		if disErr != nil {
 			if disErr.Is(ErrNodeNotConnected) {
@@ -131,12 +143,12 @@ func (n *Nodes) Register(ipAddr types.IPAddress,
 
 		n.nodeList[nodeKey] = &Node{
 			nodes:                 n,
+			sessions:              n.sessions,
 			addr:                  ipAddr,
 			addrStr:               ipAddr.String(),
 			password:              pass,
 			nclient:               nil,
 			controller:            &n.controller,
-			requestTimeout:        n.requestTimeout,
 			connectionTimeout:     n.connectionTimeout,
 			connectRetryPeriod:    n.connectionTimeout,
 			maxConnectRetryPeriod: n.connectionTimeout * MAX_NODE_CONNECT_RETRY,
@@ -226,6 +238,47 @@ func (n *Nodes) Partners() types.SearchableIPAddresses {
 	return partners
 }
 
+func (n *Nodes) Broadcast(excludedConns []*conn.Conn,
+	callback func(string, *communication.Session) *types.Throw,
+	retry uint16,
+) *types.Throw {
+	return n.sessions.Broadcast(excludedConns, callback, retry)
+}
+
+func (n *Nodes) BroadcastMarkClients(
+	excludes []*conn.Conn,
+	clients []server.ClientInfo,
+	retry uint16,
+) *types.Throw {
+	var err *types.Throw = nil
+
+	n.Broadcast(excludes,
+		func(key string, sess *communication.Session) *types.Throw {
+			err = sess.MarkClients(clients)
+
+			return nil
+		}, retry)
+
+	return err
+}
+
+func (n *Nodes) BroadcastUnmarkClients(
+	excludes []*conn.Conn,
+	clients []types.IP,
+	retry uint16,
+) *types.Throw {
+	var err *types.Throw = nil
+
+	n.Broadcast(excludes,
+		func(key string, sess *communication.Session) *types.Throw {
+			err = sess.UnmarkClients(clients)
+
+			return nil
+		}, retry)
+
+	return err
+}
+
 func (n *Nodes) Clear() *types.Throw {
 	var err *types.Throw = nil
 
@@ -235,5 +288,9 @@ func (n *Nodes) Clear() *types.Throw {
 		return nil
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return n.sessions.Clear()
 }

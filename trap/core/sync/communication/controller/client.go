@@ -30,16 +30,17 @@ import (
 
 var (
 	ErrControllerPartnerConflicted *types.Error = types.NewError(
-		"We already connect at least one " +
-			"of the partners of '%s'")
+		"We already connected at least one of the partners of '%s'")
 )
 
 type Client struct {
 	Common
 
-	AddPartners        func(*conn.Conn, types.SearchableIPAddresses) *types.Throw
+	AddPartners func(
+		*conn.Conn, types.SearchableIPAddresses) *types.Throw
 	ConfilctedPartners func(types.SearchableIPAddresses)
-	RemovePartners     func(*conn.Conn, types.SearchableIPAddresses) *types.Throw
+	RemovePartners     func(
+		*conn.Conn, types.SearchableIPAddresses) *types.Throw
 }
 
 func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
@@ -50,9 +51,6 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 
 		req.Close()
 
-		c.Logger.Debugf("Partner '%s' has no permission to send "+
-			"`PartnersAdded` request", req.RemoteAddr())
-
 		return ErrControllerServerClientNotLoggedIn.Throw(req.RemoteAddr())
 	}
 
@@ -62,9 +60,6 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED, &data.Undefined{})
 
 		req.Close()
-
-		c.Logger.Debugf("Failed to parse `Partner` data '%d' from partner "+
-			"'%s' due to error: %s", req.Data(), req.RemoteAddr(), parseErr)
 
 		return ErrControllerInvalidData.Throw(req.RemoteAddr(), parseErr)
 	}
@@ -81,10 +76,6 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 
 		c.ConfilctedPartners(intersection)
 
-		c.Logger.Debugf("Partner '%s' already connected with another "+
-			"server in the same distribution path, thus no need to "+
-			"connect with it", req.RemoteAddr())
-
 		return ErrControllerPartnerConflicted.Throw(req.RemoteAddr())
 	}
 
@@ -94,9 +85,6 @@ func (c *Client) PartnersAdded(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED, &data.Undefined{})
 
 		req.Close()
-
-		c.Logger.Debugf("Can't add partner for '%s' due to error: %s",
-			req.RemoteAddr(), addErr)
 
 		return addErr
 	}
@@ -112,9 +100,6 @@ func (c *Client) PartnersRemoved(req messager.Request) *types.Throw {
 
 		req.Close()
 
-		c.Logger.Debugf("Partner '%s' has no permission to send "+
-			"`PartnersRemoved` request", req.RemoteAddr())
-
 		return ErrControllerServerClientNotLoggedIn.Throw(req.RemoteAddr())
 	}
 
@@ -125,9 +110,6 @@ func (c *Client) PartnersRemoved(req messager.Request) *types.Throw {
 
 		req.Close()
 
-		c.Logger.Debugf("Failed to parse `Partner` data '%d' from partner "+
-			"'%s' due to error: %s", req.Data(), req.RemoteAddr(), parseErr)
-
 		return ErrControllerInvalidData.Throw(req.RemoteAddr(), parseErr)
 	}
 
@@ -137,9 +119,6 @@ func (c *Client) PartnersRemoved(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_PARTNER_ADD_DENIED, &data.Undefined{})
 
 		req.Close()
-
-		c.Logger.Debugf("Can't remove partners for '%s' due to error: %s",
-			req.RemoteAddr(), delErr)
 
 		return delErr
 	}

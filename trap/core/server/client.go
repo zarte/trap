@@ -22,80 +22,79 @@
 package server
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrClientInfoInvalidLength *types.Error =
-        types.NewError("Invalid length for unserialization of the Client Info")
+	ErrClientInfoInvalidLength *types.Error = types.NewError(
+		"Invalid length for unserialization of the Client Info")
 )
 
 const (
-    CLIENT_INFO_SEGMENT_CLIENT_BEGIN    =   0
-    CLIENT_INFO_SEGMENT_CLIENT_END      =   types.IP_ADDR_SLICE_LEN
+	CLIENT_INFO_SEGMENT_CLIENT_BEGIN = 0
+	CLIENT_INFO_SEGMENT_CLIENT_END   = types.IP_ADDR_SLICE_LEN
 
-    CLIENT_INFO_SEGMENT_SERVER_BEGIN    =   types.IP_ADDR_SLICE_LEN
-    CLIENT_INFO_SEGMENT_SERVER_END      =   CLIENT_INFO_SEGMENT_SERVER_BEGIN +
-                                            types.IP_ADDR_SLICE_LEN +
-                                            types.IP_PORT_LEN
+	CLIENT_INFO_SEGMENT_SERVER_BEGIN = types.IP_ADDR_SLICE_LEN
+	CLIENT_INFO_SEGMENT_SERVER_END   = CLIENT_INFO_SEGMENT_SERVER_BEGIN +
+		types.IP_ADDR_SLICE_LEN +
+		types.IP_PORT_LEN
 
-    CLIENT_INFO_SEGMENT_INDEX           =   CLIENT_INFO_SEGMENT_SERVER_END + 1
+	CLIENT_INFO_SEGMENT_INDEX = CLIENT_INFO_SEGMENT_SERVER_END + 1
 )
 
 type ClientInfo struct {
-    Client      types.IP
-    Server      types.IPAddress
-    Type        types.String
-    Marked      bool
+	Client types.IP
+	Server types.IPAddress
+	Type   types.String
+	Marked bool
 }
 
 func (c *ClientInfo) Serialize() ([]byte, *types.Throw) {
-    result                  :=  []byte{}
+	result := []byte{}
 
-    serverByte, serErr      :=  c.Server.Serialize()
+	serverByte, serErr := c.Server.Serialize()
 
-    if serErr != nil {
-        return []byte{}, serErr
-    }
+	if serErr != nil {
+		return []byte{}, serErr
+	}
 
-    result                  =   append(result, c.Client[:]...)
-    result                  =   append(result, serverByte...)
+	result = append(result, c.Client[:]...)
+	result = append(result, serverByte...)
 
-    if c.Marked {
-        result              =   append(result, ^byte(0))
-    } else {
-        result              =   append(result, byte(0))
-    }
+	if c.Marked {
+		result = append(result, ^byte(0))
+	} else {
+		result = append(result, byte(0))
+	}
 
-    result                  =   append(result, []byte(c.Type)...)
+	result = append(result, []byte(c.Type)...)
 
-    return result, nil
+	return result, nil
 }
 
-func (c *ClientInfo) Unserialize(data []byte) (*types.Throw) {
-    // types.IP + types.IPAddress + Marked (1 byte)
-    if len(data) < CLIENT_INFO_SEGMENT_INDEX {
-        return ErrClientInfoInvalidLength.Throw()
-    }
+func (c *ClientInfo) Unserialize(data []byte) *types.Throw {
+	// types.IP + types.IPAddress + Marked (1 byte)
+	if len(data) < CLIENT_INFO_SEGMENT_INDEX {
+		return ErrClientInfoInvalidLength.Throw()
+	}
 
-    copy(c.Client[:],
-        data[CLIENT_INFO_SEGMENT_CLIENT_BEGIN:CLIENT_INFO_SEGMENT_CLIENT_END])
+	copy(c.Client[:],
+		data[CLIENT_INFO_SEGMENT_CLIENT_BEGIN:CLIENT_INFO_SEGMENT_CLIENT_END])
 
-    serverErr               :=  c.Server.Unserialize(
-                                    data[CLIENT_INFO_SEGMENT_SERVER_BEGIN:
-                                        CLIENT_INFO_SEGMENT_SERVER_END])
+	serverErr := c.Server.Unserialize(
+		data[CLIENT_INFO_SEGMENT_SERVER_BEGIN:CLIENT_INFO_SEGMENT_SERVER_END])
 
-    if serverErr != nil {
-        return serverErr
-    }
+	if serverErr != nil {
+		return serverErr
+	}
 
-    if data[CLIENT_INFO_SEGMENT_INDEX] == byte(0) {
-        c.Marked            =   true
-    } else {
-        c.Marked            =   false
-    }
+	if data[CLIENT_INFO_SEGMENT_INDEX] == byte(0) {
+		c.Marked = true
+	} else {
+		c.Marked = false
+	}
 
-    c.Type                  =   types.String(data[CLIENT_INFO_SEGMENT_INDEX:])
+	c.Type = types.String(data[CLIENT_INFO_SEGMENT_INDEX:])
 
-    return nil
+	return nil
 }

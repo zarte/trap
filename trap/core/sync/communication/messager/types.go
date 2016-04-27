@@ -21,8 +21,8 @@
 
 package messager
 
-type byteCheckTable             [uint16(^byte(0)) + 1]bool
-type messageSignalChan          chan bool
+type byteCheckTable [uint16(^byte(0)) + 1]bool
 
-type MessageDeleteReason        uint8
+type messageSignalChan chan bool
 
+type MessageDeleteReason uint8

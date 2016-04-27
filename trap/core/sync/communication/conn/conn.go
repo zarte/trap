@@ -22,48 +22,48 @@
 package conn
 
 import (
-    "net"
-    "time"
+	"net"
+	"time"
 )
 
 type Conn struct {
-    net.Conn
+	net.Conn
 
-    readTimeout         time.Duration
-    writeTimeout        time.Duration
+	readTimeout  time.Duration
+	writeTimeout time.Duration
 }
 
 func (c *Conn) SetReadTimeout(timeout time.Duration) {
-    c.readTimeout       =   timeout
+	c.readTimeout = timeout
 }
 
 func (c *Conn) SetWriteTimeout(timeout time.Duration) {
-    c.writeTimeout      =   timeout
+	c.writeTimeout = timeout
 }
 
 func (c *Conn) SetTimeout(timeout time.Duration) {
-    c.readTimeout       =   timeout
-    c.writeTimeout      =   timeout
+	c.readTimeout = timeout
+	c.writeTimeout = timeout
 }
 
 func (c *Conn) Read(buf []byte) (int, error) {
-    e                   :=  c.Conn.SetReadDeadline(
-                                time.Now().Add(c.readTimeout))
+	e := c.Conn.SetReadDeadline(
+		time.Now().Add(c.readTimeout))
 
-    if e != nil {
-        return 0, e
-    }
+	if e != nil {
+		return 0, e
+	}
 
-    return c.Conn.Read(buf)
+	return c.Conn.Read(buf)
 }
 
 func (c *Conn) Write(buf []byte) (int, error) {
-    e                   :=  c.Conn.SetReadDeadline(
-                                time.Now().Add(c.writeTimeout))
+	e := c.Conn.SetReadDeadline(
+		time.Now().Add(c.writeTimeout))
 
-    if e != nil {
-        return 0, e
-    }
+	if e != nil {
+		return 0, e
+	}
 
-    return c.Conn.Write(buf)
+	return c.Conn.Write(buf)
 }

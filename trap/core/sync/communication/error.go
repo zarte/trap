@@ -20,8 +20,8 @@
  */
 
 package communication
+
 /*
 import (
     "github.com/raincious/trap/trap/core/types"
 )*/
-

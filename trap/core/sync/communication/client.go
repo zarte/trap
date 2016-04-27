@@ -45,44 +45,43 @@ var (
 type Client struct {
 	Common
 
-	upped             bool
-	connected         bool
-	connectedLock     types.Mutex
-	defaultResponders messager.Callbacks
-	connTimeout       time.Duration
-	reqTimeout        time.Duration
-	connDelay         time.Duration
-	heatbeatPeriod    time.Duration
-	delayLock         types.Mutex
-	session           *Session
-	sessions          *Sessions
-	sessionWait       sync.WaitGroup
-	sessionLock       types.Mutex
-	shutdownSignal    chan bool
-	shutdownLock      types.Mutex
-	heatbeatTicker    <-chan time.Time
-	clientAuthed      bool
+	upped               bool
+	connected           bool
+	connectedLock       types.Mutex
+	maxOutgoingDataSize types.UInt16
+	connTimeout         time.Duration
+	connDelay           time.Duration
+	heatbeatPeriod      time.Duration
+	delayLock           types.Mutex
+	session             *Session
+	sessions            *Sessions
+	sessionWait         sync.WaitGroup
+	sessionLock         types.Mutex
+	responder           messager.Callbacks
+	shutdownSignal      chan bool
+	shutdownLock        types.Mutex
+	heatbeatTicker      <-chan time.Time
+	clientAuthed        bool
 }
 
-func NewClient(defaultResponders messager.Callbacks, connTimeout time.Duration,
-	reqTimeout time.Duration) *Client {
+func NewClient(sessions *Sessions, responder messager.Callbacks,
+	connTimeout time.Duration) *Client {
 	return &Client{
-		upped:             false,
-		connected:         false,
-		connectedLock:     types.Mutex{},
-		defaultResponders: defaultResponders,
-		connTimeout:       connTimeout,
-		reqTimeout:        reqTimeout,
-		connDelay:         time.Duration(0),
-		heatbeatPeriod:    time.Duration(0),
-		delayLock:         types.Mutex{},
-		session:           nil,
-		sessions:          nil,
-		sessionWait:       sync.WaitGroup{},
-		sessionLock:       types.Mutex{},
-		shutdownSignal:    make(chan bool),
-		shutdownLock:      types.Mutex{},
-		clientAuthed:      false,
+		upped:          false,
+		connected:      false,
+		connectedLock:  types.Mutex{},
+		connTimeout:    connTimeout,
+		connDelay:      time.Duration(0),
+		heatbeatPeriod: time.Duration(0),
+		delayLock:      types.Mutex{},
+		session:        nil,
+		sessions:       sessions,
+		sessionWait:    sync.WaitGroup{},
+		sessionLock:    types.Mutex{},
+		responder:      responder,
+		shutdownSignal: make(chan bool),
+		shutdownLock:   types.Mutex{},
+		clientAuthed:   false,
 	}
 }
 
@@ -124,14 +123,8 @@ func (c *Client) dialup(ip types.IPAddress, onConnected func(*conn.Conn),
 	c.clientAuthed = false
 	c.heatbeatTicker = time.Tick(c.connTimeout)
 	c.connected = false
-	c.sessions = NewSessions(c.defaultResponders, c.reqTimeout,
-		func() {
-			c.sessionWait.Add(1)
-		}, func() {
-			c.sessionWait.Done()
-		})
 
-	session, sessErr := c.sessions.Register(syncConn)
+	session, sessErr := c.sessions.Register(syncConn, c.responder)
 
 	if sessErr != nil {
 		return sessErr
@@ -147,15 +140,15 @@ func (c *Client) dialup(ip types.IPAddress, onConnected func(*conn.Conn),
 		var serveErr *types.Throw = nil
 
 		defer func() {
+			c.sessionLock.Exec(func() {
+				c.session = nil
+			})
+
 			c.connectedLock.Exec(func() {
 				c.connected = false
 			})
 
 			c.sessions.Unregister(syncConn)
-
-			c.sessionLock.Exec(func() {
-				c.session = nil
-			})
 
 			onDisconnected(syncConn, serveErr)
 
@@ -176,7 +169,6 @@ func (c *Client) dialup(ip types.IPAddress, onConnected func(*conn.Conn),
 	go func() {
 		defer func() {
 			syncConn.Close()
-			c.sessions.Clear()
 			c.sessionWait.Done()
 		}()
 
@@ -257,12 +249,43 @@ func (c *Client) Delay() time.Duration {
 	return delay
 }
 
+func (c *Client) Stats() messager.Stats {
+	var stat messager.Stats
+
+	c.sessionLock.Exec(func() {
+		sess, sessErr := c.getSession()
+
+		if sessErr != nil {
+			return
+		}
+
+		stat = sess.Request().Stats()
+	})
+
+	return stat
+}
+
 func (c *Client) getSession() (*Session, *types.Throw) {
 	if c.session == nil {
 		return nil, ErrClientSessionUnavailable.Throw()
 	}
 
 	return c.session, nil
+}
+
+func (c *Client) Session() (*Session, *types.Throw) {
+	var sess *Session = nil
+	var erro *types.Throw = nil
+
+	c.sessionLock.Exec(func() {
+		sess, erro = c.getSession()
+	})
+
+	if erro != nil {
+		return nil, erro
+	}
+
+	return sess, nil
 }
 
 func (c *Client) heatbeat() *types.Throw {
@@ -310,7 +333,8 @@ func (c *Client) Auth(
 			return
 		}
 
-		delay, heatb, ips, authErr := sess.Auth(password, connects, onAuthed)
+		pMaxLen, delay, heatb, ips, authErr := sess.Auth(
+			c.maxOutgoingDataSize, password, connects, onAuthed)
 
 		if authErr != nil {
 			err = authErr
@@ -321,10 +345,9 @@ func (c *Client) Auth(
 
 		c.delayLock.Exec(func() {
 			c.heatbeatTicker = time.Tick(heatb)
-
 			c.clientAuthed = true
-
 			c.connDelay = delay
+			c.maxOutgoingDataSize = pMaxLen
 		})
 
 		serverPartners = ips

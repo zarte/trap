@@ -15,8 +15,7 @@ type rawCommandConfig [][]types.String
 type rawServerKVMap map[types.String]types.String
 
 type rawConfig struct {
-	Log types.String `json:"log"`
-
+	Log                types.String                      `json:"log"`
 	Listens            []types.String                    `json:"listens"`
 	AttemptTimeout     types.UInt32                      `json:"attempt_timeout"`
 	AttemptMaxBytes    types.UInt32                      `json:"attempt_max_bytes"`
@@ -31,6 +30,7 @@ type rawConfig struct {
 	StatusTLSCertKey   types.String                      `json:"status_tls_certificate_key"`
 	SyncInterface      types.String                      `json:"synchronize_interface"`
 	SyncPort           types.UInt16                      `json:"synchronize_port"`
+	SyncReceiveLen     types.UInt16                      `json:"synchronize_max_receive_length"`
 	SyncCertificate    types.String                      `json:"synchronize_certificate"`
 	SyncCertificateKey types.String                      `json:"synchronize_certificate_key"`
 	SyncPassphrase     types.String                      `json:"synchronize_passphrase"`
@@ -199,6 +199,9 @@ func Parse(configStr []byte) (*Config, *types.Throw) {
 
 	// Parse `SyncPort` Field
 	config.SyncPort = rawConfig.SyncPort
+
+	// Parse `SyncReceiveLen` Field
+	config.SyncReceiveLen = rawConfig.SyncReceiveLen
 
 	// Parse `SyncCert` Field
 	config.SyncCert = rawConfig.SyncCertificate

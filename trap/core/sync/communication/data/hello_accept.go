@@ -30,6 +30,7 @@ import (
 type HelloAccept struct {
 	Base
 
+	MaxLength      types.UInt16
 	HeatBeatPeriod time.Duration
 	Timeout        time.Duration
 	Connected      types.IPAddresses
@@ -38,19 +39,19 @@ type HelloAccept struct {
 func (d *HelloAccept) Parse(msg [][]byte) *types.Throw {
 	heatbeatPeriod := types.Int64(0)
 	timeout := types.Int64(0)
-	verifyErr := d.Verify(msg, 3)
+	verifyErr := d.Verify(msg, 4)
 
 	if verifyErr != nil {
 		return verifyErr
 	}
 
-	connectedErr := d.Connected.Unserialize(msg[2])
+	maxlenErr := d.MaxLength.Unserialize(msg[0])
 
-	if connectedErr != nil {
-		return connectedErr
+	if maxlenErr != nil {
+		return maxlenErr
 	}
 
-	hbpErr := heatbeatPeriod.Unserialize(msg[0])
+	hbpErr := heatbeatPeriod.Unserialize(msg[1])
 
 	if hbpErr != nil {
 		return hbpErr
@@ -58,7 +59,7 @@ func (d *HelloAccept) Parse(msg [][]byte) *types.Throw {
 
 	d.HeatBeatPeriod = time.Duration(heatbeatPeriod)
 
-	timeoutErr := timeout.Unserialize(msg[1])
+	timeoutErr := timeout.Unserialize(msg[2])
 
 	if timeoutErr != nil {
 		return timeoutErr
@@ -66,10 +67,22 @@ func (d *HelloAccept) Parse(msg [][]byte) *types.Throw {
 
 	d.Timeout = time.Duration(timeout)
 
+	connectedErr := d.Connected.Unserialize(msg[3])
+
+	if connectedErr != nil {
+		return connectedErr
+	}
+
 	return nil
 }
 
 func (d *HelloAccept) Build() ([][]byte, *types.Throw) {
+	maxlen, maxlenErr := d.MaxLength.Serialize()
+
+	if maxlenErr != nil {
+		return [][]byte{}, maxlenErr
+	}
+
 	timeBytes, timeBErr := types.Int64(d.HeatBeatPeriod).Serialize()
 
 	if timeBErr != nil {
@@ -89,6 +102,7 @@ func (d *HelloAccept) Build() ([][]byte, *types.Throw) {
 	}
 
 	return [][]byte{
+		maxlen,
 		timeBytes,
 		timeoutBytes,
 		ipByte,

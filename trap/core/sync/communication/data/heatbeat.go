@@ -22,17 +22,16 @@
 package data
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type HeatBeat struct {
-
 }
 
-func (d *HeatBeat) Parse(msg [][]byte) (*types.Throw) {
-    return nil
+func (d *HeatBeat) Parse(msg [][]byte) *types.Throw {
+	return nil
 }
 
 func (d *HeatBeat) Build() ([][]byte, *types.Throw) {
-    return [][]byte{}, nil
+	return [][]byte{}, nil
 }

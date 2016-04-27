@@ -22,10 +22,10 @@
 package data
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrDataInvalidAmountOfParameters *types.Error =
-        types.NewError("Amount of parameters is invalid")
+	ErrDataInvalidAmountOfParameters *types.Error = types.NewError(
+		"Amount of parameters is invalid")
 )

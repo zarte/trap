@@ -22,6 +22,7 @@
 package communication
 
 import (
+	"github.com/raincious/trap/trap/core/logger"
 	"github.com/raincious/trap/trap/core/sync/communication/conn"
 	"github.com/raincious/trap/trap/core/sync/communication/messager"
 	"github.com/raincious/trap/trap/core/types"
@@ -36,7 +37,13 @@ import (
 func TestClientConnect(t *testing.T) {
 	responder := messager.Callbacks{}
 
-	client := NewClient(responder, 60*time.Second, 10*time.Second)
+	sessions := NewSessions(
+		logger.NewLogger(),
+		1024,
+		10*time.Second,
+		func() {}, func() {})
+
+	client := NewClient(sessions, responder, 60*time.Second)
 
 	addr := types.IPAddress{
 		IP:   types.ConvertIP(net.ParseIP("127.0.0.1")),

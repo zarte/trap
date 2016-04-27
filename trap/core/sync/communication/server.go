@@ -22,6 +22,8 @@
 package communication
 
 import (
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/server"
 	"github.com/raincious/trap/trap/core/sync/communication/conn"
 	"github.com/raincious/trap/trap/core/sync/communication/messager"
 	"github.com/raincious/trap/trap/core/types"
@@ -43,15 +45,16 @@ var (
 type Server struct {
 	Common
 
-	timeout   time.Duration
-	server    net.Listener
-	wait      sync.WaitGroup
-	callbacks messager.Callbacks
-	sessions  *Sessions
-
-	Responders     messager.Callbacks
-	OnConnected    func(*conn.Conn)
-	OnDisconnected func(*conn.Conn)
+	timeout            time.Duration
+	server             net.Listener
+	wait               sync.WaitGroup
+	callbacks          messager.Callbacks
+	sessions           *Sessions
+	Logger             *logger.Logger
+	Responders         messager.Callbacks
+	MaxReceiveDataSize types.UInt16
+	OnConnected        func(*conn.Conn)
+	OnDisconnected     func(*conn.Conn)
 }
 
 func (s *Server) Listen(listenOn net.TCPAddr, cert tls.Certificate,
@@ -63,11 +66,15 @@ func (s *Server) Listen(listenOn net.TCPAddr, cert tls.Certificate,
 	// Init variables
 	s.wait = sync.WaitGroup{}
 	s.timeout = timeout
-	s.sessions = NewSessions(s.Responders, timeout, func() {
-		s.wait.Add(1)
-	}, func() {
-		s.wait.Done()
-	})
+	s.sessions = NewSessions(
+		s.Logger.NewContext("Server"),
+		s.MaxReceiveDataSize,
+		timeout,
+		func() {
+			s.wait.Add(1)
+		}, func() {
+			s.wait.Done()
+		})
 
 	listener, lsErr := tls.Listen("tcp", listenOn.String(), &tls.Config{
 		InsecureSkipVerify: true,
@@ -121,7 +128,7 @@ func (s *Server) serve() {
 
 		syncConn.SetTimeout(s.timeout)
 
-		session, sessErr := s.sessions.Register(syncConn)
+		session, sessErr := s.sessions.Register(syncConn, s.Responders)
 
 		if sessErr != nil {
 			continue
@@ -159,8 +166,76 @@ func (s *Server) Scan(excludedConns []*conn.Conn,
 }
 
 func (s *Server) Broadcast(excludedConns []*conn.Conn,
-	callback func(string, *Session) *types.Throw) *types.Throw {
+	callback func(string, *Session) *types.Throw,
+	retry uint16,
+) *types.Throw {
 	return s.sessions.Broadcast(excludedConns, callback, 3)
+}
+
+func (s *Server) BroadcastNewPartners(
+	excludes []*conn.Conn,
+	ips types.IPAddresses,
+	retry uint16,
+) *types.Throw {
+	var err *types.Throw = nil
+
+	s.Broadcast(excludes, func(key string, sess *Session) *types.Throw {
+		err = sess.AddPartners(ips)
+
+		return nil
+	}, retry)
+
+	return err
+}
+
+func (s *Server) BroadcastDetachedPartners(
+	excludes []*conn.Conn,
+	ips types.IPAddresses,
+	retry uint16,
+) *types.Throw {
+	var err *types.Throw = nil
+
+	s.Broadcast(excludes, func(key string, sess *Session) *types.Throw {
+		err = sess.RemovePartners(ips)
+
+		return nil
+	}, retry)
+
+	return err
+}
+
+func (s *Server) BroadcastMarkClients(
+	excludes []*conn.Conn,
+	clients []server.ClientInfo,
+	retry uint16,
+) *types.Throw {
+	var err *types.Throw = nil
+
+	s.Broadcast(excludes,
+		func(key string, sess *Session) *types.Throw {
+			err = sess.MarkClients(clients)
+
+			return nil
+		}, retry)
+
+	return err
+}
+
+func (s *Server) BroadcastUnmarkClients(
+	excludes []*conn.Conn,
+	clients []types.IP,
+	retry uint16,
+) *types.Throw {
+	var err *types.Throw = nil
+
+	s.Broadcast(excludes,
+		func(key string, sess *Session) *types.Throw {
+			err = sess.UnmarkClients(clients)
+
+			return nil
+		}, retry)
+
+	return err
 }
 
 func (s *Server) Down() *types.Throw {
@@ -175,34 +250,4 @@ func (s *Server) Down() *types.Throw {
 	}
 
 	return nil
-}
-
-func (s *Server) BroadcastNewPartners(
-	excludes []*conn.Conn,
-	ips types.IPAddresses,
-) *types.Throw {
-	var err *types.Throw = nil
-
-	s.Broadcast(excludes, func(key string, sess *Session) *types.Throw {
-		err = sess.AddPartners(ips)
-
-		return nil
-	})
-
-	return err
-}
-
-func (s *Server) BroadcastDetachedPartners(
-	excludes []*conn.Conn,
-	ips types.IPAddresses,
-) *types.Throw {
-	var err *types.Throw = nil
-
-	s.Broadcast(excludes, func(key string, sess *Session) *types.Throw {
-		err = sess.RemovePartners(ips)
-
-		return nil
-	})
-
-	return err
 }

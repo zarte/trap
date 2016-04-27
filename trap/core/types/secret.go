@@ -22,56 +22,56 @@
 package types
 
 import (
-    "crypto/rand"
-    "crypto/sha512"
-    "crypto/sha256"
-    "crypto/aes"
-    "crypto/cipher"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/sha512"
 )
 
 type Secret []byte
 
 var (
-    ErrSecretDecryptionContentTooShort =
-        NewError("Content is too short to be decrypted")
+	ErrSecretDecryptionContentTooShort = NewError(
+		"Content is too short to be decrypted")
 )
 
-func (s Secret) Bytes() ([]byte) {
-    return s
+func (s Secret) Bytes() []byte {
+	return s
 }
 
-func (s Secret) String() (String) {
-    return String(s)
+func (s Secret) String() String {
+	return String(s)
 }
 
-func (s Secret) Len() (int) {
-    return len(s)
+func (s Secret) Len() int {
+	return len(s)
 }
 
-func (s Secret) IsEqual(anotherSecret *Secret) (bool) {
-    if s.Len() != len(*anotherSecret) {
-        return false
-    }
+func (s Secret) IsEqual(anotherSecret *Secret) bool {
+	if s.Len() != len(*anotherSecret) {
+		return false
+	}
 
-    for asi, asv := range *anotherSecret {
-        if s[asi] != asv {
-            return false
-        }
-    }
+	for asi, asv := range *anotherSecret {
+		if s[asi] != asv {
+			return false
+		}
+	}
 
-    return true
+	return true
 }
 
-func (s Secret) SHA256() (Secret) {
-    sum := sha256.Sum256(s)
+func (s Secret) SHA256() Secret {
+	sum := sha256.Sum256(s)
 
-    return Secret(sum[:])
+	return Secret(sum[:])
 }
 
-func (s Secret) SHA512() (Secret) {
-    sum := sha512.Sum512(s)
+func (s Secret) SHA512() Secret {
+	sum := sha512.Sum512(s)
 
-    return Secret(sum[:])
+	return Secret(sum[:])
 }
 
 /**
@@ -81,51 +81,51 @@ func (s Secret) SHA512() (Secret) {
  * Thank you Joseph Spurrier!
  */
 func (s Secret) Encrypt(key Secret) (Secret, *Throw) {
-    aesBlock, blockErr  := aes.NewCipher(key.SHA256())
+	aesBlock, blockErr := aes.NewCipher(key.SHA256())
 
-    if blockErr != nil {
-        return Secret(""), ConvertError(blockErr)
-    }
+	if blockErr != nil {
+		return Secret(""), ConvertError(blockErr)
+	}
 
-    encrypted           := make([]byte, aes.BlockSize + s.Len())
+	encrypted := make([]byte, aes.BlockSize+s.Len())
 
-    // Refer the first `aes.BlockSize` bytes of `encrypted`, magic!
-    iv                  := encrypted[:aes.BlockSize]
+	// Refer the first `aes.BlockSize` bytes of `encrypted`, magic!
+	iv := encrypted[:aes.BlockSize]
 
-    _, rErr             := rand.Read(iv)
+	_, rErr := rand.Read(iv)
 
-    if rErr != nil {
-        return Secret(""), ConvertError(rErr)
-    }
+	if rErr != nil {
+		return Secret(""), ConvertError(rErr)
+	}
 
-    stream := cipher.NewCFBEncrypter(aesBlock, iv)
+	stream := cipher.NewCFBEncrypter(aesBlock, iv)
 
-    stream.XORKeyStream(encrypted[aes.BlockSize:], s)
+	stream.XORKeyStream(encrypted[aes.BlockSize:], s)
 
-    return Secret(encrypted), nil
+	return Secret(encrypted), nil
 }
 
 func (s Secret) Decrypt(key Secret) (Secret, *Throw) {
-    aesBlock, blockErr  := aes.NewCipher(key.SHA256())
+	aesBlock, blockErr := aes.NewCipher(key.SHA256())
 
-    if blockErr != nil {
-        return Secret(""), ConvertError(blockErr)
-    }
+	if blockErr != nil {
+		return Secret(""), ConvertError(blockErr)
+	}
 
-    if s.Len() < aes.BlockSize {
-        return Secret(""), ErrSecretDecryptionContentTooShort.Throw()
-    }
+	if s.Len() < aes.BlockSize {
+		return Secret(""), ErrSecretDecryptionContentTooShort.Throw()
+	}
 
-    buffer              := make(Secret, s.Len())
+	buffer := make(Secret, s.Len())
 
-    copy(buffer, s)
+	copy(buffer, s)
 
-    iv                  := buffer[:aes.BlockSize]
-    withoutIV           := buffer[aes.BlockSize:]
+	iv := buffer[:aes.BlockSize]
+	withoutIV := buffer[aes.BlockSize:]
 
-    stream := cipher.NewCFBDecrypter(aesBlock, iv)
+	stream := cipher.NewCFBDecrypter(aesBlock, iv)
 
-    stream.XORKeyStream(withoutIV, withoutIV)
+	stream.XORKeyStream(withoutIV, withoutIV)
 
-    return Secret(withoutIV), nil
+	return Secret(withoutIV), nil
 }

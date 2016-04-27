@@ -22,17 +22,17 @@
 package messager
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type message struct {
-    ID                          byte
-    Code                        byte
-    Held                        bool
-    Message                     [][]byte
-    Responds                    Callbacks
-    ResultChan                  chan *types.Throw
-    MaxRespondLen               uint
-    Ready                       bool
-    StatusLock                  types.Mutex
+	ID         byte
+	Group      byte
+	Code       byte
+	Held       bool
+	Message    [][]byte
+	Responds   Callbacks
+	ResultChan chan *types.Throw
+	Ready      bool
+	StatusLock types.Mutex
 }

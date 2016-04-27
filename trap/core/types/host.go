@@ -34,9 +34,12 @@ const (
 )
 
 var (
-	ErrHostInvalidIP *Error = NewError("'%s' is not an IP address")
+	ErrHostInvalidIP *Error = NewError(
+		"'%s' is not an IP address")
 
 	emptyIP = IP{}
+	zeroIP4 = ConvertIP(net.ParseIP("0.0.0.0"))
+	zeroIP6 = ConvertIP(net.ParseIP("::"))
 )
 
 type IPAddressString String
@@ -67,7 +70,15 @@ func (ip *IP) IsEmpty() bool {
 	return true
 }
 
-func (ip *IP) MarshalText() ([]byte, error) {
+func (ip *IP) IsZero() bool {
+	if !ip.IsEqual(&zeroIP4) && !ip.IsEqual(&zeroIP6) {
+		return false
+	}
+
+	return true
+}
+
+func (ip IP) MarshalText() ([]byte, error) {
 	return []byte(ip.String()), nil
 }
 
@@ -76,7 +87,7 @@ func (ip *IP) UnmarshalText(text []byte) error {
 
 	var err *Throw = nil
 
-	newIP, err = ConvertIPFromString(String(text[:]))
+	newIP, err = ConvertIPFromString(String(text))
 
 	if err != nil {
 		return errors.New(err.Error())

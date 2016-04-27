@@ -22,6 +22,7 @@
 package messager
 
 import (
+	"github.com/raincious/trap/trap/core/logger"
 	"github.com/raincious/trap/trap/core/sync/communication/conn"
 	"github.com/raincious/trap/trap/core/types"
 
@@ -41,9 +42,16 @@ var (
 	ErrMessageEOFReached *types.Error = types.NewError(
 		"EOF Reached")
 
-	ErrMessageLengthExceed *types.Error = types.NewError(
+	ErrMessageUnexpectedHeader *types.Error = types.NewError(
+		"'%d' is not a valid head")
+
+	ErrMessageReadLengthExceed *types.Error = types.NewError(
 		"Recevied '%d' bytes of message, " +
-			"but it exceed the max length limit of '%d' bytes")
+			"but it's exceed the max length limit of '%d' bytes")
+
+	ErrMessageWriteLengthExceed *types.Error = types.NewError(
+		"Sending '%d' bytes of message, " +
+			"but it's exceed the max length limit of '%d' bytes")
 
 	ErrMessageUnexpectedResp *types.Error = types.NewError(
 		"Unexpected respond '%d' for message '%d'")
@@ -60,25 +68,25 @@ var (
 )
 
 type Messager struct {
-	messages slots
-
-	readerReady messageSignalChan
-	writerReady messageSignalChan
-
-	writeable     bool
-	writeableLock types.Mutex
-
+	messages          slots
+	logger            *logger.Logger
+	maxReceiveLength  int
+	maxSendLength     int
+	maxLengthLock     types.Mutex
+	readerReady       messageSignalChan
+	writerReady       messageSignalChan
+	writeable         bool
+	writeableLock     types.Mutex
 	writerChan        chan *message
 	exitChan          messageSignalChan
 	defaultResponders Callbacks
-
-	transmited int64
-	received   int64
-
-	syncCtlCharTable byteCheckTable
+	transmited        int64
+	received          int64
+	syncCtlCharTable  byteCheckTable
 }
 
-func NewMessager(defaultResponders Callbacks) *Messager {
+func NewMessager(defaultResponders Callbacks,
+	maxSegmentLength types.UInt16, logger *logger.Logger) *Messager {
 	controlCharTable := byteCheckTable{}
 
 	for _, ctrlChar := range []byte{
@@ -89,10 +97,20 @@ func NewMessager(defaultResponders Callbacks) *Messager {
 		controlCharTable[ctrlChar] = true
 	}
 
+	maxSegLen := int(maxSegmentLength)
+
+	if maxSegLen < SYNC_BUFFER_LENGTH {
+		maxSegLen = SYNC_BUFFER_LENGTH
+	}
+
 	return &Messager{
 		messages: slots{
 			initLock: &types.Mutex{},
 		},
+		logger:            logger.NewContext("Data"),
+		maxReceiveLength:  maxSegLen,
+		maxSendLength:     maxSegLen,
+		maxLengthLock:     types.Mutex{},
 		readerReady:       make(messageSignalChan),
 		writerReady:       make(messageSignalChan),
 		writeable:         false,
@@ -275,12 +293,10 @@ func (m *Messager) fillBytes(sentLen int, withWith byte) []byte {
 	return filling
 }
 
-func (m *Messager) pack(id, code byte, data [][]byte) []byte {
+func (m *Messager) pack(id, group, code byte, data [][]byte) []byte {
 	packed := []byte{}
 
-	packed = append(packed, m.escape([]byte{id})...)
-	packed = append(packed, SYNC_CONTROLCHAR_SEPARATOR)
-	packed = append(packed, m.escape([]byte{code})...)
+	packed = append(packed, m.escape([]byte{id, group, code})...)
 	packed = append(packed, SYNC_CONTROLCHAR_SEPARATOR)
 	packed = append(packed, m.combine(data)...)
 	packed = append(packed, SYNC_CONTROLCHAR_TRANSMITTED)
@@ -289,8 +305,9 @@ func (m *Messager) pack(id, code byte, data [][]byte) []byte {
 }
 
 func (m *Messager) parse(reader io.Reader, perseveredBuf *[]byte,
-	result func(b []byte),
-	afterRead func(int, error) *types.Throw) *types.Throw {
+	result func(b []byte) *types.Throw,
+	afterRead func(int, error) *types.Throw,
+) *types.Throw {
 	var err error = nil
 	var throw *types.Throw = nil
 
@@ -373,12 +390,20 @@ func (m *Messager) parse(reader io.Reader, perseveredBuf *[]byte,
 					// Do nothing
 
 				case SYNC_CONTROLCHAR_SEPARATOR:
-					result(m.unescape(bufReserved[bufResHed:ctrlPos]))
+					throw = result(m.unescape(bufReserved[bufResHed:ctrlPos]))
+
+					if throw != nil {
+						return throw
+					}
 
 					bufResHed = ctrlPos + 1
 
 				case SYNC_CONTROLCHAR_TRANSMITTED:
-					result(m.unescape(bufReserved[bufResHed:ctrlPos]))
+					throw = result(m.unescape(bufReserved[bufResHed:ctrlPos]))
+
+					if throw != nil {
+						return throw
+					}
 
 					ctrlPos = m.bypassBytePosition(clPos,
 						ctrlIdx, bufReserved,
@@ -410,12 +435,13 @@ func (m *Messager) parse(reader io.Reader, perseveredBuf *[]byte,
 func (m *Messager) reader(rConn *conn.Conn) *types.Throw {
 	var message *message = nil
 	var readIndex uint = 0
-	var totalReadLength uint = 0
+	var receivedDataLen int = 0
 	var data [][]byte = [][]byte{}
-	var respCode byte = SYNC_SIGNAL_UNDEFINED
 	var responable bool = true
 	var prsvBuf []byte = []byte{}
-	var replyID byte = 0
+	var msgID byte = 0
+	var groupID byte = 0
+	var codeID byte = 0
 	var parseErr *types.Throw = nil
 
 	defer func() {
@@ -427,13 +453,13 @@ func (m *Messager) reader(rConn *conn.Conn) *types.Throw {
 	for {
 		message = nil
 		readIndex = 0
-		totalReadLength = 0
 		data = [][]byte{}
-		respCode = SYNC_SIGNAL_UNDEFINED
 		responable = true
-		replyID = 0
+		msgID = 0
+		groupID = 0
+		codeID = SYNC_SIGNAL_UNDEFINED
 
-		parseErr = m.parse(rConn, &prsvBuf, func(b []byte) {
+		parseErr = m.parse(rConn, &prsvBuf, func(b []byte) *types.Throw {
 			readIndex++
 
 			switch readIndex {
@@ -441,16 +467,25 @@ func (m *Messager) reader(rConn *conn.Conn) *types.Throw {
 				// Drop it
 
 			case 1:
-				if len(b) > 0 {
-					replyID = b[0]
+				if len(b) == 3 {
+					msgID = b[0]
+					groupID = b[1]
+					codeID = b[2]
 
-					msg, msgErr := m.messages.Take(replyID)
+					msg, msgErr := m.messages.Take(msgID)
 
 					if msgErr != nil {
-						return
+						return nil
 					}
 
 					msg.StatusLock.Exec(func() {
+						if msg.Group != groupID {
+							msg.ResultChan <- ErrMessageRespondNotReady.Throw(
+								msg.ID)
+
+							return
+						}
+
 						if msg.Ready {
 							message = msg
 
@@ -462,46 +497,33 @@ func (m *Messager) reader(rConn *conn.Conn) *types.Throw {
 
 						responable = false
 					})
-				}
-
-			case 2:
-				if len(b) > 0 {
-					respCode = b[0]
+				} else {
+					return ErrMessageUnexpectedHeader.Throw(b)
 				}
 
 			default:
 				data = append(data, b)
 			}
+
+			return nil
 		}, func(readLen int, readErr error) *types.Throw {
 			atomic.AddInt64(&m.received, int64(readLen))
+
+			receivedDataLen += readLen
+
+			if receivedDataLen > m.GetMaxReceiveLength() {
+				return ErrMessageReadLengthExceed.Throw(receivedDataLen,
+					m.GetMaxReceiveLength())
+			}
 
 			if readErr != nil {
 				return nil
 			}
 
-			totalReadLength += uint(readLen)
-
-			if message == nil {
-				return nil
-			}
-
-			if message.MaxRespondLen == 0 {
-				return nil
-			}
-
-			if totalReadLength < message.MaxRespondLen {
-				return nil
-			}
-
-			return ErrMessageLengthExceed.Throw(totalReadLength,
-				message.MaxRespondLen)
+			return nil
 		})
 
 		if parseErr != nil {
-			if parseErr.Is(ErrMessageLengthExceed) {
-				continue
-			}
-
 			return parseErr
 		}
 
@@ -510,43 +532,47 @@ func (m *Messager) reader(rConn *conn.Conn) *types.Throw {
 		}
 
 		if message != nil {
-			if !message.Responds.Has(respCode) {
+			if !message.Responds.Has(codeID) {
 				message.ResultChan <- ErrMessageUnexpectedResp.Throw(
-					respCode, message.ID)
+					codeID, message.ID)
 
 				continue
 			}
 
 			message.ResultChan <- message.Responds.Call(
-				respCode,
+				codeID,
 				Request{
-					conn:     rConn,
-					messager: m,
-
-					data:    data,
-					dataLen: totalReadLength,
-					code:    respCode,
-					id:      0,
-
+					conn:        rConn,
+					messager:    m,
+					data:        data,
+					code:        codeID,
+					id:          0,
+					groupID:     groupID,
 					isReplyable: false, // Not request, thus unreplyable
 				},
 			)
 		} else {
-			if !m.defaultResponders.Has(respCode) {
+			if !m.defaultResponders.Has(codeID) {
+				m.logger.Errorf("Message '%d' is not supported", codeID)
+
 				continue
 			}
 
-			m.defaultResponders.Call(respCode, Request{
-				conn:     rConn,
-				messager: m,
-
-				data:    data,
-				dataLen: totalReadLength,
-				code:    respCode,
-				id:      replyID,
-
+			parseErr = m.defaultResponders.Call(codeID, Request{
+				conn:        rConn,
+				messager:    m,
+				data:        data,
+				code:        codeID,
+				id:          msgID,
+				groupID:     groupID,
 				isReplyable: true, // This is a request, so replyable
 			})
+
+			if parseErr != nil {
+				m.logger.Errorf("Failed to respond message '%d' which "+
+					"contains a number '%d' message due to error: %s",
+					msgID, codeID, parseErr)
+			}
 		}
 	}
 }
@@ -559,6 +585,7 @@ func (m *Messager) writer(wConn *conn.Conn) {
 	down := false
 	preDown := false
 	ticker := time.Tick(1 * time.Second)
+	dataLen := int(0)
 
 	defer func() {
 		if preDown {
@@ -593,8 +620,23 @@ func (m *Messager) writer(wConn *conn.Conn) {
 				continue
 			}
 
-			data := m.pack(message.ID, message.Code,
+			data := m.pack(message.ID, message.Group, message.Code,
 				message.Message)
+			dataLen = len(data)
+
+			if dataLen > m.GetMaxReceiveLength() {
+				if !message.Held {
+					message.ResultChan <- types.ConvertError(
+						ErrMessageWriteLengthExceed.Throw(dataLen,
+							m.GetMaxSendLength()))
+				} else {
+					m.messages.Drop(message.ID,
+						ErrMessageWriteLengthExceed.Throw(dataLen,
+							m.GetMaxSendLength()))
+				}
+
+				continue
+			}
 
 			if len(m.writerChan) <= 0 {
 				data = append(data, m.fillBytes(
@@ -691,6 +733,38 @@ func (m *Messager) Listen(lConn *conn.Conn, ready chan<- bool) *types.Throw {
 	return err
 }
 
+func (m *Messager) GetMaxReceiveLength() int {
+	var r int = 0
+
+	m.maxLengthLock.Exec(func() {
+		r = m.maxReceiveLength
+	})
+
+	return r
+}
+
+func (m *Messager) GetMaxSendLength() int {
+	var r int = 0
+
+	m.maxLengthLock.Exec(func() {
+		r = m.maxSendLength
+	})
+
+	return r
+}
+
+func (m *Messager) SetMaxReceiveLength(newLength types.UInt16) {
+	m.maxLengthLock.Exec(func() {
+		m.maxReceiveLength = int(newLength)
+	})
+}
+
+func (m *Messager) SetMaxSendLength(newLength types.UInt16) {
+	m.maxLengthLock.Exec(func() {
+		m.maxSendLength = int(newLength)
+	})
+}
+
 func (m *Messager) Stats() Stats {
 	return Stats{
 		TX: atomic.LoadInt64(&m.transmited),
@@ -699,7 +773,7 @@ func (m *Messager) Stats() Stats {
 }
 
 func (m *Messager) Query(code byte, data Data, responds Callbacks,
-	maxRespondLen uint, waitTime time.Duration) *types.Throw {
+	waitTime time.Duration) *types.Throw {
 	var err *types.Throw = nil
 	var msgByte [][]byte = [][]byte{}
 
@@ -710,15 +784,15 @@ func (m *Messager) Query(code byte, data Data, responds Callbacks,
 	}
 
 	msg := &message{
-		ID:            MESSAGES_RESEVERED_ID,
-		Code:          code,
-		Held:          false,
-		Message:       msgByte,
-		Responds:      responds,
-		ResultChan:    make(chan *types.Throw),
-		MaxRespondLen: maxRespondLen,
-		Ready:         false,
-		StatusLock:    types.Mutex{},
+		ID:         MESSAGES_RESEVERED_ID,
+		Group:      0,
+		Code:       code,
+		Held:       false,
+		Message:    msgByte,
+		Responds:   responds,
+		ResultChan: make(chan *types.Throw),
+		Ready:      false,
+		StatusLock: types.Mutex{},
 	}
 
 	holdErr := m.messages.Hold(
@@ -771,15 +845,25 @@ func (m *Messager) Query(code byte, data Data, responds Callbacks,
 	if err != nil {
 		m.messages.Drop(msg.ID, nil)
 
+		m.logger.Errorf("Query '%d' which contains a  number '%d' message has "+
+			"been dropped due to error: %s", msg.ID, msg.Code, err)
+
 		return err
 	}
 
 	m.writerChan <- msg
 
-	return <-msg.ResultChan
+	err = <-msg.ResultChan
+
+	if err != nil {
+		m.logger.Errorf("Query '%d' which contains a number '%d' message has "+
+			"failed due to error: %s", msg.ID, msg.Code, err)
+	}
+
+	return err
 }
 
-func (m *Messager) Reply(msgID byte, code byte, data Data) *types.Throw {
+func (m *Messager) Reply(msgID, groupID, code byte, data Data) *types.Throw {
 	var err *types.Throw = nil
 	var msgByte [][]byte = [][]byte{}
 
@@ -790,15 +874,15 @@ func (m *Messager) Reply(msgID byte, code byte, data Data) *types.Throw {
 	}
 
 	msg := &message{
-		ID:            msgID,
-		Code:          code,
-		Held:          false,
-		Message:       msgByte,
-		Responds:      m.defaultResponders,
-		ResultChan:    make(chan *types.Throw),
-		MaxRespondLen: 0,
-		Ready:         false,
-		StatusLock:    types.Mutex{},
+		ID:         msgID,
+		Group:      groupID,
+		Code:       code,
+		Held:       false,
+		Message:    msgByte,
+		Responds:   m.defaultResponders,
+		ResultChan: make(chan *types.Throw),
+		Ready:      false,
+		StatusLock: types.Mutex{},
 	}
 
 	m.writeableLock.Exec(func() {
@@ -810,10 +894,20 @@ func (m *Messager) Reply(msgID byte, code byte, data Data) *types.Throw {
 	})
 
 	if err != nil {
+		m.logger.Errorf("Reply '%d' which contains a number '%d' message "+
+			"is failed to send due to error: %s", msg.ID, msg.Code, err)
+
 		return err
 	}
 
 	m.writerChan <- msg
 
-	return <-msg.ResultChan
+	err = <-msg.ResultChan
+
+	if err != nil {
+		m.logger.Errorf("Reply '%d' which contains a number '%d' message "+
+			"has failed due to error: %s", msg.ID, msg.Code, err)
+	}
+
+	return err
 }

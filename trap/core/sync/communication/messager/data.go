@@ -22,10 +22,10 @@
 package messager
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Data interface {
-    Parse([][]byte) (*types.Throw)
-    Build() ([][]byte, *types.Throw)
+	Parse([][]byte) *types.Throw
+	Build() ([][]byte, *types.Throw)
 }

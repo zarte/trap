@@ -38,11 +38,14 @@ import (
 
 type Sync struct {
 	listenOn          net.TCPAddr
+	trapServer        *Server
 	tlsCert           tls.Certificate
+	maxReceiveLen     types.UInt16
 	logger            *logger.Logger
 	passphrase        types.String
 	syncNodes         *sync.Nodes
 	syncServer        *communication.Server
+	syncRetry         uint16
 	activeClients     *sync.ActiveClientsTable
 	requestTimeout    time.Duration
 	connectionTimeout time.Duration
@@ -53,14 +56,17 @@ type Sync struct {
 
 func NewSync() *Sync {
 	return &Sync{
+		trapServer: nil,
 		listenOn: net.TCPAddr{
 			IP:   net.ParseIP("0.0.0.0"),
 			Port: 0,
 		},
 		tlsCert:           tls.Certificate{},
+		maxReceiveLen:     65535,
 		passphrase:        "",
 		syncNodes:         nil,
 		syncServer:        nil,
+		syncRetry:         3,
 		activeClients:     sync.NewActiveClientsTable(),
 		requestTimeout:    6 * time.Second,
 		connectionTimeout: 120 * time.Second,
@@ -77,23 +83,63 @@ func (s *Sync) nodes() *sync.Nodes {
 
 	client := controller.Client{
 		Common: controller.Common{
-			Logger: s.logger.NewContext("Client"),
 			GetPartners: func() types.SearchableIPAddresses {
 				return s.nodes().Partners()
 			},
 			IsAuthed: func(clientAddr net.Addr) bool {
 				return true
 			},
-			MarkClients: func(c []server.ClientInfo) *types.Throw {
+			MarkClients: func(
+				c *conn.Conn,
+				clients []server.ClientInfo,
+			) *types.Throw {
+				importedClients := []server.ClientInfo{}
+
+				for _, client := range clients {
+					if client.Server.IP.IsZero() {
+						newIP, ipErr := types.ConvertIPAddress(c.RemoteAddr())
+
+						if ipErr != nil {
+							continue
+						}
+
+						client.Server.IP = newIP.IP
+					}
+
+					s.trapServer.ImportClient(client)
+
+					importedClients = append(importedClients, client)
+				}
+
+				go s.nodes().BroadcastMarkClients([]*conn.Conn{c},
+					importedClients, s.syncRetry)
+
+				go s.server().BroadcastMarkClients([]*conn.Conn{c},
+					importedClients, s.syncRetry)
+
 				return nil
 			},
-			UnmarkClients: func(c []server.ClientInfo) *types.Throw {
+			UnmarkClients: func(
+				c *conn.Conn,
+				clients []types.IP,
+			) *types.Throw {
+				for _, client := range clients {
+					s.trapServer.RemoveClient(client)
+				}
+
+				go s.nodes().BroadcastUnmarkClients([]*conn.Conn{c},
+					clients, s.syncRetry)
+
+				go s.server().BroadcastUnmarkClients([]*conn.Conn{c},
+					clients, s.syncRetry)
+
 				return nil
 			},
 		},
 		AddPartners: func(
 			c *conn.Conn, ips types.SearchableIPAddresses) *types.Throw {
-			err := s.server().BroadcastNewPartners([]*conn.Conn{}, ips.Export())
+			err := s.server().BroadcastNewPartners([]*conn.Conn{},
+				ips.Export(), s.syncRetry)
 
 			if err != nil {
 				s.logger.Debugf("Can't broadcast `AddPartners` "+
@@ -105,7 +151,7 @@ func (s *Sync) nodes() *sync.Nodes {
 		RemovePartners: func(
 			c *conn.Conn, ips types.SearchableIPAddresses) *types.Throw {
 			err := s.server().BroadcastDetachedPartners(
-				[]*conn.Conn{}, ips.Export())
+				[]*conn.Conn{}, ips.Export(), s.syncRetry)
 
 			if err != nil {
 				s.logger.Debugf("Can't broadcast `RemovePartners` "+
@@ -118,6 +164,8 @@ func (s *Sync) nodes() *sync.Nodes {
 
 	s.syncNodes = sync.NewNodes(
 		client,
+		s.logger,
+		s.maxReceiveLen,
 		s.requestTimeout,
 		s.connectionTimeout,
 	)
@@ -132,7 +180,6 @@ func (s *Sync) server() *communication.Server {
 
 	contrl := controller.Server{
 		Common: controller.Common{
-			Logger: s.logger.NewContext("Server"),
 			GetPartners: func() types.SearchableIPAddresses {
 				return s.nodes().Partners()
 			},
@@ -140,13 +187,49 @@ func (s *Sync) server() *communication.Server {
 				return s.activeClients.HasAddr(clientAddr)
 			},
 			MarkClients: func(
-				ips []server.ClientInfo,
+				c *conn.Conn,
+				clients []server.ClientInfo,
 			) *types.Throw {
+				importedClients := []server.ClientInfo{}
+
+				for _, client := range clients {
+					if client.Server.IP.IsZero() {
+						newIP, ipErr := types.ConvertIPAddress(c.RemoteAddr())
+
+						if ipErr != nil {
+							continue
+						}
+
+						client.Server.IP = newIP.IP
+					}
+
+					s.trapServer.ImportClient(client)
+
+					importedClients = append(importedClients, client)
+				}
+
+				go s.nodes().BroadcastMarkClients([]*conn.Conn{c},
+					importedClients, s.syncRetry)
+
+				go s.server().BroadcastMarkClients([]*conn.Conn{c},
+					importedClients, s.syncRetry)
+
 				return nil
 			},
 			UnmarkClients: func(
-				ips []server.ClientInfo,
+				c *conn.Conn,
+				clients []types.IP,
 			) *types.Throw {
+				for _, client := range clients {
+					s.trapServer.RemoveClient(client)
+				}
+
+				go s.nodes().BroadcastUnmarkClients([]*conn.Conn{c},
+					clients, s.syncRetry)
+
+				go s.server().BroadcastUnmarkClients([]*conn.Conn{c},
+					clients, s.syncRetry)
+
 				return nil
 			},
 		},
@@ -172,13 +255,17 @@ func (s *Sync) server() *communication.Server {
 
 	handle.Register(messager.SYNC_SIGNAL_HELLO, contrl.Auth)
 	handle.Register(messager.SYNC_SIGNAL_HEATBEAT, contrl.Heatbeat)
+	handle.Register(messager.SYNC_SIGNAL_CLIENT_MARK, contrl.ClientsMarked)
+	handle.Register(messager.SYNC_SIGNAL_CLIENT_UNMARK, contrl.ClientsUnmarked)
 
 	comServer := &communication.Server{
 		OnConnected: func(conn *conn.Conn) {},
 		OnDisconnected: func(conn *conn.Conn) {
 			s.activeClients.Remove(conn)
 		},
-		Responders: handle,
+		Responders:         handle,
+		MaxReceiveDataSize: s.maxReceiveLen,
+		Logger:             s.logger,
 	}
 
 	s.syncServer = comServer
@@ -186,8 +273,18 @@ func (s *Sync) server() *communication.Server {
 	return s.syncServer
 }
 
+func (s *Sync) SetServer(srv *Server) {
+	s.trapServer = srv
+}
+
 func (s *Sync) SetLogger(l *logger.Logger) {
 	s.logger = l.NewContext("Sync")
+}
+
+func (s *Sync) SetMaxReceiveLen(maxReceiveLen types.UInt16) {
+	s.maxReceiveLen = maxReceiveLen
+
+	s.logger.Debugf("Max receive length has been set to '%d'", s.maxReceiveLen)
 }
 
 func (s *Sync) SetRequestTimeout(timeout time.Duration) {
@@ -212,10 +309,16 @@ func (s *Sync) SetLooseTimeout(timeout time.Duration) {
 
 func (s *Sync) SetPort(port types.UInt16) {
 	s.listenOn.Port = int(port.UInt16())
+
+	s.logger.Debugf("Server port has been set to '%d'",
+		s.listenOn.Port)
 }
 
 func (s *Sync) SetInterface(ifaceIP types.IP) {
 	s.listenOn.IP = ifaceIP.IP()
+
+	s.logger.Debugf("Server interface has been set to '%s'",
+		s.listenOn.IP)
 }
 
 func (s *Sync) SetPassphrase(passphrase types.String) {
@@ -268,23 +371,24 @@ func (s *Sync) connectAllNodes() {
 					node.Address().String())
 			},
 			func(c *conn.Conn, ips types.IPAddresses) {
-				defer s.server().BroadcastNewPartners([]*conn.Conn{}, ips)
+				defer s.server().BroadcastNewPartners([]*conn.Conn{}, ips,
+					s.syncRetry)
 
-				s.logger.Debugf("Logged in to node '%s'",
+				s.logger.Infof("Logged in to node '%s'",
 					node.Address().String())
 			},
 			func(rmPartners types.IPAddresses, c *conn.Conn, err *types.Throw) {
 				defer s.server().BroadcastDetachedPartners([]*conn.Conn{},
-					rmPartners)
+					rmPartners, s.syncRetry)
 
-				if err != nil {
-					s.logger.Debugf("Node '%s' is dropped due to error: %s",
+				if err != nil && !err.Is(messager.ErrMessageEOFReached) {
+					s.logger.Warningf("Node '%s' is dropped due to error: %s",
 						node.Address().String(), err)
 
 					return
 				}
 
-				s.logger.Debugf("Node '%s' is disconnected",
+				s.logger.Infof("Node '%s' is disconnected",
 					node.Address().String())
 			})
 
@@ -298,24 +402,7 @@ func (s *Sync) connectAllNodes() {
 }
 
 func (s *Sync) disconnectAllNodes() {
-	s.nodes().Scan(func(key types.String, node *sync.Node) *types.Throw {
-		if !node.IsConnected() {
-			return nil
-		}
-
-		s.logger.Debugf("Disconnecting from node '%s'", node.Address().String())
-
-		dconnectErr := node.Disconnect()
-
-		if dconnectErr != nil {
-			s.logger.Errorf("Can't disconnect from node '%s' due to error: %s",
-				node.Address().String(), dconnectErr)
-
-			return nil
-		}
-
-		return nil
-	})
+	s.nodes().Clear()
 }
 
 func (s *Sync) tryConnectToAllNodes() {
@@ -340,8 +427,76 @@ func (s *Sync) AddNode(nodeAddr types.IPAddress,
 	return err
 }
 
+func (s *Sync) Status() sync.Status {
+	status := sync.Status{
+		Nodes: []sync.NodeInfo{},
+		Server: sync.ServerInfo{
+			Listen: types.IPAddress{
+				IP:   types.ConvertIP(s.listenOn.IP),
+				Port: types.UInt16(s.listenOn.Port),
+			},
+			Clients: []sync.ClientInfo{},
+		},
+	}
+
+	s.nodes().Scan(func(key types.String, n *sync.Node) *types.Throw {
+		nPartner := n.Partners()
+
+		status.Nodes = append(status.Nodes, sync.NodeInfo{
+			Address:   n.Address(),
+			Delay:     n.Delay(),
+			Stats:     n.Stats(),
+			Connected: n.IsConnected(),
+			Partner:   nPartner.Export(),
+		})
+
+		return nil
+	})
+
+	s.server().Scan(
+		[]*conn.Conn{},
+		func(key string, sess *communication.Session) *types.Throw {
+			ipAddr, ipErr := types.ConvertIPAddress(sess.Conn().RemoteAddr())
+
+			if ipErr != nil {
+				ipAddr = types.IPAddress{}
+			}
+
+			status.Server.Clients = append(
+				status.Server.Clients,
+				sync.ClientInfo{
+					Remote: ipAddr,
+					Stats:  sess.Request().Stats(),
+				})
+
+			return nil
+		})
+
+	return status
+}
+
 func (s *Sync) Serv() *types.Throw {
 	s.logger.Debugf("Booting up")
+
+	s.trapServer.OnMark(func(client server.ClientInfo) {
+		clients := []server.ClientInfo{client}
+
+		go s.nodes().BroadcastMarkClients([]*conn.Conn{},
+			clients, s.syncRetry)
+
+		go s.server().BroadcastMarkClients([]*conn.Conn{},
+			clients, s.syncRetry)
+	})
+
+	s.trapServer.OnUnmark(func(client types.IP) {
+		clients := []types.IP{client}
+
+		go s.nodes().BroadcastUnmarkClients([]*conn.Conn{},
+			clients, s.syncRetry)
+
+		go s.server().BroadcastUnmarkClients([]*conn.Conn{},
+			clients, s.syncRetry)
+	})
 
 	sErr := s.server().Listen(
 		s.listenOn,

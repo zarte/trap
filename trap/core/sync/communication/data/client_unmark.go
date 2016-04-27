@@ -21,6 +21,49 @@
 
 package data
 
+import (
+	"github.com/raincious/trap/trap/core/types"
+)
+
+var (
+	ErrDataInvalidLengthForIP *types.Error = types.NewError(
+		"Data length is invalid for an IP address bytes")
+)
+
 type ClientUnmark struct {
-    ClientMark
+	Base
+
+	Addresses []types.IP
+}
+
+func (d *ClientUnmark) Parse(msg [][]byte) *types.Throw {
+	verifyErr := d.Verify(msg, 1)
+
+	if verifyErr != nil {
+		return verifyErr
+	}
+
+	for _, data := range msg {
+		if len(data) != types.IP_ADDR_SLICE_LEN {
+			return ErrDataInvalidLengthForIP.Throw()
+		}
+
+		newIP := types.IP{}
+
+		copy(newIP[:], data[:])
+
+		d.Addresses = append(d.Addresses, newIP)
+	}
+
+	return nil
+}
+
+func (d *ClientUnmark) Build() ([][]byte, *types.Throw) {
+	result := [][]byte{}
+
+	for _, addr := range d.Addresses {
+		result = append(result, addr[:])
+	}
+
+	return result, nil
 }

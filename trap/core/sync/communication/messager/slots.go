@@ -51,6 +51,10 @@ var (
 		"Can't found message %d")
 )
 
+var (
+	messageGroupIndexStartPos = byte(0)
+)
+
 type slots struct {
 	inited             bool
 	initLock           *types.Mutex
@@ -59,6 +63,7 @@ type slots struct {
 	messageEnabled     bool
 	messageEnabledLock *types.Mutex
 	messageIndex       byte
+	messageGroupIndex  byte
 	messageIndexLock   *types.Mutex
 
 	monitoringExit messageSignalChan
@@ -93,6 +98,7 @@ func (m *slots) init() *types.Throw {
 
 	m.messages = [MAX_MESSAGES_HOLDING_SIZE]*messageSlot{}
 	m.messageIndex = byte(0)
+	m.messageGroupIndex = messageGroupIndexStartPos
 	m.messageIndexLock = &types.Mutex{}
 	m.messageEnabledLock = &types.Mutex{}
 
@@ -121,6 +127,9 @@ func (m *slots) init() *types.Throw {
 	m.messageEnabledLock.Exec(func() {
 		m.messageEnabled = true
 	})
+
+	messageGroupIndexStartPos = byte(
+		uint16(messageGroupIndexStartPos+1) % MAX_MESSAGES_HOLDING_SIZE)
 
 	return nil
 }
@@ -169,19 +178,26 @@ func (m *slots) monitoring() {
 	}
 }
 
-func (m *slots) nextIndex() byte {
-	var result byte = 0
+func (m *slots) nextIndex() (byte, byte) {
+	var msgID byte = 0
+	var groupID byte = 0
 
 	m.messageIndexLock.Exec(func() {
-		newIndex := m.messageIndex + 1
+		groupID = m.messageGroupIndex
 
-		result = byte(uint16(newIndex) %
-			MAX_MESSAGES_HOLDING_SIZE)
+		msgID = byte(uint16(m.messageIndex+1) % MAX_MESSAGES_HOLDING_SIZE)
 
-		m.messageIndex = result
+		if msgID == 0 {
+			groupID = byte(
+				uint16(m.messageGroupIndex+1) % MAX_MESSAGES_HOLDING_SIZE)
+
+			m.messageGroupIndex = groupID
+		}
+
+		m.messageIndex = msgID
 	})
 
-	return result
+	return msgID, groupID
 }
 
 func (m *slots) has(id byte) bool {
@@ -324,7 +340,7 @@ func (m *slots) Hold(msg *message, expire time.Duration,
 	var err *types.Throw = nil
 	var waitUp bool = false
 	var waitTime time.Duration = time.Duration(0)
-	var idx byte = m.nextIndex()
+	var idx, grp byte = m.nextIndex()
 
 	m.initLock.Exec(func() {
 		m.messageEnabledLock.Exec(func() {
@@ -388,6 +404,7 @@ func (m *slots) Hold(msg *message, expire time.Duration,
 
 		m.messages[idx].lock.Exec(func() {
 			msg.ID = idx
+			msg.Group = grp
 			msg.Held = true
 
 			m.messages[idx].msg = msg

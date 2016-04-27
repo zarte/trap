@@ -81,7 +81,7 @@ func init() {
 	flag.Parse()
 }
 
-func initConfig(server *trap.Server, status *trap.Status, sync *trap.Sync) {
+func initConfig(server *trap.Server, sync *trap.Sync, status *trap.Status) {
 	if cfgFile == "" {
 		panic(fmt.Errorf("Configuration is not specified. "+
 			"Please use command `%s -help` for more information",
@@ -162,9 +162,57 @@ func initConfig(server *trap.Server, status *trap.Status, sync *trap.Sync) {
 		}
 	}
 
+	// Start `Sync` Server for status sync
+	if cfg.SyncPort > 0 {
+		sync.SetPort(cfg.SyncPort)
+
+		if !cfg.SyncInterface.IsEmpty() {
+			sync.SetInterface(cfg.SyncInterface)
+		}
+
+		if cfg.SyncConnTimeout != 0 {
+			sync.SetConnectionTimeout(cfg.SyncConnTimeout)
+		}
+
+		if cfg.SyncLooseTimeout != 0 {
+			sync.SetLooseTimeout(cfg.SyncLooseTimeout)
+		}
+
+		if cfg.SyncReqTimeout != 0 {
+			sync.SetRequestTimeout(cfg.SyncReqTimeout)
+		}
+
+		if cfg.SyncReceiveLen != 0 {
+			sync.SetMaxReceiveLen(cfg.SyncReceiveLen)
+		}
+
+		certLoadErr := sync.LoadCert(cfg.SyncCert, cfg.SyncCertKey)
+
+		if certLoadErr != nil {
+			panic(fmt.Errorf("Can't load sync server certificate '%s'"+
+				" and key '%s' due to error: %s",
+				cfg.SyncCert, cfg.SyncCertKey, certLoadErr))
+		}
+
+		if cfg.SyncPass != "" {
+			sync.SetPassphrase(cfg.SyncPass)
+		}
+
+		for _, syncClient := range cfg.SyncWith {
+			sync.AddNode(syncClient.Address, syncClient.Passphrase)
+		}
+
+		server.OnUpDown(func() *types.Throw {
+			return sync.Serv()
+		}, func() *types.Throw {
+			return sync.Down()
+		})
+	}
+
 	// Start `Status` Server to display some of the status of the server
 	if cfg.StatusPort > 0 {
 		status.SetServer(server)
+		status.SetSync(sync)
 
 		status.Port(cfg.StatusPort)
 
@@ -191,49 +239,6 @@ func initConfig(server *trap.Server, status *trap.Status, sync *trap.Sync) {
 			return status.Serv()
 		}, func() *types.Throw {
 			return status.Down()
-		})
-	}
-
-	// Start `Sync` Server for status sync
-	if cfg.SyncPort > 0 {
-		sync.SetPort(cfg.SyncPort)
-
-		if !cfg.SyncInterface.IsEmpty() {
-			sync.SetInterface(cfg.SyncInterface)
-		}
-
-		if cfg.SyncConnTimeout != 0 {
-			sync.SetConnectionTimeout(cfg.SyncConnTimeout)
-		}
-
-		if cfg.SyncLooseTimeout != 0 {
-			sync.SetLooseTimeout(cfg.SyncLooseTimeout)
-		}
-
-		if cfg.SyncReqTimeout != 0 {
-			sync.SetRequestTimeout(cfg.SyncReqTimeout)
-		}
-
-		certLoadErr := sync.LoadCert(cfg.SyncCert, cfg.SyncCertKey)
-
-		if certLoadErr != nil {
-			panic(fmt.Errorf("Can't load sync server certificate '%s'"+
-				" and key '%s' due to error: %s",
-				cfg.SyncCert, cfg.SyncCertKey, certLoadErr))
-		}
-
-		if cfg.SyncPass != "" {
-			sync.SetPassphrase(cfg.SyncPass)
-		}
-
-		for _, syncClient := range cfg.SyncWith {
-			sync.AddNode(syncClient.Address, syncClient.Passphrase)
-		}
-
-		server.OnUpDown(func() *types.Throw {
-			return sync.Serv()
-		}, func() *types.Throw {
-			return sync.Down()
 		})
 	}
 }
@@ -335,8 +340,9 @@ func main() {
 	sync := trap.NewSync()
 
 	sync.SetLogger(logging)
+	sync.SetServer(server)
 
-	initConfig(server, status, sync)
+	initConfig(server, sync, status)
 
 	servErr := server.Serv()
 
@@ -372,7 +378,7 @@ func main() {
 					return statusErr
 				}
 
-				initConfig(s, status, sync)
+				initConfig(s, sync, status)
 
 				return nil
 			})

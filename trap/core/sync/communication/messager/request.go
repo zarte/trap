@@ -22,81 +22,95 @@
 package messager
 
 import (
-    "github.com/raincious/trap/trap/core/sync/communication/conn"
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/sync/communication/conn"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net"
+	"net"
+	"time"
 )
 
 var (
-    ErrRequestNotRespondable *types.Error =
-        types.NewError("`Sync` Request for '%d' is not respondable")
+	ErrRequestNotRespondable *types.Error = types.NewError(
+		"`Sync` Request for '%d' is not respondable")
 )
 
 type Request struct {
-    conn            *conn.Conn
-    messager        *Messager
-
-    data            [][]byte
-    dataLen         uint
-    code            byte
-    id              byte
-
-    isReplyable     bool
+	conn        *conn.Conn
+	messager    *Messager
+	data        [][]byte
+	code        byte
+	id          byte
+	groupID     byte
+	isReplyable bool
 }
 
-func (r *Request) Length() (uint) {
-    return r.dataLen
+func (r *Request) RemoteAddr() net.Addr {
+	return r.conn.RemoteAddr()
 }
 
-func (r *Request) RemoteAddr() (net.Addr) {
-    return r.conn.RemoteAddr()
+func (r *Request) LocalAddr() net.Addr {
+	return r.conn.LocalAddr()
 }
 
-func (r *Request) LocalAddr() (net.Addr) {
-    return r.conn.LocalAddr()
+func (r *Request) GetMaxReceiveLength() types.UInt16 {
+	return types.Int32(r.messager.GetMaxReceiveLength()).UInt16()
 }
 
-func (r *Request) Conn() (*conn.Conn) {
-    return r.conn
+func (r *Request) SetMaxReceiveLength(newLength types.UInt16) {
+	r.messager.SetMaxReceiveLength(newLength)
 }
 
-func (r *Request) ID() (byte) {
-    return r.id
+func (r *Request) GetMaxSendLength() types.UInt16 {
+	return types.Int32(r.messager.GetMaxSendLength()).UInt16()
 }
 
-func (r *Request) Code() (byte) {
-    return r.code
+func (r *Request) SetMaxSendLength(newLength types.UInt16) {
+	r.messager.SetMaxSendLength(newLength)
 }
 
-func (r *Request) Data() ([][]byte) {
-    return r.data
+func (r *Request) Conn() *conn.Conn {
+	return r.conn
 }
 
-func (r *Request) Stats() (Stats) {
-    return r.messager.Stats()
+func (r *Request) ID() byte {
+	return r.id
 }
 
-func (r *Request) Close() (*types.Throw) {
-    err :=  r.conn.Close()
-
-    if err != nil {
-        return types.ConvertError(err)
-    }
-
-    return nil
+func (r *Request) GroupID() byte {
+	return r.groupID
 }
 
-func (r *Request) Reply(code byte, data Data) (*types.Throw) {
-    if !r.isReplyable {
-        return ErrRequestNotRespondable.Throw(r.code)
-    }
+func (r *Request) Code() byte {
+	return r.code
+}
 
-    return r.messager.Reply(r.id, code, data)
+func (r *Request) Data() [][]byte {
+	return r.data
+}
+
+func (r *Request) Stats() Stats {
+	return r.messager.Stats()
+}
+
+func (r *Request) Close() *types.Throw {
+	err := r.conn.Close()
+
+	if err != nil {
+		return types.ConvertError(err)
+	}
+
+	return nil
+}
+
+func (r *Request) Reply(code byte, data Data) *types.Throw {
+	if !r.isReplyable {
+		return ErrRequestNotRespondable.Throw(r.code)
+	}
+
+	return r.messager.Reply(r.id, r.groupID, code, data)
 }
 
 func (r *Request) Query(code byte, data Data, responds Callbacks,
-    maxRespondLen uint, waitTime time.Duration) (*types.Throw) {
-    return r.messager.Query(code, data, responds, maxRespondLen, waitTime)
+	waitTime time.Duration) *types.Throw {
+	return r.messager.Query(code, data, responds, waitTime)
 }

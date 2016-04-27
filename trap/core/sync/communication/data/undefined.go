@@ -22,21 +22,21 @@
 package data
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Undefined struct {
-    Base
+	Base
 }
 
-func (d *Undefined) Parse(msg [][]byte) (*types.Throw) {
-    if len(msg) > 0 {
-        return ErrDataInvalidAmountOfParameters.Throw()
-    }
+func (d *Undefined) Parse(msg [][]byte) *types.Throw {
+	if len(msg) > 0 {
+		return ErrDataInvalidAmountOfParameters.Throw()
+	}
 
-    return nil
+	return nil
 }
 
 func (d *Undefined) Build() ([][]byte, *types.Throw) {
-    return [][]byte{}, nil
+	return [][]byte{}, nil
 }

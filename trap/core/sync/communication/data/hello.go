@@ -28,37 +28,47 @@ import (
 type Hello struct {
 	Base
 
+	MaxLength types.UInt16
 	Password  types.String
 	Connected types.IPAddresses
 }
 
 func (d *Hello) Parse(msg [][]byte) *types.Throw {
-	verifyErr := d.Verify(msg, 2)
+	verifyErr := d.Verify(msg, 3)
 
 	if verifyErr != nil {
 		return verifyErr
 	}
 
-	connectMarErr := d.Connected.Unserialize(msg[1])
+	maxlenErr := d.MaxLength.Unserialize(msg[0])
+
+	if maxlenErr != nil {
+		return maxlenErr
+	}
+
+	d.Password = types.String(msg[1])
+
+	connectMarErr := d.Connected.Unserialize(msg[2])
 
 	if connectMarErr != nil {
 		return connectMarErr
 	}
 
-	d.Password = types.String(msg[0])
-
 	return nil
 }
 
 func (d *Hello) Build() ([][]byte, *types.Throw) {
+	maxlen, maxlenErr := d.MaxLength.Serialize()
+
+	if maxlenErr != nil {
+		return [][]byte{}, maxlenErr
+	}
+
 	ipByte, cIPErr := d.Connected.Serialize()
 
 	if cIPErr != nil {
 		return [][]byte{}, cIPErr
 	}
 
-	return [][]byte{
-		d.Password.Bytes(),
-		ipByte,
-	}, nil
+	return [][]byte{maxlen, d.Password.Bytes(), ipByte}, nil
 }

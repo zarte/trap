@@ -102,6 +102,10 @@ func (s *Session) Serve(serving chan bool) *types.Throw {
 	return err
 }
 
+func (s *Session) Conn() *conn.Conn {
+	return s.conn
+}
+
 func (s *Session) Request() *messager.Messager {
 	return s.messager
 }
@@ -143,10 +147,18 @@ func (s *Session) unregistering() *types.Throw {
 }
 
 func (s *Session) Auth(
+	maxLength types.UInt16,
 	password types.String,
 	connects types.IPAddresses,
 	onAuthed func(*conn.Conn, types.IPAddresses),
-) (time.Duration, time.Duration, types.IPAddresses, *types.Throw) {
+) (
+	types.UInt16,
+	time.Duration,
+	time.Duration,
+	types.IPAddresses,
+	*types.Throw,
+) {
+	pnMaxLen := types.UInt16(0)
 	heatbeatPeriod := time.Duration(0)
 	newPartners := types.IPAddresses{}
 	confilcteds := types.IPAddresses{}
@@ -154,6 +166,7 @@ func (s *Session) Auth(
 	endTime := time.Time{}
 
 	hello := &data.Hello{
+		MaxLength: maxLength,
 		Password:  password,
 		Connected: connects,
 	}
@@ -170,10 +183,12 @@ func (s *Session) Auth(
 				return acceptErr
 			}
 
+			pnMaxLen = accept.MaxLength
 			heatbeatPeriod = accept.HeatBeatPeriod
 			newPartners = accept.Connected
 
 			req.Conn().SetTimeout(accept.Timeout)
+			req.SetMaxSendLength(accept.MaxLength)
 
 			endTime = time.Now()
 
@@ -206,21 +221,21 @@ func (s *Session) Auth(
 		messager.SYNC_SIGNAL_HELLO,
 		hello,
 		handle,
-		0,
 		s.requestTimeout,
 	)
 
 	if reqErr != nil {
 		if reqErr.Is(ErrSessionAuthFailedConflicted) {
-			return time.Duration(0), time.Duration(0), confilcteds, reqErr
+			return 0, time.Duration(0), time.Duration(0), confilcteds, reqErr
 		}
 
-		return time.Duration(0), time.Duration(0), types.IPAddresses{}, reqErr
+		return 0, time.Duration(0), time.Duration(0),
+			types.IPAddresses{}, reqErr
 	}
 
 	onAuthed(s.conn, newPartners)
 
-	return endTime.Sub(startTime), heatbeatPeriod, newPartners, nil
+	return pnMaxLen, endTime.Sub(startTime), heatbeatPeriod, newPartners, nil
 }
 
 func (s *Session) Heatbeat() (time.Duration, *types.Throw) {
@@ -247,7 +262,6 @@ func (s *Session) Heatbeat() (time.Duration, *types.Throw) {
 		messager.SYNC_SIGNAL_HEATBEAT,
 		heatbeat,
 		handle,
-		2,
 		s.requestTimeout,
 	)
 
@@ -278,7 +292,6 @@ func (s *Session) AddPartners(partners types.IPAddresses) *types.Throw {
 		messager.SYNC_SIGNAL_PARTNER_ADD,
 		partner,
 		handle,
-		2,
 		s.requestTimeout,
 	)
 
@@ -309,7 +322,6 @@ func (s *Session) RemovePartners(partners types.IPAddresses) *types.Throw {
 		messager.SYNC_SIGNAL_PARTNER_REMOVE,
 		partner,
 		handle,
-		2,
 		s.requestTimeout,
 	)
 
@@ -340,7 +352,6 @@ func (s *Session) MarkClients(clients []server.ClientInfo) *types.Throw {
 		messager.SYNC_SIGNAL_CLIENT_MARK,
 		mark,
 		handle,
-		2,
 		s.requestTimeout,
 	)
 
@@ -351,7 +362,7 @@ func (s *Session) MarkClients(clients []server.ClientInfo) *types.Throw {
 	return nil
 }
 
-func (s *Session) UnmarkClients(clients []server.ClientInfo) *types.Throw {
+func (s *Session) UnmarkClients(clients []types.IP) *types.Throw {
 	handle := messager.Callbacks{}
 	um := &data.ClientUnmark{}
 
@@ -365,13 +376,12 @@ func (s *Session) UnmarkClients(clients []server.ClientInfo) *types.Throw {
 			return ErrSessionClientUnmarkDenied.Throw(req.RemoteAddr())
 		})
 
-	um.ClientMark.Addresses = clients
+	um.Addresses = clients
 
 	reqErr := s.Request().Query(
 		messager.SYNC_SIGNAL_CLIENT_UNMARK,
 		um,
 		handle,
-		2,
 		s.requestTimeout,
 	)
 

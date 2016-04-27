@@ -52,6 +52,7 @@ type Config struct {
 
 	SyncInterface    types.IP
 	SyncPort         types.UInt16
+	SyncReceiveLen   types.UInt16
 	SyncCert         types.String
 	SyncCertKey      types.String
 	SyncPass         types.String

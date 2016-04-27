@@ -22,34 +22,30 @@
 package client
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net"
+	"net"
+	"time"
 )
 
 type Hitting struct {
-    types.IPAddress
+	types.IPAddress
 
-    Type            types.String
+	Type types.String
 }
 
 type Record struct {
-    Inbound         []byte
-    Outbound        []byte
-    Hitting         Hitting
-    Time            time.Time
+	Inbound  []byte
+	Outbound []byte
+	Hitting  Hitting
+	Time     time.Time
 }
 
 type ClientExport struct {
-    Address         net.IP
-
-    FirstSeen       time.Time
-    LastSeen        time.Time
-
-    Count           types.UInt32
-
-    Records         []Record
-
-    Marked          bool
+	Address   net.IP
+	FirstSeen time.Time
+	LastSeen  time.Time
+	Count     types.UInt32
+	Records   []Record
+	Marked    bool
 }

@@ -22,44 +22,33 @@
 package sync
 
 import (
+	"github.com/raincious/trap/trap/core/sync/communication/messager"
 	"github.com/raincious/trap/trap/core/types"
+
+	"time"
 )
 
 type nodeMap types.SearchableIPAddresses
 
-type nodeMutex struct {
-	With *Node
-	Due  types.SearchableIPAddresses
+type NodeInfo struct {
+	Address   types.IPAddress
+	Delay     time.Duration
+	Stats     messager.Stats
+	Connected bool
+	Partner   types.IPAddresses
 }
 
-type nodeMutexes map[types.String]nodeMutex
-
-func (m nodeMutexes) has(n *Node) bool {
-	if _, ok := m[n.addrStr]; !ok {
-		return false
-	}
-
-	return true
+type ClientInfo struct {
+	Remote types.IPAddress
+	Stats  messager.Stats
 }
 
-func (m nodeMutexes) Append(n *Node, ip types.SearchableIPAddresses) {
-	if !m.has(n) {
-		m[n.addrStr] = nodeMutex{
-			With: n,
-			Due:  types.NewSearchableIPAddresses(),
-		}
-	}
+type ServerInfo struct {
+	Listen  types.IPAddress
+	Clients []ClientInfo
+}
 
-	mut := m[n.addrStr]
-
-	ip.Through(func(
-		key types.IPAddressString,
-		val types.IPAddressWrapped,
-	) *types.Throw {
-		mut.Due.Insert(val)
-
-		return nil
-	})
-
-	m[n.addrStr] = mut
+type Status struct {
+	Nodes  []NodeInfo
+	Server ServerInfo
 }

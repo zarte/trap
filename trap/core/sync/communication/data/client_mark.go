@@ -22,50 +22,50 @@
 package data
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type ClientMark struct {
-    Base
+	Base
 
-    Addresses           []server.ClientInfo
+	Addresses []server.ClientInfo
 }
 
-func (d *ClientMark) Parse(msg [][]byte) (*types.Throw) {
-    verifyErr           :=  d.Verify(msg, 1)
+func (d *ClientMark) Parse(msg [][]byte) *types.Throw {
+	verifyErr := d.Verify(msg, 1)
 
-    if verifyErr != nil {
-        return verifyErr
-    }
+	if verifyErr != nil {
+		return verifyErr
+	}
 
-    for _, data := range msg {
-        clientInfo      :=  server.ClientInfo{}
+	for _, data := range msg {
+		clientInfo := server.ClientInfo{}
 
-        clientSerErr    :=  clientInfo.Unserialize(data)
+		clientSerErr := clientInfo.Unserialize(data)
 
-        if clientSerErr != nil {
-            return clientSerErr
-        }
+		if clientSerErr != nil {
+			return clientSerErr
+		}
 
-        d.Addresses     =   append(d.Addresses, clientInfo)
-    }
+		d.Addresses = append(d.Addresses, clientInfo)
+	}
 
-    return nil
+	return nil
 }
 
 func (d *ClientMark) Build() ([][]byte, *types.Throw) {
-    result              :=  [][]byte{}
+	result := [][]byte{}
 
-    for _, addr := range d.Addresses {
-        clientBy, cErr  :=  addr.Serialize()
+	for _, addr := range d.Addresses {
+		clientBy, cErr := addr.Serialize()
 
-        if cErr != nil {
-            return [][]byte{}, cErr
-        }
+		if cErr != nil {
+			return [][]byte{}, cErr
+		}
 
-        result          =   append(result, clientBy)
-    }
+		result = append(result, clientBy)
+	}
 
-    return result, nil
+	return result, nil
 }

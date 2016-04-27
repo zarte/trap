@@ -59,9 +59,6 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 
 		req.Close()
 
-		s.Logger.Debugf("Client '%s' is already logged in, no need for re-auth",
-			req.RemoteAddr())
-
 		return ErrControllerServerClientAlreadyAuthed.Throw(req.RemoteAddr())
 	}
 
@@ -71,9 +68,6 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_HELLO_DENIED, &data.Undefined{})
 
 		req.Close()
-
-		s.Logger.Debugf("Failed to parse `Hello` data '%d' from client '%s' "+
-			"due to error: %s", req.Data(), req.RemoteAddr(), parseErr)
 
 		return ErrControllerServerClientAlreadyAuthed.Throw(req.RemoteAddr())
 	}
@@ -85,9 +79,6 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 		s.OnAuthFailed(req.RemoteAddr())
 
 		req.Close()
-
-		s.Logger.Debugf("Client '%s' trying to auth with a wrong passphrase",
-			req.RemoteAddr())
 
 		return ErrControllerServerClientAuthDenied.Throw(req.RemoteAddr())
 	}
@@ -107,16 +98,14 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 
 		req.Close()
 
-		s.Logger.Debugf("Client '%s' already connected with another "+
-			"server in the same distribution path, thus no need to "+
-			"connect with me", req.RemoteAddr())
-
 		return rqErr
 	}
 
 	req.Conn().SetTimeout(s.GetLooseTimeout())
+	req.SetMaxSendLength(helloData.MaxLength)
 
 	rqErr = req.Reply(messager.SYNC_SIGNAL_HELLO_ACCEPT, &data.HelloAccept{
+		MaxLength:      req.GetMaxReceiveLength(),
 		HeatBeatPeriod: s.GetLooseTimeout() / 2,
 		Timeout:        s.GetLooseTimeout(),
 		Connected:      serverPartners.Export(),
@@ -135,9 +124,6 @@ func (s *Server) Heatbeat(req messager.Request) *types.Throw {
 
 		req.Close()
 
-		s.Logger.Debugf("Client '%s' have no permissions to send "+
-			"`Heatbeat` request", req.RemoteAddr())
-
 		return ErrControllerServerClientNotLoggedIn.Throw(req.RemoteAddr())
 	}
 
@@ -147,9 +133,6 @@ func (s *Server) Heatbeat(req messager.Request) *types.Throw {
 		req.Reply(messager.SYNC_SIGNAL_HEATBEAT_DENIED, &data.Undefined{})
 
 		req.Close()
-
-		s.Logger.Debugf("Failed to parse `HeatBeat` data '%d' from client "+
-			"'%s' due to error: %s", req.Data(), req.RemoteAddr(), parseErr)
 
 		return parseErr
 	}

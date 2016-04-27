@@ -22,7 +22,7 @@
 
         NOTICE:
 
-        This file may contains third-party components, which are the property of
+        This file may contains third-party components, which is the properties of
         it's respective owners and may licencing in different ways.
     -->
 
@@ -141,21 +141,27 @@
 
                                 <li v-on:click="subNavSwitch('logs')" v-if="auth.permissions['logs']" v-bind:class="{ 'current': currentRecordType == 'logs' }">
                                     <a href="javascript:;">
-                                        Recent log
+                                        Recent logs
+                                    </a>
+                                </li>
+
+                                <li v-on:click="subNavSwitch('sync')" v-if="auth.permissions['sync']" v-bind:class="{ 'current': currentRecordType == 'sync' }">
+                                    <a href="javascript:;">
+                                        Synchronize
                                     </a>
                                 </li>
 
                                 <li v-on:click="subNavSwitch('sessions')" v-if="auth.permissions['sessions']" v-bind:class="{ 'current': currentRecordType == 'sessions' }">
                                     <a href="javascript:;">
-                                        Sessions
+                                        Who's online
                                     </a>
                                 </li>
                             </ul>
                         </nav>
 
                         <div id="status-marked-clients" class="clients-lst1" v-show="currentRecordType == 'clients'" style="display: none;">
-                            <article id="status-marked-client-{{$index}}" class="c-info" v-bind:class="{ 'c-info-expended': client.Expended }" v-for="client in clientList" v-if="!records.showingLoading && clientList.length > 0">
-                                <header class="c-hd" v-on:click="expendClientRecord(client, $index)">
+                            <article id="status-marked-client-{{ $index }}" class="c-info" v-bind:class="{ 'c-info-expended': client.Expended }" v-for="client in clientList" v-if="!records.showingLoading && clientList.length > 0">
+                                <header class="c-hd" v-on:click="client.Expend($index)">
                                     <div class="count">
                                         <span title="{{ client.Count | number }}">
                                             {{ client.Count | number }}
@@ -186,7 +192,7 @@
                                     </div>
                                 </header>
 
-                                <div id="status-marked-client-data-{{$index}}" class="c-record">
+                                <div id="status-marked-client-data-{{ $index }}" class="c-record">
                                     <section class="paperbox1" v-if="client.RecordData.length > 0">
                                         <h3 class="ppb-title tlt-mid-subtitle1">
                                             <span>Report</span>
@@ -247,7 +253,7 @@
                                         </h3>
 
                                         <div class="buts">
-                                            <button class="bu-red bu-big" type="button" v-bind:class="{ 'bu-disabled': client.Deleting }" v-on:click="removeClient(client, $index)">
+                                            <button class="bu-red bu-big" type="button" v-bind:class="{ 'bu-disabled': client.Deleting }" v-on:click="client.Delete($index)">
                                                 &times; Remove {{ client.Address }}
 
                                                 <i v-if="client.Deleting" class="img-loading img-loading-inline icon-right"></i>
@@ -300,6 +306,86 @@
                             </ul>
                         </div>
 
+                        <div id="status-sync" v-show="currentRecordType == 'sync'" style="display: none;">
+                            <div id="status-sync-loading" v-if="!records.source.sync.loaded">
+                                <i class="img-loading img-loading-inline icon-left"></i>Loading
+                            </div>
+
+                            <div id="status-sync-data" v-if="records.source.sync.loaded">
+                                <div id="status-sync-directly" class="sync-box">
+                                    <h3 class="sync-tlt tlt-mid-subtitle1">Partners</h3>
+
+                                    <ul class="logs-lst1 layout">
+                                        <li class="item" v-for="node in records.source.sync.data.partners" v-if="!records.showingLoading && records.source.sync.data.partners.length > 0">
+                                            <div class="cover">
+                                                <h3 class="title" v-bind:class="{ 'act': node.Connected, 'ena': node.Connected && node.Delay == 0 }">
+                                                    {{ node.IP }}:{{ node.Port }}
+                                                </h3>
+
+                                                <div class="infos">
+                                                    <span class="infoi">
+                                                        <span class="name">
+                                                            Type
+                                                        </span>
+                                                        <span class="val">
+                                                            {{ node.Type }}&nbsp;
+
+                                                            <span v-if="node.Type == 'Initiative' && node.Delay > 0 && node.Connected">
+                                                                ({{ node.Delay | duration }})
+                                                            </span>
+                                                        </span>
+                                                    </span>
+
+                                                    <span class="infoi" v-if="node.Connected">
+                                                        <span class="name">
+                                                            Transmitted
+                                                        </span>
+                                                        <span class="val">
+                                                            RX&nbsp;{{ node.Rx | bytes }}&nbsp;/&nbsp;TX&nbsp;{{ node.Tx | bytes }}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+
+                                        <li class="item item-empty" v-if="records.source.sync.data.partners.length < 1">
+                                            There is no any partners
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div id="status-sync-indirectly" class="sync-box">
+                                    <h3 class="sync-tlt tlt-mid-subtitle1">Parent connections</h3>
+
+                                    <ul class="logs-lst1 layout">
+                                        <li class="item" v-for="node in records.source.sync.data.indirects" v-if="!records.showingLoading && records.source.sync.data.indirects.length > 0">
+                                            <div class="cover">
+                                                <h3 class="title ena">
+                                                    {{ node.IP }}:{{ node.Port }}
+                                                </h3>
+
+                                                <div class="infos">
+                                                    <span class="infoi">
+                                                        <span class="name">
+                                                            Via
+                                                        </span>
+                                                        <span class="val">
+                                                            {{ node.Via.IP }}:{{ node.Via.Port }}
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </li>
+
+                                        <li class="item item-empty" v-if="records.source.sync.data.indirects.length < 1">
+                                            No parent is connected
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                        </div>
+
                         <div id="status-sessions" v-show="currentRecordType == 'sessions'" style="display: none;">
                             <ul class="logs-lst1 layout">
                                 <li class="item" v-for="session in records.source.sessions.data" v-if="!records.showingLoading && records.source.sessions.data.length > 0">
@@ -340,7 +426,7 @@
                                 </li>
 
                                 <li class="item item-empty" v-if="!records.showingLoading && records.source.sessions.data.length < 1">
-                                    There is no any active session here
+                                    There is no any active administrative session here
                                 </li>
 
                                 <li class="item item-empty" v-if="records.showingLoading">

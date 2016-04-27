@@ -47,12 +47,12 @@ var (
 
 type Node struct {
 	nodes                 *Nodes
+	sessions              *communication.Sessions
 	addr                  types.IPAddress
 	addrStr               types.String
 	password              types.String
 	nclient               *communication.Client
 	controller            *controller.Client
-	requestTimeout        time.Duration
 	connectionTimeout     time.Duration
 	connectRetryPeriod    time.Duration
 	maxConnectRetryPeriod time.Duration
@@ -69,9 +69,6 @@ func (n *Node) client() *communication.Client {
 	}
 
 	commonController := n.controller.Common
-
-	commonController.Logger = n.controller.Common.Logger.NewContext(
-		n.addr.String())
 
 	clientController := controller.Client{
 		Common: commonController,
@@ -195,8 +192,8 @@ func (n *Node) client() *communication.Client {
 		clientController.ClientsUnmarked)
 
 	n.nclient = communication.NewClient(
+		n.sessions,
 		handle,
-		n.requestTimeout,
 		n.connectionTimeout,
 	)
 
@@ -414,6 +411,10 @@ func (n *Node) Disconnect() *types.Throw {
 
 func (n *Node) Delay() time.Duration {
 	return n.client().Delay()
+}
+
+func (n *Node) Stats() messager.Stats {
+	return n.client().Stats()
 }
 
 func (n *Node) IsConnected() bool {
