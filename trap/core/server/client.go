@@ -88,7 +88,7 @@ func (c *ClientInfo) Unserialize(data []byte) *types.Throw {
 		return serverErr
 	}
 
-	if data[CLIENT_INFO_SEGMENT_INDEX] == byte(0) {
+	if data[CLIENT_INFO_SEGMENT_INDEX] != byte(0) {
 		c.Marked = true
 	} else {
 		c.Marked = false
