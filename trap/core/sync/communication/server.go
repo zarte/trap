@@ -63,6 +63,12 @@ func (s *Server) Listen(listenOn net.TCPAddr, cert tls.Certificate,
 		return ErrServerAlreadyUp.Throw(listenOn.String())
 	}
 
+	addr, addrErr := types.ConvertIPAddress(&listenOn)
+
+	if addrErr != nil {
+		return addrErr
+	}
+
 	// Init variables
 	s.wait = sync.WaitGroup{}
 	s.timeout = timeout
@@ -76,14 +82,10 @@ func (s *Server) Listen(listenOn net.TCPAddr, cert tls.Certificate,
 			s.wait.Done()
 		})
 
-	listener, lsErr := tls.Listen("tcp", listenOn.String(), &tls.Config{
+	listener, lsErr := tls.Listen("tcp", addr.String().String(), &tls.Config{
 		InsecureSkipVerify: true,
 		Certificates: []tls.Certificate{
 			cert,
-		},
-		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
-			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
 		},
 	})
 

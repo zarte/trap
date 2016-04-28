@@ -93,11 +93,7 @@ func (c *Client) dialup(ip types.IPAddress, onConnected func(*conn.Conn),
 
 	tlsConn, tlsConnErr := tls.Dial("tcp", ip.String().String(),
 		&tls.Config{
-			//Certificates:           []tls.Certificate{
-			//                            cert
-			//                        },
 			InsecureSkipVerify: true,
-			ServerName:         ip.String().String(),
 		})
 
 	if tlsConnErr != nil {

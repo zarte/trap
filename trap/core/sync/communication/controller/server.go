@@ -42,10 +42,11 @@ var (
 type Server struct {
 	Common
 
-	OnAuthed        func(*conn.Conn)
-	OnAuthFailed    func(net.Addr)
-	GetPassphrase   func() types.String
-	GetLooseTimeout func() time.Duration
+	OnAuthed          func(*conn.Conn)
+	OnAuthFailed      func(net.Addr)
+	OnAuthBadPassword func(net.Addr, net.Addr)
+	GetPassphrase     func() types.String
+	GetLooseTimeout   func() time.Duration
 }
 
 func (s *Server) Auth(req messager.Request) *types.Throw {
@@ -77,6 +78,7 @@ func (s *Server) Auth(req messager.Request) *types.Throw {
 			&data.Undefined{})
 
 		s.OnAuthFailed(req.RemoteAddr())
+		s.OnAuthBadPassword(req.LocalAddr(), req.RemoteAddr())
 
 		req.Close()
 

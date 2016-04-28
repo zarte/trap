@@ -40,6 +40,9 @@ type Sync struct {
 	listenOn          net.TCPAddr
 	trapServer        *Server
 	tlsCert           tls.Certificate
+	upped             bool
+	upping            bool
+	shutdownLock      types.Mutex
 	maxReceiveLen     types.UInt16
 	logger            *logger.Logger
 	passphrase        types.String
@@ -62,6 +65,9 @@ func NewSync() *Sync {
 			Port: 0,
 		},
 		tlsCert:           tls.Certificate{},
+		upped:             false,
+		upping:            false,
+		shutdownLock:      types.Mutex{},
 		maxReceiveLen:     65535,
 		passphrase:        "",
 		syncNodes:         nil,
@@ -239,6 +245,26 @@ func (s *Sync) server() *communication.Server {
 		OnAuthFailed: func(net.Addr) {
 			// Call when auth is failed
 		},
+		OnAuthBadPassword: func(local, remote net.Addr) {
+			clientAddr, clientAddrErr := types.ConvertIPAddress(remote)
+
+			if clientAddrErr != nil {
+				return
+			}
+
+			serverAddr, serverAddrErr := types.ConvertIPAddress(local)
+
+			if serverAddrErr != nil {
+				return
+			}
+
+			s.trapServer.AddClient(server.ClientInfo{
+				Client: clientAddr.IP,
+				Server: serverAddr,
+				Type:   "sync",
+				Marked: true,
+			})
+		},
 		GetPassphrase: func() types.String {
 			return s.passphrase
 		},
@@ -345,6 +371,7 @@ func (s *Sync) cron() {
 	for {
 		select {
 		case <-s.cronDownChan:
+			s.nodes().Clear()
 			return
 
 		case <-time.After(10 * time.Second):
@@ -393,16 +420,12 @@ func (s *Sync) connectAllNodes() {
 			})
 
 		if connectErr != nil {
-			s.logger.Errorf("Can't connect to node '%s' due to error: %s",
+			s.logger.Warningf("Can't connect to node '%s' due to error: %s",
 				node.Address().String(), connectErr)
 		}
 
 		return nil
 	})
-}
-
-func (s *Sync) disconnectAllNodes() {
-	s.nodes().Clear()
 }
 
 func (s *Sync) tryConnectToAllNodes() {
@@ -475,7 +498,11 @@ func (s *Sync) Status() sync.Status {
 	return status
 }
 
-func (s *Sync) Serv() *types.Throw {
+func (s *Sync) up() *types.Throw {
+	if s.upped {
+		return sync.ErrSyncAlreadyUp.Throw()
+	}
+
 	s.logger.Debugf("Booting up")
 
 	s.trapServer.OnMark(func(client server.ClientInfo) {
@@ -510,7 +537,7 @@ func (s *Sync) Serv() *types.Throw {
 		return sErr
 	}
 
-	s.logger.Infof("`Sync` Server is serving at '%s'", s.listenOn.String())
+	s.logger.Infof("Serving `Sync` Server at '%s'", s.listenOn.String())
 
 	s.downing = false
 
@@ -518,25 +545,58 @@ func (s *Sync) Serv() *types.Throw {
 
 	s.logger.Debugf("`Sync` is up")
 
+	s.upped = true
+
 	return nil
 }
 
-func (s *Sync) Down() *types.Throw {
+func (s *Sync) down() *types.Throw {
+	if !s.upped {
+		return sync.ErrSyncNotUpCannotDown.Throw()
+	}
+
 	s.downing = true
-
-	s.logger.Debugf("Disconnect from nodes")
-
-	s.disconnectAllNodes()
 
 	s.logger.Debugf("Shutting down server")
 
 	sErr := s.server().Down()
 
 	if sErr != nil {
+		s.logger.Errorf("There are an error happened while shuting "+
+			"down the server: %s", sErr)
+
 		return sErr
 	}
 
-	s.logger.Debugf("`Sync` is down")
+	s.upped = false
+
+	s.cronDownChan <- true
+
+	s.syncNodes = nil
+	s.syncServer = nil
+	s.activeClients = sync.NewActiveClientsTable()
+
+	s.logger.Infof("`Sync` is down")
 
 	return nil
+}
+
+func (s *Sync) Serv() *types.Throw {
+	var err *types.Throw = nil
+
+	s.shutdownLock.Exec(func() {
+		err = s.up()
+	})
+
+	return err
+}
+
+func (s *Sync) Down() *types.Throw {
+	var err *types.Throw = nil
+
+	s.shutdownLock.Exec(func() {
+		err = s.down()
+	})
+
+	return err
 }
