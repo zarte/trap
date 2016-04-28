@@ -101,16 +101,19 @@
 
     /**!
      *
-     * !!!!!!!!!!!!! NOT IMPLEMENTED !!!!!!!!!!!!!
-     *
      * Synchronizing mark and mark out commands
+     *
+     * Send Client mark and unmark signal between servers
      *
      */
     "synchronize_interface": "0.0.0.0",
-    "synchronize_port": 8191,
+    "synchronize_port": 0,
     "synchronize_certificate": "",
     "synchronize_certificate_key": "",
     "synchronize_passphrase": "asdjiwu9fp,puMU&)#Y({#$NEU&$({NWF",
+    "synchronize_connection_timeout": 6,
+    "synchronize_loose_timeout": 120,
+    "synchronize_request_timeout": 6,
     "synchronize_with": {
         "192.168.1.1:8191": "IMmui3-mUM80fum*m*YN{f8wn8s80",
         "192.168.1.2:8191": "0nyt68s8N79y3r&_&n03GF44gt4wd"
