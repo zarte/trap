@@ -84,13 +84,13 @@ func (l *Logger) append(newLog Log) {
 }
 
 func (l *Logger) Debugf(s string, v ...interface{}) {
-	/* Disable debug totally after finish develpment */
+	/* Disable debug totally after finish develpment
 	l.append(Log{
 		Time:    time.Now(),
 		Type:    LOG_TYPE_DEBUG,
 		Context: l.context,
 		Message: types.String(fmt.Sprintf(s, v...)),
-	})
+	})*/
 }
 
 func (l *Logger) Infof(s string, v ...interface{}) {
