@@ -22,200 +22,200 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/client"
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
-    "github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/client"
+	"github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
-    "encoding/json"
+	"encoding/json"
+	"net/http"
 )
 
 type Client struct {
-    SessionedJSON
+	SessionedJSON
 
-    GetClient   func(addr types.IP) (*client.Client, *types.Throw)
-    AddClient   func(cCon server.ClientInfo) (*client.Client, *types.Throw)
-    DelClient   func(addr types.IP) (*types.Throw)
+	GetClient func(addr types.IP) (*client.Client, *types.Throw)
+	AddClient func(cCon server.ClientInfo) (*client.Client, *types.Throw)
+	DelClient func(addr types.IP) *types.Throw
 }
 
 func (c *Client) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    parentBefore                    :=  c.SessionedJSON.Before(w, r)
+	r *http.Request) *types.Throw {
+	parentBefore := c.SessionedJSON.Before(w, r)
 
-    if parentBefore != nil {
-        return parentBefore
-    }
+	if parentBefore != nil {
+		return parentBefore
+	}
 
-    session                         :=  c.Session()
+	session := c.Session()
 
-    if session == nil {
-        c.Error(status.ErrorRespond{
-            Code:   401,
-            Error:  status.ErrSessionLoginReqiured.Throw(),
-        }, w, r)
+	if session == nil {
+		c.Error(status.ErrorRespond{
+			Code:  401,
+			Error: status.ErrSessionLoginReqiured.Throw(),
+		}, w, r)
 
-        return status.ErrSessionLoginReqiured.Throw()
-    }
+		return status.ErrSessionLoginReqiured.Throw()
+	}
 
-    if !session.Account().Allowed("clients") {
-        c.Error(status.ErrorRespond{
-            Code:   403,
-            Error:  status.ErrSessionNoPermission.Throw(),
-        }, w, r)
+	if !session.Account().Allowed("clients") {
+		c.Error(status.ErrorRespond{
+			Code:  403,
+			Error: status.ErrSessionNoPermission.Throw(),
+		}, w, r)
 
-        return status.ErrSessionNoPermission.Throw()
-    }
+		return status.ErrSessionNoPermission.Throw()
+	}
 
-    return nil
+	return nil
 }
 
 func (c *Client) Get(w http.ResponseWriter, r *http.Request) {
-    clientIP, clientIPErr           :=  types.ConvertIPFromString(
-                                            types.String(
-                                                r.URL.Query().Get("client")))
+	clientIP, clientIPErr := types.ConvertIPFromString(
+		types.String(
+			r.URL.Query().Get("client")))
 
-    if clientIPErr != nil {
-        c.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  status.ErrStatusControllerInvalidParameter.Throw(),
-        }, w, r)
+	if clientIPErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  400,
+			Error: status.ErrStatusControllerInvalidParameter.Throw(),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    client, clientErr               :=  c.GetClient(clientIP)
+	client, clientErr := c.GetClient(clientIP)
 
-    if clientErr != nil {
-        c.Error(status.ErrorRespond{
-            Code:   404,
-            Error:  clientErr,
-        }, w, r)
+	if clientErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  404,
+			Error: clientErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    jsonData, jsonErr   :=  json.Marshal(client)
+	jsonData, jsonErr := json.Marshal(client)
 
-    if jsonErr != nil {
-        c.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
+	if jsonErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jsonErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    c.WriteGZIP(200, jsonData, w, r)
+	c.WriteGZIP(200, jsonData, w, r)
 }
 
 func (c *Client) Post(w http.ResponseWriter, r *http.Request) {
-    var clientConField              server.ClientInfo
+	var clientConField server.ClientInfo
 
-    clientIP, clientIPErr           :=  types.ConvertIPFromString(
-                                            types.String(
-                                                r.URL.Query().Get("client")))
+	clientIP, clientIPErr := types.ConvertIPFromString(
+		types.String(
+			r.URL.Query().Get("client")))
 
-    if clientIPErr != nil {
-        c.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  status.ErrStatusControllerInvalidParameter.Throw(),
-        }, w, r)
+	if clientIPErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  400,
+			Error: status.ErrStatusControllerInvalidParameter.Throw(),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    decoder                         :=  json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(r.Body)
 
-    decodeErr                       :=  decoder.Decode(&clientConField)
+	decodeErr := decoder.Decode(&clientConField)
 
-    if decodeErr != nil {
-        c.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  types.ConvertError(decodeErr),
-        }, w, r)
+	if decodeErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  400,
+			Error: types.ConvertError(decodeErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    clientConField.Client           =   clientIP
+	clientConField.Client = clientIP
 
-    clientInfo, clientErr           :=  c.AddClient(clientConField)
+	clientInfo, clientErr := c.AddClient(clientConField)
 
-    if clientErr != nil {
-        code                        :=  500
+	if clientErr != nil {
+		code := 500
 
-        if clientErr.Is(server.ErrClientAlreadyExisted) {
-            code                    =   409
-        } else if clientErr.Is(server.ErrClientNotFound) {
-            code                    =   404
-        } else if clientErr.Is(server.ErrInvalidConnectionType) {
-            code                    =   400
-        } else if clientErr.Is(server.ErrInvalidServerAddress) {
-            code                    =   400
-        } else if clientErr.Is(server.ErrInvalidClientAddress) {
-            code                    =   400
-        }
+		if clientErr.Is(server.ErrClientAlreadyExisted) {
+			code = 409
+		} else if clientErr.Is(server.ErrClientNotFound) {
+			code = 404
+		} else if clientErr.Is(server.ErrInvalidConnectionType) {
+			code = 400
+		} else if clientErr.Is(server.ErrInvalidServerAddress) {
+			code = 400
+		} else if clientErr.Is(server.ErrInvalidClientAddress) {
+			code = 400
+		}
 
-        c.Error(status.ErrorRespond{
-            Code:   code,
-            Error:  clientErr,
-        }, w, r)
+		c.Error(status.ErrorRespond{
+			Code:  code,
+			Error: clientErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    jsonData, jsonErr               :=  json.Marshal(clientInfo)
+	jsonData, jsonErr := json.Marshal(clientInfo)
 
-    if jsonErr != nil {
-        c.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
+	if jsonErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jsonErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    c.WriteGZIP(201, jsonData, w, r)
+	c.WriteGZIP(201, jsonData, w, r)
 }
 
 func (c *Client) Delete(w http.ResponseWriter, r *http.Request) {
-    clientIP, clientIPErr           :=  types.ConvertIPFromString(
-                                            types.String(
-                                                r.URL.Query().Get("client")))
+	clientIP, clientIPErr := types.ConvertIPFromString(
+		types.String(
+			r.URL.Query().Get("client")))
 
-    if clientIPErr != nil {
-        c.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  status.ErrStatusControllerInvalidParameter.Throw(),
-        }, w, r)
+	if clientIPErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  400,
+			Error: status.ErrStatusControllerInvalidParameter.Throw(),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    clientDeleteErr                 :=  c.DelClient(clientIP)
+	clientDeleteErr := c.DelClient(clientIP)
 
-    if clientDeleteErr != nil {
-        c.Error(status.ErrorRespond{
-            Code:   404,
-            Error:  clientDeleteErr,
-        }, w, r)
+	if clientDeleteErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  404,
+			Error: clientDeleteErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    jsonData, jsonErr               :=  json.Marshal(status.ClientDeletedRespond{
-        Result:                         true,
-    })
+	jsonData, jsonErr := json.Marshal(status.ClientDeletedRespond{
+		Result: true,
+	})
 
-    if jsonErr != nil {
-        c.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
+	if jsonErr != nil {
+		c.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jsonErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    c.WriteGZIP(200, jsonData, w, r)
+	c.WriteGZIP(200, jsonData, w, r)
 }

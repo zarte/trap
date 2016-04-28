@@ -22,35 +22,35 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
-    "encoding/json"
+	"encoding/json"
+	"net/http"
 )
 
 type JSON struct {
-    Default
+	Default
 }
 
 func (j *JSON) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    w.Header().Set("Access-Control-Allow-Origin", "Origin")
-    w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	r *http.Request) *types.Throw {
+	w.Header().Set("Access-Control-Allow-Origin", "Origin")
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-    return nil
+	return nil
 }
 
 func (j *JSON) Error(err status.ErrorRespond, w http.ResponseWriter,
-    r *http.Request) {
-    jsonData, jsonErr := json.Marshal(err)
+	r *http.Request) {
+	jsonData, jsonErr := json.Marshal(err)
 
-    if jsonErr != nil {
-        j.WriteGZIP(500,
-            []byte("{\"error\": \"Can't parse JSON data\"}"), w, r)
+	if jsonErr != nil {
+		j.WriteGZIP(500,
+			[]byte("{\"error\": \"Can't parse JSON data\"}"), w, r)
 
-        return
-    }
+		return
+	}
 
-    j.WriteGZIP(err.Code, jsonData, w, r)
+	j.WriteGZIP(err.Code, jsonData, w, r)
 }

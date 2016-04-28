@@ -22,74 +22,74 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net/http"
+	"net/http"
+	"time"
 )
 
 type Home struct {
-    Default
+	Default
 
-    bootTime            time.Time
-    formatedBootTime    string
+	bootTime         time.Time
+	formatedBootTime string
 
-    staticExpired       time.Duration
+	staticExpired time.Duration
 
-    staticPage          []byte
+	staticPage []byte
 }
 
-func (s *Home) Init() (*types.Throw) {
-    initErr     := s.Default.Init()
+func (s *Home) Init() *types.Throw {
+	initErr := s.Default.Init()
 
-    if initErr != nil {
-        return initErr
-    }
+	if initErr != nil {
+		return initErr
+	}
 
-    s.bootTime              =   time.Now()
-    s.formatedBootTime      =   s.bootTime.Format(time.RFC1123)
+	s.bootTime = time.Now()
+	s.formatedBootTime = s.bootTime.Format(time.RFC1123)
 
-    s.staticExpired         =   86400 * time.Second
+	s.staticExpired = 86400 * time.Second
 
-    s.staticPage            =   []byte(status.STATUS_HOME_STATIC_PAGE)
+	s.staticPage = []byte(status.STATUS_HOME_STATIC_PAGE)
 
-    return nil
+	return nil
 }
 
 func (s *Home) Get(w http.ResponseWriter, r *http.Request) {
-    if r.URL.Path != "/" {
-        s.Error(status.ErrorRespond{
-            Code:   404,
-            Error:  status.ErrRequestedURLIsNotImplemented.Throw(
-                        r.URL.Path),
-        }, w, r)
+	if r.URL.Path != "/" {
+		s.Error(status.ErrorRespond{
+			Code: 404,
+			Error: status.ErrRequestedURLIsNotImplemented.Throw(
+				r.URL.Path),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    if !s.IsGZIPSupported(r) {
-        s.Error(status.ErrorRespond{
-            Code:   406,
-            Error:  status.ErrUnsupportedClient.Throw(),
-        }, w, r)
+	if !s.IsGZIPSupported(r) {
+		s.Error(status.ErrorRespond{
+			Code:  406,
+			Error: status.ErrUnsupportedClient.Throw(),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    if s.IsUnmodified(s.bootTime, r) {
-        w.WriteHeader(304)
+	if s.IsUnmodified(s.bootTime, r) {
+		w.WriteHeader(304)
 
-        return
-    }
+		return
+	}
 
-    w.Header().Set("Content-Encoding",  "gzip")
-    w.Header().Set("Pragma",            "cache")
-    w.Header().Set("Cache-Control",     "private, max-age=86400")
-    w.Header().Set("Last-Modified",     s.formatedBootTime)
-    w.Header().Set("Expires",           time.Now().
-                                            Add(s.staticExpired).
-                                            Format(time.RFC1123))
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Pragma", "cache")
+	w.Header().Set("Cache-Control", "private, max-age=86400")
+	w.Header().Set("Last-Modified", s.formatedBootTime)
+	w.Header().Set("Expires", time.Now().
+		Add(s.staticExpired).
+		Format(time.RFC1123))
 
-    w.Write(s.staticPage)
+	w.Write(s.staticPage)
 }

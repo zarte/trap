@@ -22,28 +22,28 @@
 package listen
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrProtocolAlreadyRegistered *types.Error =
-        types.NewError("Protocol '%s' already been registered")
+	ErrProtocolAlreadyRegistered *types.Error = types.NewError(
+		"Protocol '%s' already been registered")
 
-    ErrProtocolNotSupported *types.Error =
-        types.NewError("Protocol '%s' is not supported")
+	ErrProtocolNotSupported *types.Error = types.NewError(
+		"Protocol '%s' is not supported")
 
-    ErrProtocolPrototypeNotImplmented *types.Error =
-        types.NewError("You can't use a prototype protocol")
+	ErrProtocolPrototypeNotImplmented *types.Error = types.NewError(
+		"You can't use a prototype protocol")
 
-    ErrListenerAlreadyInited *types.Error =
-        types.NewError("Listener already initialized")
+	ErrListenerAlreadyInited *types.Error = types.NewError(
+		"Listener already initialized")
 
-    ErrListenerAlreadyUp *types.Error =
-        types.NewError("Listener '%s' is already up")
+	ErrListenerAlreadyUp *types.Error = types.NewError(
+		"Listener '%s' is already up")
 
-    ErrListenerNotCloseable *types.Error =
-        types.NewError("Listener which listening '%s' is not closeable")
+	ErrListenerNotCloseable *types.Error = types.NewError(
+		"Listener which listening '%s' is not closeable")
 
-    ErrProtocolAlreadyInited *types.Error =
-        types.NewError("This protocol already beed initialized")
+	ErrProtocolAlreadyInited *types.Error = types.NewError(
+		"This protocol already beed initialized")
 )

@@ -22,66 +22,66 @@
 package logger
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "fmt"
-    "bufio"
+	"bufio"
+	"fmt"
+	"time"
 )
 
 type FilePrinter struct {
-    writer          *bufio.Writer
+	writer *bufio.Writer
 
-    writeCounts     uint16
+	writeCounts uint16
 }
 
 func NewFilePrinter(w *bufio.Writer) (*FilePrinter, *types.Throw) {
-    _, writeErr     :=  w.Write([]byte(""))
+	_, writeErr := w.Write([]byte(""))
 
-    if writeErr != nil {
-        return nil, types.ConvertError(writeErr)
-    }
+	if writeErr != nil {
+		return nil, types.ConvertError(writeErr)
+	}
 
-    return &FilePrinter{
-        writer:     w,
-    }, nil
+	return &FilePrinter{
+		writer: w,
+	}, nil
 }
 
 func (l *FilePrinter) save(w types.String, c types.String,
-    t time.Time, m types.String) {
+	t time.Time, m types.String) {
 
-    _, err          :=  l.writer.WriteString(fmt.Sprintf("<%s> %s [%s]: %s\r\n",
-                            w, c, t.Format(time.StampMilli), m));
+	_, err := l.writer.WriteString(fmt.Sprintf("<%s> %s [%s]: %s\r\n",
+		w, c, t.Format(time.StampMilli), m))
 
-    if err != nil {
-        panic(fmt.Errorf("Can't write log file due to error: %s", err))
-    }
+	if err != nil {
+		panic(fmt.Errorf("Can't write log file due to error: %s", err))
+	}
 
-    l.writeCounts   +=  1
+	l.writeCounts += 1
 
-    if l.writeCounts > 10 {
-        l.writer.Flush()
+	if l.writeCounts > 10 {
+		l.writer.Flush()
 
-        l.writeCounts = 0
-    }
+		l.writeCounts = 0
+	}
 }
 
 func (l *FilePrinter) Info(c types.String, t time.Time, m types.String) {
-    l.save("INF", c, t, m)
+	l.save("INF", c, t, m)
 }
 
 func (l *FilePrinter) Debug(c types.String, t time.Time, m types.String) {
-    l.save("DBG", c, t, m)
+	l.save("DBG", c, t, m)
 }
 
 func (l *FilePrinter) Warning(c types.String, t time.Time, m types.String) {
-    l.save("WRN", c, t, m)
+	l.save("WRN", c, t, m)
 }
 
 func (l *FilePrinter) Error(c types.String, t time.Time, m types.String) {
-    l.save("ERR", c, t, m)
+	l.save("ERR", c, t, m)
 }
 
 func (l *FilePrinter) Print(c types.String, t time.Time, m types.String) {
-    l.save("DEF", c, t, m)
+	l.save("DEF", c, t, m)
 }

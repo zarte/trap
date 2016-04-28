@@ -22,10 +22,10 @@
 package client
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrClientNotFound *types.Error =
-        types.NewError("Client '%s' is not found")
+	ErrClientNotFound *types.Error = types.NewError(
+		"Client '%s' is not found")
 )

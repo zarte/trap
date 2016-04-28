@@ -22,51 +22,52 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Account struct {
-    permission              Permission
+	permission Permission
 }
 
-func (a Account) Allowed(name types.String) (bool) {
-    return a.permission.Allowed(name)
+func (a Account) Allowed(name types.String) bool {
+	return a.permission.Allowed(name)
 }
 
-func (a Account) Permissions() (map[types.String]bool) {
-    return a.permission.All()
+func (a Account) Permissions() map[types.String]bool {
+	return a.permission.All()
 }
 
 type Accounts map[types.String]*Account
 
 func (a Accounts) Get(pass types.String) (*Account, *types.Throw) {
-    if _, ok := a[pass]; !ok {
-        return nil, ErrAccountNotFound.Throw(pass)
-    }
+	if _, ok := a[pass]; !ok {
+		return nil, ErrAccountNotFound.Throw(pass)
+	}
 
-    return a[pass], nil
+	return a[pass], nil
 }
 
-func (a Accounts) Register(pass types.String, permissions []types.String) (*Account, *types.Throw) {
-    testAccount, testErr    :=  a.Get(pass)
+func (a Accounts) Register(
+	pass types.String, permissions []types.String) (*Account, *types.Throw) {
+	testAccount, testErr := a.Get(pass)
 
-    if testErr != nil && !testErr.Is(ErrAccountNotFound) {
-        return nil, testErr
-    }
+	if testErr != nil && !testErr.Is(ErrAccountNotFound) {
+		return nil, testErr
+	}
 
-    if testAccount != nil {
-        return nil, ErrAccountAlreadyExisted.Throw(pass)
-    }
+	if testAccount != nil {
+		return nil, ErrAccountAlreadyExisted.Throw(pass)
+	}
 
-    newAccount              :=  &Account{
-        permission:             Permission{},
-    }
+	newAccount := &Account{
+		permission: Permission{},
+	}
 
-    for _, permissionName := range permissions {
-        newAccount.permission.Authorize(permissionName)
-    }
+	for _, permissionName := range permissions {
+		newAccount.permission.Authorize(permissionName)
+	}
 
-    a[pass]                 =   newAccount
+	a[pass] = newAccount
 
-    return a[pass], nil
+	return a[pass], nil
 }

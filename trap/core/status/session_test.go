@@ -22,219 +22,219 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
-    "time"
-    "net"
+	"net"
+	"testing"
+	"time"
 )
 
-func getEmptyAccount() (*Account) {
-    account         :=  &Account{
-        permission:     Permission{},
-    }
+func getEmptyAccount() *Account {
+	account := &Account{
+		permission: Permission{},
+	}
 
-    return account
+	return account
 }
 
-func getTestSession() (*Session) {
-    now             :=  time.Now()
+func getTestSession() *Session {
+	now := time.Now()
 
-    return &Session{
-        IP:             net.ParseIP("127.0.0.1"),
-        Created:        now,
-        Key:            "TEST_RANDOM_KEY",
+	return &Session{
+		IP:      net.ParseIP("127.0.0.1"),
+		Created: now,
+		Key:     "TEST_RANDOM_KEY",
 
-        LastSeen:       now,
-        Expire:         time.Duration(2) * time.Second,
+		LastSeen: now,
+		Expire:   time.Duration(2) * time.Second,
 
-        account:        getEmptyAccount(),
-    }
+		account: getEmptyAccount(),
+	}
 }
 
 func TestSessionBump(t *testing.T) {
-    session         :=  getTestSession()
+	session := getTestSession()
 
-    time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second)
 
-    session.Bump()
+	session.Bump()
 
-    if !session.LastSeen.After(session.Created) {
-        t.Error("Session.Bump() failed up renew the LastSeen field")
+	if !session.LastSeen.After(session.Created) {
+		t.Error("Session.Bump() failed up renew the LastSeen field")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionAccount(t *testing.T) {
-    session         :=  getTestSession()
+	session := getTestSession()
 
-    if session.Account() == nil {
-        t.Error("Session.Account() failed to pass the Account information")
+	if session.Account() == nil {
+		t.Error("Session.Account() failed to pass the Account information")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionExpired(t *testing.T) {
-    session         :=  getTestSession()
+	session := getTestSession()
 
-    if session.Expired() {
-        t.Error("Session can't be expired right now")
+	if session.Expired() {
+		t.Error("Session can't be expired right now")
 
-        return
-    }
+		return
+	}
 
-    time.Sleep(3 * time.Second)
+	time.Sleep(3 * time.Second)
 
-    if !session.Expired() {
-        t.Error("Session should be expired right now")
+	if !session.Expired() {
+		t.Error("Session should be expired right now")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionsGetRandomKey(t *testing.T) {
-    maxKeys         :=  1000
-    randonKeyMap    :=  map[types.String]bool{}
+	maxKeys := 1000
+	randonKeyMap := map[types.String]bool{}
 
-    sessions        :=  Sessions{}
+	sessions := Sessions{}
 
-    for i := 0; i < maxKeys; i++ {
-        randomKeys  :=  sessions.getRandomKey()
+	for i := 0; i < maxKeys; i++ {
+		randomKeys := sessions.getRandomKey()
 
-        if _, ok := randonKeyMap[randomKeys]; !ok {
-            randonKeyMap[randomKeys]    =   true
+		if _, ok := randonKeyMap[randomKeys]; !ok {
+			randonKeyMap[randomKeys] = true
 
-            continue
-        }
+			continue
+		}
 
-        t.Error("Random key conflicted even in a small test")
+		t.Error("Random key conflicted even in a small test")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionsAdd(t *testing.T) {
-    sessions                :=  Sessions{}
+	sessions := Sessions{}
 
-    newSession, newSessErr  :=  sessions.Add(net.ParseIP("127.0.0.1"),
-                                    getEmptyAccount(), 12 * time.Second)
+	newSession, newSessErr := sessions.Add(net.ParseIP("127.0.0.1"),
+		getEmptyAccount(), 12*time.Second)
 
-    if newSessErr != nil {
-        t.Errorf("Failed to create session due to error: %s", newSessErr)
+	if newSessErr != nil {
+		t.Errorf("Failed to create session due to error: %s", newSessErr)
 
-        return
-    }
+		return
+	}
 
-    if !newSession.IP.Equal(net.ParseIP("127.0.0.1")) {
-        t.Error("Failed to assign session IP address")
+	if !newSession.IP.Equal(net.ParseIP("127.0.0.1")) {
+		t.Error("Failed to assign session IP address")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionsDelete(t *testing.T) {
-    sessions                :=  Sessions{}
+	sessions := Sessions{}
 
-    newSession, newSessErr  :=  sessions.Add(net.ParseIP("127.0.0.1"),
-                                    getEmptyAccount(), 12 * time.Second)
+	newSession, newSessErr := sessions.Add(net.ParseIP("127.0.0.1"),
+		getEmptyAccount(), 12*time.Second)
 
-    if newSessErr != nil {
-        t.Errorf("Failed to create dummy session due to error: %s", newSessErr)
+	if newSessErr != nil {
+		t.Errorf("Failed to create dummy session due to error: %s", newSessErr)
 
-        return
-    }
+		return
+	}
 
-    deleteErr               :=  sessions.Delete(newSession.Key)
+	deleteErr := sessions.Delete(newSession.Key)
 
-    if deleteErr != nil {
-        t.Errorf("Failed to delete session due to error: %s", deleteErr)
+	if deleteErr != nil {
+		t.Errorf("Failed to delete session due to error: %s", deleteErr)
 
-        return
-    }
+		return
+	}
 
-    deleteErr               =   sessions.Delete("NOT_EXISTED_SESSION")
+	deleteErr = sessions.Delete("NOT_EXISTED_SESSION")
 
-    if deleteErr == nil || !deleteErr.Is(ErrSessionKeyNotFound) {
-        t.Error("Expected error does not happen")
+	if deleteErr == nil || !deleteErr.Is(ErrSessionKeyNotFound) {
+		t.Error("Expected error does not happen")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionsVerify(t *testing.T) {
-    sessions                :=  Sessions{}
+	sessions := Sessions{}
 
-    newSession, newSessErr  :=  sessions.Add(net.ParseIP("127.0.0.1"),
-                                    getEmptyAccount(), 12 * time.Second)
+	newSession, newSessErr := sessions.Add(net.ParseIP("127.0.0.1"),
+		getEmptyAccount(), 12*time.Second)
 
-    if newSessErr != nil {
-        t.Errorf("Failed to create dummy session due to error: %s", newSessErr)
+	if newSessErr != nil {
+		t.Errorf("Failed to create dummy session due to error: %s", newSessErr)
 
-        return
-    }
+		return
+	}
 
-    verifySess, verifyErr   :=  sessions.Verify(net.ParseIP("127.0.0.1"),
-                                    newSession.Key)
+	verifySess, verifyErr := sessions.Verify(net.ParseIP("127.0.0.1"),
+		newSession.Key)
 
-    if verifyErr != nil {
-        t.Errorf("Failed to verify session due to error: %s", verifyErr)
+	if verifyErr != nil {
+		t.Errorf("Failed to verify session due to error: %s", verifyErr)
 
-        return
-    }
+		return
+	}
 
-    if verifySess == nil {
-        t.Error("Failed to output session information")
+	if verifySess == nil {
+		t.Error("Failed to output session information")
 
-        return
-    }
+		return
+	}
 
-    // Test not found
-    verifySess, verifyErr   =   sessions.Verify(net.ParseIP("127.0.0.2"),
-                                    newSession.Key)
+	// Test not found
+	verifySess, verifyErr = sessions.Verify(net.ParseIP("127.0.0.2"),
+		newSession.Key)
 
-    if verifyErr == nil || !verifyErr.Is(ErrSessionNotFound) {
-        t.Error("Expected error does not happen")
+	if verifyErr == nil || !verifyErr.Is(ErrSessionNotFound) {
+		t.Error("Expected error does not happen")
 
-        return
-    }
+		return
+	}
 
-    if verifySess != nil {
-        t.Error("Session information should not be exported here")
+	if verifySess != nil {
+		t.Error("Session information should not be exported here")
 
-        return
-    }
+		return
+	}
 
-    // Test expired
-    newSession.LastSeen     =   time.Now().Add(-(13 * time.Hour))
+	// Test expired
+	newSession.LastSeen = time.Now().Add(-(13 * time.Hour))
 
-    verifySess, verifyErr   =   sessions.Verify(net.ParseIP("127.0.0.1"),
-                                    newSession.Key)
+	verifySess, verifyErr = sessions.Verify(net.ParseIP("127.0.0.1"),
+		newSession.Key)
 
-    if verifySess != nil {
-        t.Error("Session information should not be exported here")
+	if verifySess != nil {
+		t.Error("Session information should not be exported here")
 
-        return
-    }
+		return
+	}
 
-    if verifyErr == nil || !verifyErr.Is(ErrSessionExpired) {
-        t.Error("Expected error does not happen")
+	if verifyErr == nil || !verifyErr.Is(ErrSessionExpired) {
+		t.Error("Expected error does not happen")
 
-        return
-    }
+		return
+	}
 }
 
 func TestSessionsDump(t *testing.T) {
-    sessions                :=  Sessions{}
+	sessions := Sessions{}
 
-    sessions.Add(net.ParseIP("127.0.0.1"), getEmptyAccount(), 12 * time.Second)
-    sessions.Add(net.ParseIP("127.0.0.2"), getEmptyAccount(), 12 * time.Second)
-    sessions.Add(net.ParseIP("127.0.0.3"), getEmptyAccount(), 12 * time.Second)
+	sessions.Add(net.ParseIP("127.0.0.1"), getEmptyAccount(), 12*time.Second)
+	sessions.Add(net.ParseIP("127.0.0.2"), getEmptyAccount(), 12*time.Second)
+	sessions.Add(net.ParseIP("127.0.0.3"), getEmptyAccount(), 12*time.Second)
 
-    if len(sessions.Dump()) != 3 {
-        t.Error("Dumpped an invalid amount of sessions")
+	if len(sessions.Dump()) != 3 {
+		t.Error("Dumpped an invalid amount of sessions")
 
-        return
-    }
+		return
+	}
 }

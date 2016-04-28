@@ -22,20 +22,20 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
+	"net/http"
 )
 
 type Controller interface {
-    Get(http.ResponseWriter, *http.Request)
-    Post(http.ResponseWriter, *http.Request)
-    Put(http.ResponseWriter, *http.Request)
-    Delete(http.ResponseWriter, *http.Request)
-    Head(http.ResponseWriter, *http.Request)
-    Options(http.ResponseWriter, *http.Request)
+	Get(http.ResponseWriter, *http.Request)
+	Post(http.ResponseWriter, *http.Request)
+	Put(http.ResponseWriter, *http.Request)
+	Delete(http.ResponseWriter, *http.Request)
+	Head(http.ResponseWriter, *http.Request)
+	Options(http.ResponseWriter, *http.Request)
 
-    Init() (*types.Throw)
-    Before(http.ResponseWriter, *http.Request) (*types.Throw)
-    Error(ErrorRespond, http.ResponseWriter, *http.Request)
+	Init() *types.Throw
+	Before(http.ResponseWriter, *http.Request) *types.Throw
+	Error(ErrorRespond, http.ResponseWriter, *http.Request)
 }

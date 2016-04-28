@@ -22,84 +22,84 @@
 package types
 
 import (
-    "testing"
-    "errors"
-    "fmt"
+	"errors"
+	"fmt"
+	"testing"
 )
 
 func TestErrorThrow(t *testing.T) {
-    err := NewError("This is a test error: %s %s %s")
-    throw := err.Throw("some", "error", "information")
+	err := NewError("This is a test error: %s %s %s")
+	throw := err.Throw("some", "error", "information")
 
-    if throw.parentRef != err.ref ||
-    throw.parentErr != err.error ||
-    throw.message != fmt.Sprintf(err.text, "some", "error", "information") {
-        t.Error("Error can't build correct Throw info")
-    }
+	if throw.parentRef != err.ref ||
+		throw.parentErr != err.error ||
+		throw.message != fmt.Sprintf(err.text, "some", "error", "information") {
+		t.Error("Error can't build correct Throw info")
+	}
 }
 
 func TestThrowIs(t *testing.T) {
-    err1 := NewError("Test error 1")
-    err2 := NewError("Test error 2")
+	err1 := NewError("Test error 1")
+	err2 := NewError("Test error 2")
 
-    if !err1.Throw().Is(err1) || err1.Throw().Is(err2) {
-        t.Error("Throw failed compare it's parent error")
-    }
+	if !err1.Throw().Is(err1) || err1.Throw().Is(err2) {
+		t.Error("Throw failed compare it's parent error")
+	}
 }
 
 func TestThrowIsError(t *testing.T) {
-    err1 := errors.New("Test error 1")
-    err2 := errors.New("Test error 2")
+	err1 := errors.New("Test error 1")
+	err2 := errors.New("Test error 2")
 
-    thr1 := ConvertError(err1)
+	thr1 := ConvertError(err1)
 
-    if !thr1.IsError(err1) || thr1.IsError(err2) {
-        t.Error("Throw failed compare it's parent error")
-    }
+	if !thr1.IsError(err1) || thr1.IsError(err2) {
+		t.Error("Throw failed compare it's parent error")
+	}
 }
 
 func TestThrowError(t *testing.T) {
-    throw   :=  NewError("Test error 1").Throw()
+	throw := NewError("Test error 1").Throw()
 
-    if throw.Error() != "Test error 1" {
-        t.Error("Error message is incorrect")
-    }
+	if throw.Error() != "Test error 1" {
+		t.Error("Error message is incorrect")
+	}
 
-    throw   =   NewError("Test error 1 %s %s %s").
-                    Throw("formated", "strings", "here")
+	throw = NewError("Test error 1 %s %s %s").
+		Throw("formated", "strings", "here")
 
-    if throw.Error() != "Test error 1 formated strings here" {
-        t.Error("Error message is incorrect")
-    }
+	if throw.Error() != "Test error 1 formated strings here" {
+		t.Error("Error message is incorrect")
+	}
 }
 
 func TestThrowMarshalJSON(t *testing.T) {
-    json, jsonErr   :=  NewError("Test error 1").Throw().MarshalJSON()
+	json, jsonErr := NewError("Test error 1").Throw().MarshalJSON()
 
-    if jsonErr != nil {
-        t.Error("Failed marshal Throw information to JSON")
+	if jsonErr != nil {
+		t.Error("Failed marshal Throw information to JSON")
 
-        return
-    }
+		return
+	}
 
-    if string(json) != "\"Test error 1\"" {
-        t.Error("Throw generated an invalid JSON result")
+	if string(json) != "\"Test error 1\"" {
+		t.Error("Throw generated an invalid JSON result")
 
-        return
-    }
+		return
+	}
 
-    json, jsonErr   =   NewError("Test error 1 \"%s\" \"%s\" \"%s\"").
-                            Throw("formated", "strings", "here").MarshalJSON()
+	json, jsonErr = NewError("Test error 1 \"%s\" \"%s\" \"%s\"").
+		Throw("formated", "strings", "here").MarshalJSON()
 
-    if jsonErr != nil {
-        t.Error("Failed marshal Throw information to JSON")
+	if jsonErr != nil {
+		t.Error("Failed marshal Throw information to JSON")
 
-        return
-    }
+		return
+	}
 
-    if string(json) != "\"Test error 1 \\\"formated\\\" \\\"strings\\\" \\\"here\\\"\"" {
-        t.Error("Throw generated an invalid JSON result")
+	if string(json) != "\"Test error 1 \\\"formated\\\" \\\"strings\\\" \\\"here\\\"\"" {
+		t.Error("Throw generated an invalid JSON result")
 
-        return
-    }
+		return
+	}
 }

@@ -22,117 +22,117 @@
 package tcp
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/listen"
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/protocol/net"
+	"github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/protocol/net"
 
-    "time"
-    "math/rand"
+	"math/rand"
+	"time"
 )
 
 type TCP struct {
-    net.Net
+	net.Net
 
-    responders          []Responder
+	responders []Responder
 
-    onError             func(listen.ConnectionInfo, *types.Throw)
-    onPick              func(listen.ConnectionInfo, listen.RespondedResult)
+	onError func(listen.ConnectionInfo, *types.Throw)
+	onPick  func(listen.ConnectionInfo, listen.RespondedResult)
 
-    maxBytes            types.UInt32
+	maxBytes types.UInt32
 
-    readTimeout         time.Duration
-    writeTimeout        time.Duration
-    totalTimeout        time.Duration
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+	totalTimeout time.Duration
 
-    inited              bool
+	inited bool
 
-    logger              *logger.Logger
-    concurrent          types.UInt16
+	logger     *logger.Logger
+	concurrent types.UInt16
 
-    rand                *rand.Rand
+	rand *rand.Rand
 }
 
-func (t *TCP) Init(c *listen.ProtocolConfig) (*types.Throw) {
-    if t.inited {
-        return listen.ErrProtocolAlreadyInited.Throw()
-    }
+func (t *TCP) Init(c *listen.ProtocolConfig) *types.Throw {
+	if t.inited {
+		return listen.ErrProtocolAlreadyInited.Throw()
+	}
 
-    t.inited            =   true
+	t.inited = true
 
-    t.logger            =   c.Logger.NewContext("TCP")
+	t.logger = c.Logger.NewContext("TCP")
 
-    t.maxBytes          =   c.MaxBytes
+	t.maxBytes = c.MaxBytes
 
-    t.onError           =   c.OnError
-    t.onPick            =   c.OnPick
+	t.onError = c.OnError
+	t.onPick = c.OnPick
 
-    t.readTimeout       =   c.ReadTimeout
-    t.writeTimeout      =   c.WriteTimeout
-    t.totalTimeout      =   c.TotalTimeout
-    t.concurrent        =   c.Concurrent
+	t.readTimeout = c.ReadTimeout
+	t.writeTimeout = c.WriteTimeout
+	t.totalTimeout = c.TotalTimeout
+	t.concurrent = c.Concurrent
 
-    t.rand              =   rand.New(rand.NewSource(time.Now().UnixNano()))
+	t.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-    return nil
+	return nil
 }
 
-func (t *TCP) Responder(resp Responder) (listen.Protocol) {
-    t.responders        =   append(t.responders, resp)
+func (t *TCP) Responder(resp Responder) listen.Protocol {
+	t.responders = append(t.responders, resp)
 
-    return t
+	return t
 }
 
 func (t *TCP) getRandomResponder() (Responder, *types.Throw) {
-    totalLen            :=  len(t.responders)
+	totalLen := len(t.responders)
 
-    if totalLen <= 0 {
-        return nil, ErrNoAnyResponder.Throw()
-    }
+	if totalLen <= 0 {
+		return nil, ErrNoAnyResponder.Throw()
+	}
 
-    randKey             :=  t.rand.Intn(totalLen)
+	randKey := t.rand.Intn(totalLen)
 
-    return t.responders[randKey], nil
+	return t.responders[randKey], nil
 }
 
 func (t *TCP) Spawn(setting types.String) (listen.Listener, *types.Throw) {
-    resp, rspErr        :=  t.getRandomResponder()
+	resp, rspErr := t.getRandomResponder()
 
-    if rspErr != nil {
-        t.logger.Warningf("Can't spawn the new TCP `Listener` due to error: %s",
-            rspErr)
+	if rspErr != nil {
+		t.logger.Warningf("Can't spawn the new TCP `Listener` due to error: %s",
+			rspErr)
 
-        return nil, rspErr
-    }
+		return nil, rspErr
+	}
 
-    ip, port, parseErr  :=  t.ParseConfig(setting)
+	ip, port, parseErr := t.ParseConfig(setting)
 
-    if parseErr != nil {
-        return nil, parseErr
-    }
+	if parseErr != nil {
+		return nil, parseErr
+	}
 
-    listener            :=  &Listener{}
+	listener := &Listener{}
 
-    listener.Init(ListenerConfig{
-        ListenerConfig:     listen.ListenerConfig{
-            Logger:         t.logger,
-            Concurrent:     t.concurrent,
-            MaxBytes:       t.maxBytes,
+	listener.Init(ListenerConfig{
+		ListenerConfig: listen.ListenerConfig{
+			Logger:     t.logger,
+			Concurrent: t.concurrent,
+			MaxBytes:   t.maxBytes,
 
-            OnError:        t.onError,
-            OnPick:         t.onPick,
+			OnError: t.onError,
+			OnPick:  t.onPick,
 
-            ReadTimeout:    t.readTimeout,
-            WriteTimeout:   t.writeTimeout,
-            TotalTimeout:   t.totalTimeout,
+			ReadTimeout:  t.readTimeout,
+			WriteTimeout: t.writeTimeout,
+			TotalTimeout: t.totalTimeout,
 
-            IP:             ip,
-            Port:           port,
-        },
-        Responder:          resp,
-    })
+			IP:   ip,
+			Port: port,
+		},
+		Responder: resp,
+	})
 
-    t.logger.Debugf("New TCP `Listener` has been spawned")
+	t.logger.Debugf("New TCP `Listener` has been spawned")
 
-    return listener, nil
+	return listener, nil
 }

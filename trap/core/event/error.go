@@ -22,10 +22,10 @@
 package event
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrNoEvent *types.Error =
-        types.NewError("There is no any handler for event '%s'")
+	ErrNoEvent *types.Error = types.NewError(
+		"There is no any handler for event '%s'")
 )

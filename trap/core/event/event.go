@@ -22,55 +22,55 @@
 package event
 
 import (
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Event struct {
-    error               *types.Throw
+	error *types.Throw
 
-    logger              *logger.Logger
-    events              Callbacks
+	logger *logger.Logger
+	events Callbacks
 }
 
 func (this *Event) Init(cfg *Config) {
-    this.logger         = cfg.Logger.NewContext("Event")
+	this.logger = cfg.Logger.NewContext("Event")
 
-    this.events         = Callbacks{}
+	this.events = Callbacks{}
 }
 
 func (this *Event) Register(name types.String,
-    callback Callback) {
-    this.events[name]   = append(this.events[name], callback)
+	callback Callback) {
+	this.events[name] = append(this.events[name], callback)
 
-    this.logger.Debugf("New `Event` handler has been registered to '%s' event",
-        name)
+	this.logger.Debugf("New `Event` handler has been registered to '%s' event",
+		name)
 }
 
 func (this *Event) Trigger(name types.String,
-    params Parameters) (*types.Throw) {
-    var e *types.Throw = nil
+	params Parameters) *types.Throw {
+	var e *types.Throw = nil
 
-    if _, ok := this.events[name]; !ok {
-        this.error = ErrNoEvent.Throw(name)
+	if _, ok := this.events[name]; !ok {
+		this.error = ErrNoEvent.Throw(name)
 
-        this.logger.Warningf("Can't trigger event due to error: %s", this.error)
+		this.logger.Warningf("Can't trigger event due to error: %s", this.error)
 
-        return this.error
-    }
+		return this.error
+	}
 
-    this.logger.Debugf("The event '%s' has been triggered", name)
+	this.logger.Debugf("The event '%s' has been triggered", name)
 
-    for _, eventHandler := range this.events[name] {
-        handleErr := eventHandler(&params)
+	for _, eventHandler := range this.events[name] {
+		handleErr := eventHandler(&params)
 
-        if handleErr != nil {
-            this.logger.Errorf("An error happed when " +
-                "run handler for event '%s': %s", name, handleErr)
+		if handleErr != nil {
+			this.logger.Errorf("An error happed when "+
+				"run handler for event '%s': %s", name, handleErr)
 
-            e = handleErr
-        }
-    }
+			e = handleErr
+		}
+	}
 
-    return e
+	return e
 }

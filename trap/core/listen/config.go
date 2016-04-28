@@ -22,83 +22,83 @@
 package listen
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net"
+	"net"
+	"time"
 )
 
 const (
-    _                       =   iota
+	_ = iota
 
-    RESPOND_SUGGEST_SKIP
-    RESPOND_SUGGEST_MARK
+	RESPOND_SUGGEST_SKIP
+	RESPOND_SUGGEST_MARK
 )
 
 type Config struct {
-    OnError         func(ConnectionInfo, *types.Throw)
-    OnPick          func(ConnectionInfo, RespondedResult)
+	OnError func(ConnectionInfo, *types.Throw)
+	OnPick  func(ConnectionInfo, RespondedResult)
 
-    OnListened      func(*ListeningInfo)
-    OnUnListened    func(*ListeningInfo)
+	OnListened   func(*ListeningInfo)
+	OnUnListened func(*ListeningInfo)
 
-    MaxBytes        types.UInt32
+	MaxBytes types.UInt32
 
-    Logger          *logger.Logger
-    Concurrent      types.UInt16
+	Logger     *logger.Logger
+	Concurrent types.UInt16
 
-    Timeout         time.Duration
+	Timeout time.Duration
 }
 
 type ListenerConfig struct {
-    Logger          *logger.Logger
-    Concurrent      types.UInt16
+	Logger     *logger.Logger
+	Concurrent types.UInt16
 
-    OnError         func(ConnectionInfo, *types.Throw)
-    OnPick          func(ConnectionInfo, RespondedResult)
+	OnError func(ConnectionInfo, *types.Throw)
+	OnPick  func(ConnectionInfo, RespondedResult)
 
-    MaxBytes        types.UInt32
+	MaxBytes types.UInt32
 
-    ReadTimeout     time.Duration
-    WriteTimeout    time.Duration
-    TotalTimeout    time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	TotalTimeout time.Duration
 
-    IP              net.IP
-    Port            types.UInt16
+	IP   net.IP
+	Port types.UInt16
 }
 
 type ProtocolConfig struct {
-    Logger          *logger.Logger
-    Concurrent      types.UInt16
+	Logger     *logger.Logger
+	Concurrent types.UInt16
 
-    OnError         func(ConnectionInfo, *types.Throw)
-    OnPick          func(ConnectionInfo, RespondedResult)
+	OnError func(ConnectionInfo, *types.Throw)
+	OnPick  func(ConnectionInfo, RespondedResult)
 
-    MaxBytes        types.UInt32
+	MaxBytes types.UInt32
 
-    ReadTimeout     time.Duration
-    WriteTimeout    time.Duration
-    TotalTimeout    time.Duration
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	TotalTimeout time.Duration
 }
 
 type ListeningInfo struct {
-    Port            int
-    IP              net.IP
-    Protocol        string          // TCP or UDP in lowercase
+	Port     int
+	IP       net.IP
+	Protocol string // TCP or UDP in lowercase
 }
 
 type ConnectionInfo struct {
-    ClientIP        types.IP
-    ServerAddress   types.IPAddress
-    Type            types.String    // Friendly name of the port which current
-                                    //     connection attached like:
-                                    //     http_proxy, tcp_filter, fake_ssh etc
+	ClientIP      types.IP
+	ServerAddress types.IPAddress
+	Type          types.String // Friendly name of the port which current
+	//     connection attached like:
+	//     http_proxy, tcp_filter, fake_ssh etc
 }
 
 type RespondedResult struct {
-    ReceivedSample  []byte
-    RespondedData   []byte
+	ReceivedSample []byte
+	RespondedData  []byte
 
-    Suggestion      int
+	Suggestion int
 }

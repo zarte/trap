@@ -22,72 +22,72 @@
 package types
 
 import (
-    "fmt"
-    "encoding/json"
+	"encoding/json"
+	"fmt"
 )
 
 type Error struct {
-    ref     *Error
-    error   error
-    text    string
+	ref   *Error
+	error error
+	text  string
 }
 
 type Throw struct {
-    parentRef  *Error
-    parentErr  error
-    message    string
+	parentRef *Error
+	parentErr error
+	message   string
 }
 
-func NewError(text string) (*Error) {
-    e           := &Error{}
+func NewError(text string) *Error {
+	e := &Error{}
 
-    e.ref       =  e
-    e.text      =  text
-    e.error     =  nil
+	e.ref = e
+	e.text = text
+	e.error = nil
 
-    return e
+	return e
 }
 
-func ConvertError(err error) (*Throw) {
-    e           := &Error{}
+func ConvertError(err error) *Throw {
+	e := &Error{}
 
-    e.ref       =  e
-    e.text      =  err.Error()
-    e.error     =  err
+	e.ref = e
+	e.text = err.Error()
+	e.error = err
 
-    return e.Throw()
+	return e.Throw()
 }
 
-func (e *Error) Throw(formats ...interface{}) (*Throw) {
-    t           := &Throw{}
+func (e *Error) Throw(formats ...interface{}) *Throw {
+	t := &Throw{}
 
-    t.parentRef =  e.ref
-    t.parentErr =  e.error
-    t.message   =  fmt.Sprintf(e.text, formats...)
+	t.parentRef = e.ref
+	t.parentErr = e.error
+	t.message = fmt.Sprintf(e.text, formats...)
 
-    return t
+	return t
 }
 
-func (t *Throw) Is(e *Error) (bool) {
-    if e.ref != t.parentRef {
-        return false
-    }
+func (t *Throw) Is(e *Error) bool {
+	if e.ref != t.parentRef {
+		return false
+	}
 
-    return true
+	return true
 }
 
-func (t *Throw) IsError(e error) (bool) {
-    if e != t.parentErr {
-        return false
-    }
+func (t *Throw) IsError(e error) bool {
+	if e != t.parentErr {
+		return false
+	}
 
-    return true
+	return true
 }
 
-func (t *Throw) Error() (string) {
-    return t.message
+func (t *Throw) Error() string {
+	return t.message
 }
 
 func (t *Throw) MarshalJSON() ([]byte, error) {
-    return json.Marshal(t.Error())
+	return json.Marshal(t.Error())
 }

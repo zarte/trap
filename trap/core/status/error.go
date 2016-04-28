@@ -22,65 +22,64 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrServerNotSet *types.Error =
-        types.NewError("Trap `Server` must be set before start a `Status` server")
+	ErrServerNotSet *types.Error = types.NewError(
+		"Trap `Server` must be set before start a `Status` server")
 
-    ErrServerAlreadyUp *types.Error =
-        types.NewError("`Status` server is already up")
+	ErrServerAlreadyUp *types.Error = types.NewError(
+		"`Status` server is already up")
 
-    ErrServerNotDownable *types.Error =
-        types.NewError("`Status` can't be down at this moment")
+	ErrServerNotDownable *types.Error = types.NewError(
+		"`Status` can't be down at this moment")
 
-    ErrUIDirNotFound *types.Error =
-        types.NewError("'%d' is not a directory")
+	ErrUIDirNotFound *types.Error = types.NewError(
+		"'%d' is not a directory")
 
-    ErrFailedGenerateSessionKey *types.Error =
-        types.NewError("Can't generate session key for user '%s'")
+	ErrFailedGenerateSessionKey *types.Error = types.NewError(
+		"Can't generate session key for user '%s'")
 
-    ErrRequestedURLIsNotImplemented *types.Error =
-        types.NewError("The handler for URL '%s' is not implemented")
+	ErrRequestedURLIsNotImplemented *types.Error = types.NewError(
+		"The handler for URL '%s' is not implemented")
 
-    ErrUnsupportedClient *types.Error =
-        types.NewError("Trap `Server` can't handle request sent by this client")
+	ErrUnsupportedClient *types.Error = types.NewError(
+		"Trap `Server` can't handle request sent by this client")
 
-    ErrRequestMethodNotImplemented *types.Error =
-        types.NewError("Request method '%s' is not implemented")
+	ErrRequestMethodNotImplemented *types.Error = types.NewError(
+		"Request method '%s' is not implemented")
 
-    ErrAccountNotFound *types.Error =
-        types.NewError("Account '%s' is not found")
+	ErrAccountNotFound *types.Error = types.NewError(
+		"Account '%s' is not found")
 
-    ErrAccountAlreadyExisted *types.Error =
-        types.NewError("Account '%s' already existed")
+	ErrAccountAlreadyExisted *types.Error = types.NewError(
+		"Account '%s' already existed")
 
-    ErrSessionNotFound *types.Error =
-        types.NewError("Session key '%s' does not binded with user '%s'")
+	ErrSessionNotFound *types.Error = types.NewError(
+		"Session key '%s' does not binded with user '%s'")
 
-    ErrSessionKeyNotFound *types.Error =
-        types.NewError("Can't found Session with key '%s'")
+	ErrSessionKeyNotFound *types.Error = types.NewError(
+		"Can't found Session with key '%s'")
 
-    ErrSessionExpired *types.Error =
-        types.NewError("The Session key '%s' for user '%s' has expired")
+	ErrSessionExpired *types.Error = types.NewError(
+		"The Session key '%s' for user '%s' has expired")
 
-    ErrSessionInvalid *types.Error =
-        types.NewError("The session key for user '%s' is invalid")
+	ErrSessionInvalid *types.Error = types.NewError(
+		"The session key for user '%s' is invalid")
 
-    ErrInvalidServerPassword *types.Error =
-        types.NewError("User '%s' provided an invalid server password '%s'")
+	ErrInvalidServerPassword *types.Error = types.NewError(
+		"User '%s' provided an invalid server password '%s'")
 
-    ErrInvalidUserIPAddress *types.Error =
-        types.NewError("'%s' is not a ip address")
+	ErrInvalidUserIPAddress *types.Error = types.NewError(
+		"'%s' is not a ip address")
 
-    ErrSessionLoginReqiured *types.Error =
-        types.NewError("Login is required for access this function")
+	ErrSessionLoginReqiured *types.Error = types.NewError(
+		"Login is required for access this function")
 
-    ErrSessionNoPermission *types.Error =
-        types.NewError("Current session doesn't have " +
-            "permission to perform this operation")
+	ErrSessionNoPermission *types.Error = types.NewError(
+		"Current session doesn't have permission to perform this operation")
 
-    ErrStatusControllerInvalidParameter *types.Error =
-        types.NewError("Invalid parameter")
+	ErrStatusControllerInvalidParameter *types.Error = types.NewError(
+		"Invalid parameter")
 )

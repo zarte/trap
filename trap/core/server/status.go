@@ -22,19 +22,19 @@
 package server
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
+	"time"
 )
 
 type Status struct {
-    TotalInbound        types.UInt64
-    TotalMarked         types.UInt64
-    TotalHit            types.UInt64
-    TotalClients        types.UInt64
+	TotalInbound types.UInt64
+	TotalMarked  types.UInt64
+	TotalHit     types.UInt64
+	TotalClients types.UInt64
 
-    Uptime              time.Duration
+	Uptime time.Duration
 
-    History             []History
-    Distribution        []Distribution
+	History      []History
+	Distribution []Distribution
 }

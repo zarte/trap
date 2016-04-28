@@ -22,61 +22,61 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
-    "encoding/json"
+	"encoding/json"
+	"net/http"
 )
 
 type Sessions struct {
-    SessionedJSON
+	SessionedJSON
 
-    GetSessions     func() ([]status.SessionDump)
+	GetSessions func() []status.SessionDump
 }
 
 func (s *Sessions) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    parentBefore                    :=  s.SessionedJSON.Before(w, r)
+	r *http.Request) *types.Throw {
+	parentBefore := s.SessionedJSON.Before(w, r)
 
-    if parentBefore != nil {
-        return parentBefore
-    }
+	if parentBefore != nil {
+		return parentBefore
+	}
 
-    session                         :=  s.Session()
+	session := s.Session()
 
-    if session == nil {
-        s.Error(status.ErrorRespond{
-            Code:   401,
-            Error:  status.ErrSessionLoginReqiured.Throw(),
-        }, w, r)
+	if session == nil {
+		s.Error(status.ErrorRespond{
+			Code:  401,
+			Error: status.ErrSessionLoginReqiured.Throw(),
+		}, w, r)
 
-        return status.ErrSessionLoginReqiured.Throw()
-    }
+		return status.ErrSessionLoginReqiured.Throw()
+	}
 
-    if !session.Account().Allowed("sessions") {
-        s.Error(status.ErrorRespond{
-            Code:   403,
-            Error:  status.ErrSessionNoPermission.Throw(),
-        }, w, r)
+	if !session.Account().Allowed("sessions") {
+		s.Error(status.ErrorRespond{
+			Code:  403,
+			Error: status.ErrSessionNoPermission.Throw(),
+		}, w, r)
 
-        return status.ErrSessionNoPermission.Throw()
-    }
+		return status.ErrSessionNoPermission.Throw()
+	}
 
-    return nil
+	return nil
 }
 
 func (s *Sessions) Get(w http.ResponseWriter, r *http.Request) {
-    jsonData, jsonErr   :=  json.Marshal(s.GetSessions())
+	jsonData, jsonErr := json.Marshal(s.GetSessions())
 
-    if jsonErr != nil {
-        s.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
+	if jsonErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jsonErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    s.WriteGZIP(200, jsonData, w, r)
+	s.WriteGZIP(200, jsonData, w, r)
 }

@@ -22,10 +22,10 @@
 package core
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrServerModuleMustBeEnabled *types.Error =
-        types.NewError("`%s` must be enabled before start a server")
+	ErrServerModuleMustBeEnabled *types.Error = types.NewError(
+		"`%s` must be enabled before start a server")
 )

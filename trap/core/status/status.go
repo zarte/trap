@@ -22,10 +22,10 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type ErrorRespond struct {
-    Code            int
-    Error           *types.Throw
+	Code  int
+	Error *types.Throw
 }

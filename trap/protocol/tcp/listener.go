@@ -22,250 +22,250 @@
 package tcp
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/listen"
-    "github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
-    "time"
-    "sync"
+	"net"
+	"sync"
+	"time"
 )
 
 type Listener struct {
-    inited          bool
-    upped           bool
-    closeable       bool
+	inited    bool
+	upped     bool
+	closeable bool
 
-    listener        *net.TCPListener
-    responder       Responder
+	listener  *net.TCPListener
+	responder Responder
 
-    logger          *logger.Logger
-    concurrent      int
-    maxBytes        uint
+	logger     *logger.Logger
+	concurrent int
+	maxBytes   uint
 
-    timeoutRead     time.Duration
-    timeoutWrite    time.Duration
-    timeoutTotal    time.Duration
+	timeoutRead  time.Duration
+	timeoutWrite time.Duration
+	timeoutTotal time.Duration
 
-    onError         func(listen.ConnectionInfo, *types.Throw)
-    onPick          func(listen.ConnectionInfo, listen.RespondedResult)
+	onError func(listen.ConnectionInfo, *types.Throw)
+	onPick  func(listen.ConnectionInfo, listen.RespondedResult)
 
-    listenOn        *net.TCPAddr
+	listenOn *net.TCPAddr
 
-    downChan        chan bool
-    upwaitChan      chan bool
+	downChan   chan bool
+	upwaitChan chan bool
 
-    waitingGroup    sync.WaitGroup
+	waitingGroup sync.WaitGroup
 }
 
-func (this *Listener) Init(cfg ListenerConfig) (*types.Throw) {
-    if this.inited {
-        return listen.ErrListenerAlreadyInited.Throw()
-    }
+func (this *Listener) Init(cfg ListenerConfig) *types.Throw {
+	if this.inited {
+		return listen.ErrListenerAlreadyInited.Throw()
+	}
 
-    strIP                   :=  cfg.IP.String()
+	strIP := cfg.IP.String()
 
-    this.inited             =   true
+	this.inited = true
 
-    this.upped              =   false
-    this.closeable          =   false
+	this.upped = false
+	this.closeable = false
 
-    this.logger             =   cfg.Logger.NewContext("Listener").
-                                    NewContext(types.String(cfg.IP.String())).
-                                    NewContext(cfg.Port.String())
+	this.logger = cfg.Logger.NewContext("Listener").
+		NewContext(types.String(cfg.IP.String())).
+		NewContext(cfg.Port.String())
 
-    this.concurrent         =   int(cfg.Concurrent.Int32()) // UInt16 to Int32
+	this.concurrent = int(cfg.Concurrent.Int32()) // UInt16 to Int32
 
-    if strIP == "0.0.0.0" {
-        strIP = ""
-    }
+	if strIP == "0.0.0.0" {
+		strIP = ""
+	}
 
-    this.timeoutRead        =   cfg.ReadTimeout
-    this.timeoutWrite       =   cfg.WriteTimeout
-    this.timeoutTotal       =   cfg.TotalTimeout
+	this.timeoutRead = cfg.ReadTimeout
+	this.timeoutWrite = cfg.WriteTimeout
+	this.timeoutTotal = cfg.TotalTimeout
 
-    this.maxBytes           =   uint(cfg.MaxBytes.UInt32())
+	this.maxBytes = uint(cfg.MaxBytes.UInt32())
 
-    this.onError            =   cfg.OnError
-    this.onPick             =   cfg.OnPick
+	this.onError = cfg.OnError
+	this.onPick = cfg.OnPick
 
-    this.responder          =   cfg.Responder
+	this.responder = cfg.Responder
 
-    this.listenOn           =   &net.TCPAddr{
-                                    IP:     cfg.IP,
-                                    Port:   int(cfg.Port.Int16()),
-                                }
+	this.listenOn = &net.TCPAddr{
+		IP:   cfg.IP,
+		Port: int(cfg.Port.Int16()),
+	}
 
-    this.waitingGroup       =   sync.WaitGroup{}
-    this.downChan           =   make(chan bool, 2)
-    this.upwaitChan         =   make(chan bool)
+	this.waitingGroup = sync.WaitGroup{}
+	this.downChan = make(chan bool, 2)
+	this.upwaitChan = make(chan bool)
 
-    return nil
+	return nil
 }
 
 func (this *Listener) Up() (*listen.ListeningInfo, *types.Throw) {
-    if this.upped {
-        return nil, listen.ErrListenerAlreadyUp.Throw(this.listenOn)
-    }
+	if this.upped {
+		return nil, listen.ErrListenerAlreadyUp.Throw(this.listenOn)
+	}
 
-    listener, lErr          :=  net.ListenTCP("tcp", this.listenOn)
+	listener, lErr := net.ListenTCP("tcp", this.listenOn)
 
-    if lErr != nil {
-        return nil, types.ConvertError(lErr)
-    }
+	if lErr != nil {
+		return nil, types.ConvertError(lErr)
+	}
 
-    this.listener           =  listener
-    this.upped              =  true
+	this.listener = listener
+	this.upped = true
 
-    // Main loop waiter
-    this.waitingGroup.Add(1)
+	// Main loop waiter
+	this.waitingGroup.Add(1)
 
-    go func() {
-        defer this.waitingGroup.Done()
+	go func() {
+		defer this.waitingGroup.Done()
 
-        conChan             :=  make(chan bool, this.concurrent)
+		conChan := make(chan bool, this.concurrent)
 
-        responderConfig     :=  &ResponderConfig{
-            MaxBytes:           this.maxBytes,
-        }
+		responderConfig := &ResponderConfig{
+			MaxBytes: this.maxBytes,
+		}
 
-        defer func() {
-            if !this.upped {
-                return
-            }
+		defer func() {
+			if !this.upped {
+				return
+			}
 
-            this.listener.Close()
+			this.listener.Close()
 
-            this.logger.Debugf("Defered connection close executed")
-        }()
+			this.logger.Debugf("Defered connection close executed")
+		}()
 
-        this.waitingGroup.Add(1) // con chan waiter
+		this.waitingGroup.Add(1) // con chan waiter
 
-        go func() {
-            defer this.waitingGroup.Done()
+		go func() {
+			defer this.waitingGroup.Done()
 
-            for {
-                time.Sleep(1 * time.Second)
+			for {
+				time.Sleep(1 * time.Second)
 
-                select {
-                    case <- this.downChan:
-                        return
+				select {
+				case <-this.downChan:
+					return
 
-                    case <- conChan:
-                        curChanLen := len(conChan)
+				case <-conChan:
+					curChanLen := len(conChan)
 
-                        if curChanLen < this.concurrent {
-                            for i := curChanLen; i < this.concurrent; i++ {
-                                conChan <- true
-                            }
-                        }
+					if curChanLen < this.concurrent {
+						for i := curChanLen; i < this.concurrent; i++ {
+							conChan <- true
+						}
+					}
 
-                    default:
-                        for i := 0; i < this.concurrent; i++ {
-                            conChan <- true
-                        }
-                }
-            }
-        }()
+				default:
+					for i := 0; i < this.concurrent; i++ {
+						conChan <- true
+					}
+				}
+			}
+		}()
 
-        this.closeable = true
+		this.closeable = true
 
-        this.logger.Debugf("Waiting for connection. Maximum concurrent is '%d'",
-            this.concurrent)
+		this.logger.Debugf("Waiting for connection. Maximum concurrent is '%d'",
+			this.concurrent)
 
-        this.upwaitChan <- true
+		this.upwaitChan <- true
 
-        // Listen loop
-        for {
-            select {
-                case <- this.downChan:
-                    return
+		// Listen loop
+		for {
+			select {
+			case <-this.downChan:
+				return
 
-                case <- conChan:
-                    conn, err       := this.listener.AcceptTCP()
+			case <-conChan:
+				conn, err := this.listener.AcceptTCP()
 
-                    if err != nil {
-                        continue
-                    }
+				if err != nil {
+					continue
+				}
 
-                    this.waitingGroup.Add(1)
+				this.waitingGroup.Add(1)
 
-                    // Dispatch a routine to serve this com
-                    go func(conn *net.TCPConn) {
-                        defer this.waitingGroup.Done()
+				// Dispatch a routine to serve this com
+				go func(conn *net.TCPConn) {
+					defer this.waitingGroup.Done()
 
-                        clientAddr, cAddrErr    :=  types.ConvertIPAddress(
-                                                        conn.RemoteAddr())
+					clientAddr, cAddrErr := types.ConvertIPAddress(
+						conn.RemoteAddr())
 
-                        serverAddr, sAddrErr    :=  types.ConvertIPAddress(
-                                                        conn.LocalAddr())
+					serverAddr, sAddrErr := types.ConvertIPAddress(
+						conn.LocalAddr())
 
-                        if cAddrErr != nil || sAddrErr != nil{
-                            return
-                        }
+					if cAddrErr != nil || sAddrErr != nil {
+						return
+					}
 
-                        connection  :=  listen.ConnectionInfo{
-                            ClientIP:               clientAddr.IP,
-                            ServerAddress:          serverAddr,
-                            Type:                   "tcp",
-                        }
+					connection := listen.ConnectionInfo{
+						ClientIP:      clientAddr.IP,
+						ServerAddress: serverAddr,
+						Type:          "tcp",
+					}
 
-                        conn.SetDeadline(time.Now().Add(this.timeoutTotal))
-                        conn.SetReadDeadline(time.Now().Add(this.timeoutRead))
-                        conn.SetWriteDeadline(time.Now().Add(this.timeoutWrite))
+					conn.SetDeadline(time.Now().Add(this.timeoutTotal))
+					conn.SetReadDeadline(time.Now().Add(this.timeoutRead))
+					conn.SetWriteDeadline(time.Now().Add(this.timeoutWrite))
 
-                        result, err :=  this.responder.Handle(conn,
-                                            responderConfig)
+					result, err := this.responder.Handle(conn,
+						responderConfig)
 
-                        if err != nil {
-                            this.onError(connection, err)
-                        }
+					if err != nil {
+						this.onError(connection, err)
+					}
 
-                        closeErr    := conn.Close()
+					closeErr := conn.Close()
 
-                        if closeErr != nil {
-                            this.onError(connection,
-                                types.ConvertError(closeErr))
-                        }
+					if closeErr != nil {
+						this.onError(connection,
+							types.ConvertError(closeErr))
+					}
 
-                        this.onPick(connection, result)
-                    }(conn)
-            }
-        }
-    }()
+					this.onPick(connection, result)
+				}(conn)
+			}
+		}
+	}()
 
-    // wait for listen
-    <-this.upwaitChan
+	// wait for listen
+	<-this.upwaitChan
 
-    return &listen.ListeningInfo{
-        Port: this.listenOn.Port,
-        IP: this.listenOn.IP,
-        Protocol: "tcp",
-    }, nil
+	return &listen.ListeningInfo{
+		Port:     this.listenOn.Port,
+		IP:       this.listenOn.IP,
+		Protocol: "tcp",
+	}, nil
 }
 
 func (this *Listener) Down() (*listen.ListeningInfo, *types.Throw) {
-    if !this.closeable {
-        return nil, listen.ErrListenerNotCloseable.Throw(this.listenOn)
-    }
+	if !this.closeable {
+		return nil, listen.ErrListenerNotCloseable.Throw(this.listenOn)
+	}
 
-    this.upped      =   false
-    this.closeable  =   false
+	this.upped = false
+	this.closeable = false
 
-    this.downChan   <-  true
-    this.downChan   <-  true
+	this.downChan <- true
+	this.downChan <- true
 
-    closeErr        :=  this.listener.Close()
+	closeErr := this.listener.Close()
 
-    this.waitingGroup.Wait()
+	this.waitingGroup.Wait()
 
-    if closeErr != nil {
-        return nil, types.ConvertError(closeErr)
-    }
+	if closeErr != nil {
+		return nil, types.ConvertError(closeErr)
+	}
 
-    return &listen.ListeningInfo{
-        Port: this.listenOn.Port,
-        IP: this.listenOn.IP,
-        Protocol: "tcp",
-    }, nil
+	return &listen.ListeningInfo{
+		Port:     this.listenOn.Port,
+		IP:       this.listenOn.IP,
+		Protocol: "tcp",
+	}, nil
 }

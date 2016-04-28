@@ -22,475 +22,472 @@
 package listen
 
 import (
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
-    "time"
-    "net"
+	"net"
+	"testing"
+	"time"
 )
 
 var (
-    ErrProtocolFakeErr *types.Error =
-        types.NewError("Protocol fake error")
-    ErrProtocolFakeErr2 *types.Error =
-        types.NewError("Protocol fake error 2")
+	ErrProtocolFakeErr  *types.Error = types.NewError("Protocol fake error")
+	ErrProtocolFakeErr2 *types.Error = types.NewError("Protocol fake error 2")
 
-    ErrListenerFakeErr *types.Error =
-        types.NewError("Listener fake error")
-    ErrListenerFakeErr2 *types.Error =
-        types.NewError("Listener fake error 2")
+	ErrListenerFakeErr  *types.Error = types.NewError("Listener fake error")
+	ErrListenerFakeErr2 *types.Error = types.NewError("Listener fake error 2")
 )
 
 // Fake protocol
 type fakeProtocol struct {
-    returnError         bool
+	returnError bool
 
-    initCalled          bool
-    initCalledNSucceed  bool
-    spawnCalled         bool
+	initCalled         bool
+	initCalledNSucceed bool
+	spawnCalled        bool
 
-    config              *ProtocolConfig
+	config *ProtocolConfig
 
-    settings            types.String
+	settings types.String
 }
 
-func (f *fakeProtocol) Init(cfg *ProtocolConfig) (*types.Throw) {
-    f.initCalled            =   true
+func (f *fakeProtocol) Init(cfg *ProtocolConfig) *types.Throw {
+	f.initCalled = true
 
-    if f.returnError {
-        return ErrProtocolFakeErr.Throw()
-    }
+	if f.returnError {
+		return ErrProtocolFakeErr.Throw()
+	}
 
-    f.config                =   cfg
+	f.config = cfg
 
-    f.initCalledNSucceed    =   true
+	f.initCalledNSucceed = true
 
-    return nil
+	return nil
 }
 
 func (f *fakeProtocol) Spawn(setting types.String) (Listener, *types.Throw) {
-    f.spawnCalled       =   true
+	f.spawnCalled = true
 
-    if f.returnError {
-        return nil, ErrProtocolFakeErr2.Throw()
-    }
+	if f.returnError {
+		return nil, ErrProtocolFakeErr2.Throw()
+	}
 
-    ipStr, portStr      :=  setting.SpiltWith("@")
+	ipStr, portStr := setting.SpiltWith("@")
 
-    ip                  :=  net.ParseIP(ipStr.String())
+	ip := net.ParseIP(ipStr.String())
 
-    if ip == nil {
-        ip              =   net.ParseIP("0.0.0.0")
-    }
+	if ip == nil {
+		ip = net.ParseIP("0.0.0.0")
+	}
 
-    return &fakeListener{
-        ip:                 ip,
-        port:               portStr.UInt16(),
-    }, nil
+	return &fakeListener{
+		ip:   ip,
+		port: portStr.UInt16(),
+	}, nil
 }
 
 var (
-    fakeListenerReturnError bool = false
+	fakeListenerReturnError bool = false
 )
 
 // Fake Listener
 type fakeListener struct {
-    ip                  net.IP
-    port                types.UInt16
+	ip   net.IP
+	port types.UInt16
 
-    upCalled            bool
-    downCalled          bool
+	upCalled   bool
+	downCalled bool
 }
 
 func (f *fakeListener) Up() (*ListeningInfo, *types.Throw) {
-    f.upCalled          =   true
+	f.upCalled = true
 
-    if fakeListenerReturnError {
-        return nil, ErrListenerFakeErr.Throw()
-    }
+	if fakeListenerReturnError {
+		return nil, ErrListenerFakeErr.Throw()
+	}
 
-    return &ListeningInfo{
-        Port:       8080,
-        IP:         net.IP{},
-        Protocol:   "udp",
-    }, nil
+	return &ListeningInfo{
+		Port:     8080,
+		IP:       net.IP{},
+		Protocol: "udp",
+	}, nil
 }
 
 func (f *fakeListener) Down() (*ListeningInfo, *types.Throw) {
-    f.downCalled        =   true
+	f.downCalled = true
 
-    if fakeListenerReturnError {
-        return nil, ErrListenerFakeErr2.Throw()
-    }
+	if fakeListenerReturnError {
+		return nil, ErrListenerFakeErr2.Throw()
+	}
 
-    return &ListeningInfo{
-        Port:       8080,
-        IP:         net.IP{},
-        Protocol:   "udp",
-    }, nil
+	return &ListeningInfo{
+		Port:     8080,
+		IP:       net.IP{},
+		Protocol: "udp",
+	}, nil
 }
 
 func TestListenRegister(t *testing.T) {
-    listen  :=  Listen{}
-    logger  :=  logger.NewLogger()
-    fakePl1 :=  &fakeProtocol{}
-    fakePl2 :=  &fakeProtocol{}
-    onErrCalled := false
-    onPikCalled := false
+	listen := Listen{}
+	logger := logger.NewLogger()
+	fakePl1 := &fakeProtocol{}
+	fakePl2 := &fakeProtocol{}
+	onErrCalled := false
+	onPikCalled := false
 
-    listen.Init(&Config{
-        OnError:        func(cInfo ConnectionInfo, err *types.Throw) {
-            onErrCalled = true
-        },
-        OnPick:         func(cInfo ConnectionInfo, rInfo RespondedResult) {
-            onPikCalled = true
-        },
-        OnListened:     func(lInfo *ListeningInfo) {
+	listen.Init(&Config{
+		OnError: func(cInfo ConnectionInfo, err *types.Throw) {
+			onErrCalled = true
+		},
+		OnPick: func(cInfo ConnectionInfo, rInfo RespondedResult) {
+			onPikCalled = true
+		},
+		OnListened: func(lInfo *ListeningInfo) {
 
-        },
-        OnUnListened:   func(lInfo *ListeningInfo) {
+		},
+		OnUnListened: func(lInfo *ListeningInfo) {
 
-        },
-        MaxBytes:       512,
-        Logger:         logger,
-        Concurrent:     100,
-        Timeout:        1 * time.Second,
-    })
+		},
+		MaxBytes:   512,
+		Logger:     logger,
+		Concurrent: 100,
+		Timeout:    1 * time.Second,
+	})
 
-    // Succeed register
-    regErr  :=  listen.Register("test", fakePl1)
+	// Succeed register
+	regErr := listen.Register("test", fakePl1)
 
-    if regErr != nil {
-        t.Error("Operation failed due to error: %s", regErr)
+	if regErr != nil {
+		t.Errorf("Operation failed due to error: %s", regErr)
 
-        return
-    }
+		return
+	}
 
-    if len(listen.protocols) != 1 {
-        t.Error("Listen.Register() seems didn't add the new protocol into `protocols` map")
+	if len(listen.protocols) != 1 {
+		t.Error("Listen.Register() seems didn't add the new protocol into `protocols` map")
 
-        return
-    }
+		return
+	}
 
-    // Listen.Register() should call Protocol.Init() for succeed registation
-    if !fakePl1.initCalled {
-        t.Error("Listen.Register() didn't call Protocol.Init()")
+	// Listen.Register() should call Protocol.Init() for succeed registation
+	if !fakePl1.initCalled {
+		t.Error("Listen.Register() didn't call Protocol.Init()")
 
-        return
-    }
+		return
+	}
 
-    if !fakePl1.initCalledNSucceed {
-        t.Error("Listen.Register() didn't finish Protocol.Init()")
+	if !fakePl1.initCalledNSucceed {
+		t.Error("Listen.Register() didn't finish Protocol.Init()")
 
-        return
-    }
+		return
+	}
 
-    if fakePl1.config.OnError == nil || onErrCalled != false ||
-        fakePl1.config.OnPick == nil || onPikCalled != false ||
-        fakePl1.config.MaxBytes != listen.maxBytes ||
-        fakePl1.config.ReadTimeout != listen.timeout ||
-        fakePl1.config.WriteTimeout != listen.timeout ||
-        fakePl1.config.TotalTimeout != listen.timeout ||
-        fakePl1.config.Logger != listen.logger ||
-        fakePl1.config.Concurrent != listen.concurrent {
-        t.Error("Listen.Register() failed to pass the setting to protocol")
+	if fakePl1.config.OnError == nil || onErrCalled != false ||
+		fakePl1.config.OnPick == nil || onPikCalled != false ||
+		fakePl1.config.MaxBytes != listen.maxBytes ||
+		fakePl1.config.ReadTimeout != listen.timeout ||
+		fakePl1.config.WriteTimeout != listen.timeout ||
+		fakePl1.config.TotalTimeout != listen.timeout ||
+		fakePl1.config.Logger != listen.logger ||
+		fakePl1.config.Concurrent != listen.concurrent {
+		t.Error("Listen.Register() failed to pass the setting to protocol")
 
-        return
-    }
+		return
+	}
 
-    fakePl1.config.OnError(ConnectionInfo{}, nil)
-    fakePl1.config.OnPick(ConnectionInfo{}, RespondedResult{})
+	fakePl1.config.OnError(ConnectionInfo{}, nil)
+	fakePl1.config.OnPick(ConnectionInfo{}, RespondedResult{})
 
-    if onErrCalled != true || onPikCalled != true {
-        t.Error("Listen.Register() failed to pass the setting to protocol")
+	if onErrCalled != true || onPikCalled != true {
+		t.Error("Listen.Register() failed to pass the setting to protocol")
 
-        return
-    }
+		return
+	}
 
-    onErrCalled = false
-    onPikCalled = false // reset
+	onErrCalled = false
+	onPikCalled = false // reset
 
-    // Register should be failed due to duplicate
-    regErr  =   listen.Register("test", fakePl2)
+	// Register should be failed due to duplicate
+	regErr = listen.Register("test", fakePl2)
 
-    if regErr == nil || !regErr.Is(ErrProtocolAlreadyRegistered) {
-        t.Error("Expected error doesn't happen")
+	if regErr == nil || !regErr.Is(ErrProtocolAlreadyRegistered) {
+		t.Error("Expected error doesn't happen")
 
-        return
-    }
+		return
+	}
 
-    if len(listen.protocols) != 1 {
-        t.Error("Listen.Register() seems added a wrong protocol into the map")
+	if len(listen.protocols) != 1 {
+		t.Error("Listen.Register() seems added a wrong protocol into the map")
 
-        return
-    }
+		return
+	}
 
-    if fakePl2.initCalled {
-        t.Error("Listen.Register() called Protocol.Init() on a invalid protocol")
+	if fakePl2.initCalled {
+		t.Error("Listen.Register() called Protocol.Init() on a invalid protocol")
 
-        return
-    }
+		return
+	}
 }
 
 func TestListenRegisterErrored(t *testing.T) {
-    listen  :=  Listen{}
-    logger  :=  logger.NewLogger()
-    fakePl1 :=  &fakeProtocol{
-        returnError: true,
-    }
-    onErrCalled := false
-    onPikCalled := false
+	listen := Listen{}
+	logger := logger.NewLogger()
+	fakePl1 := &fakeProtocol{
+		returnError: true,
+	}
+	onErrCalled := false
+	onPikCalled := false
 
-    listen.Init(&Config{
-        OnError:        func(cInfo ConnectionInfo, err *types.Throw) {
-            onErrCalled = true
-        },
-        OnPick:         func(cInfo ConnectionInfo, rInfo RespondedResult) {
-            onPikCalled = true
-        },
-        OnListened:     func(lInfo *ListeningInfo) {
+	listen.Init(&Config{
+		OnError: func(cInfo ConnectionInfo, err *types.Throw) {
+			onErrCalled = true
+		},
+		OnPick: func(cInfo ConnectionInfo, rInfo RespondedResult) {
+			onPikCalled = true
+		},
+		OnListened: func(lInfo *ListeningInfo) {
 
-        },
-        OnUnListened:   func(lInfo *ListeningInfo) {
+		},
+		OnUnListened: func(lInfo *ListeningInfo) {
 
-        },
-        MaxBytes:       512,
-        Logger:         logger,
-        Concurrent:     100,
-        Timeout:        1 * time.Second,
-    })
+		},
+		MaxBytes:   512,
+		Logger:     logger,
+		Concurrent: 100,
+		Timeout:    1 * time.Second,
+	})
 
-    regErr  :=  listen.Register("test", fakePl1)
+	regErr := listen.Register("test", fakePl1)
 
-    if regErr == nil || !regErr.Is(ErrProtocolFakeErr) {
-        t.Error("Listen.Register() didn't return expected error")
+	if regErr == nil || !regErr.Is(ErrProtocolFakeErr) {
+		t.Error("Listen.Register() didn't return expected error")
 
-        return
-    }
+		return
+	}
 
-    if !fakePl1.initCalled {
-        t.Error("Listen.Register() didn't call the Protocol.Init()")
+	if !fakePl1.initCalled {
+		t.Error("Listen.Register() didn't call the Protocol.Init()")
 
-        return
-    }
+		return
+	}
 
-    if fakePl1.initCalledNSucceed {
-        t.Error("Listen.Register() unexpectly finished Protocol.Init()")
+	if fakePl1.initCalledNSucceed {
+		t.Error("Listen.Register() unexpectly finished Protocol.Init()")
 
-        return
-    }
+		return
+	}
 
-    if len(listen.protocols) != 0 {
-        t.Error("Listen.Register() seems added a invalid protocol into the map")
+	if len(listen.protocols) != 0 {
+		t.Error("Listen.Register() seems added a invalid protocol into the map")
 
-        return
-    }
+		return
+	}
 }
 
 func TestListenAdd(t *testing.T) {
-    listen      :=  Listen{}
-    logger      :=  logger.NewLogger()
-    fakePl      :=  &fakeProtocol{}
+	listen := Listen{}
+	logger := logger.NewLogger()
+	fakePl := &fakeProtocol{}
 
-    listen.Init(&Config{
-        OnError:        func(cInfo ConnectionInfo, err *types.Throw) {
+	listen.Init(&Config{
+		OnError: func(cInfo ConnectionInfo, err *types.Throw) {
 
-        },
-        OnPick:         func(cInfo ConnectionInfo, rInfo RespondedResult) {
+		},
+		OnPick: func(cInfo ConnectionInfo, rInfo RespondedResult) {
 
-        },
-        OnListened:     func(lInfo *ListeningInfo) {
+		},
+		OnListened: func(lInfo *ListeningInfo) {
 
-        },
-        OnUnListened:   func(lInfo *ListeningInfo) {
+		},
+		OnUnListened: func(lInfo *ListeningInfo) {
 
-        },
-        MaxBytes:       512,
-        Logger:         logger,
-        Concurrent:     100,
-        Timeout:        1 * time.Second,
-    })
+		},
+		MaxBytes:   512,
+		Logger:     logger,
+		Concurrent: 100,
+		Timeout:    1 * time.Second,
+	})
 
-    regErr      :=  listen.Register("test", fakePl)
+	regErr := listen.Register("test", fakePl)
 
-    if regErr != nil {
-        t.Error("Unexpected error when trying to register fake protocol")
+	if regErr != nil {
+		t.Error("Unexpected error when trying to register fake protocol")
 
-        return
-    }
+		return
+	}
 
-    ptcErr      :=  listen.Add("test", "8080@0.0.0.0")
+	ptcErr := listen.Add("test", "8080@0.0.0.0")
 
-    if ptcErr != nil {
-        t.Error("Unexpected error when trying to register fake listener")
+	if ptcErr != nil {
+		t.Error("Unexpected error when trying to register fake listener")
 
-        return
-    }
+		return
+	}
 
-    // Try add another one with non-registered protocol type,
-    // should return an error for me
-    ptcErr      =   listen.Add("test2", "8080@0.0.0.0")
+	// Try add another one with non-registered protocol type,
+	// should return an error for me
+	ptcErr = listen.Add("test2", "8080@0.0.0.0")
 
-    if ptcErr == nil || !ptcErr.Is(ErrProtocolNotSupported) {
-        t.Error("Expected error didn't happen")
+	if ptcErr == nil || !ptcErr.Is(ErrProtocolNotSupported) {
+		t.Error("Expected error didn't happen")
 
-        return
-    }
+		return
+	}
 
-    fakePl.returnError = true
+	fakePl.returnError = true
 
-    ptcErr      =   listen.Add("test", "8080@0.0.0.0")
+	ptcErr = listen.Add("test", "8080@0.0.0.0")
 
-    if ptcErr == nil || !ptcErr.Is(ErrProtocolFakeErr2) {
-        t.Error("Protocol.Spawn() didn't return the expected error")
+	if ptcErr == nil || !ptcErr.Is(ErrProtocolFakeErr2) {
+		t.Error("Protocol.Spawn() didn't return the expected error")
 
-        return
-    }
+		return
+	}
 }
 
 func TestListenServ(t *testing.T) {
-    listen      :=  Listen{}
-    logger      :=  logger.NewLogger()
-    fakePl      :=  &fakeProtocol{}
-    onErrCalled :=  false
-    onPikCalled :=  false
-    onLisCalled :=  false
-    onUnlCalled :=  false
+	listen := Listen{}
+	logger := logger.NewLogger()
+	fakePl := &fakeProtocol{}
+	onErrCalled := false
+	onPikCalled := false
+	onLisCalled := false
+	onUnlCalled := false
 
-    listen.Init(&Config{
-        OnError:        func(cInfo ConnectionInfo, err *types.Throw) {
-            onErrCalled = true
-        },
-        OnPick:         func(cInfo ConnectionInfo, rInfo RespondedResult) {
-            onPikCalled = true
-        },
-        OnListened:     func(lInfo *ListeningInfo) {
-            onLisCalled = true
-        },
-        OnUnListened:   func(lInfo *ListeningInfo) {
-            onUnlCalled = true
-        },
-        MaxBytes:       512,
-        Logger:         logger,
-        Concurrent:     100,
-        Timeout:        1 * time.Second,
-    })
+	listen.Init(&Config{
+		OnError: func(cInfo ConnectionInfo, err *types.Throw) {
+			onErrCalled = true
+		},
+		OnPick: func(cInfo ConnectionInfo, rInfo RespondedResult) {
+			onPikCalled = true
+		},
+		OnListened: func(lInfo *ListeningInfo) {
+			onLisCalled = true
+		},
+		OnUnListened: func(lInfo *ListeningInfo) {
+			onUnlCalled = true
+		},
+		MaxBytes:   512,
+		Logger:     logger,
+		Concurrent: 100,
+		Timeout:    1 * time.Second,
+	})
 
-    regErr  :=  listen.Register("test", fakePl)
+	regErr := listen.Register("test", fakePl)
 
-    if regErr != nil {
-        t.Error("listen.Register() failed due to error: %s", regErr)
+	if regErr != nil {
+		t.Errorf("listen.Register() failed due to error: %s", regErr)
 
-        return
-    }
+		return
+	}
 
-    ptcErr  :=  listen.Add("test", "8080@0.0.0.0")
+	ptcErr := listen.Add("test", "8080@0.0.0.0")
 
-    if ptcErr != nil {
-        t.Error("listen.Add() failed due to error: %s", regErr)
+	if ptcErr != nil {
+		t.Errorf("listen.Add() failed due to error: %s", regErr)
 
-        return
-    }
+		return
+	}
 
-    // Let the fake listener don't make any mistake
-    fakeListenerReturnError = false
+	// Let the fake listener don't make any mistake
+	fakeListenerReturnError = false
 
-    lisErr  :=  listen.Serv()
+	lisErr := listen.Serv()
 
-    if lisErr != nil {
-        t.Error("listen.Serv() failed to being up Listener due to error: %s", lisErr)
+	if lisErr != nil {
+		t.Errorf("listen.Serv() failed to being up Listener due to error: %s", lisErr)
 
-        return
-    }
+		return
+	}
 
-    if !onLisCalled {
-        t.Error("listen.Serv() didn't call `OnListened` callback")
+	if !onLisCalled {
+		t.Error("listen.Serv() didn't call `OnListened` callback")
 
-        return
-    }
+		return
+	}
 
-    // Try again, this time with an error Listener
-    fakeListenerReturnError = true
+	// Try again, this time with an error Listener
+	fakeListenerReturnError = true
 
-    lisErr  =   listen.Serv()
+	lisErr = listen.Serv()
 
-    if lisErr == nil || !lisErr.Is(ErrListenerFakeErr) {
-        t.Error("listen.Serv() failed pickup expected error")
+	if lisErr == nil || !lisErr.Is(ErrListenerFakeErr) {
+		t.Error("listen.Serv() failed pickup expected error")
 
-        return
-    }
+		return
+	}
 }
 
 func TestListenDown(t *testing.T) {
-    listen      :=  Listen{}
-    logger      :=  logger.NewLogger()
-    fakePl      :=  &fakeProtocol{}
-    onErrCalled :=  false
-    onPikCalled :=  false
-    onLisCalled :=  false
-    onUnlCalled :=  false
+	listen := Listen{}
+	logger := logger.NewLogger()
+	fakePl := &fakeProtocol{}
+	onErrCalled := false
+	onPikCalled := false
+	onLisCalled := false
+	onUnlCalled := false
 
-    listen.Init(&Config{
-        OnError:        func(cInfo ConnectionInfo, err *types.Throw) {
-            onErrCalled = true
-        },
-        OnPick:         func(cInfo ConnectionInfo, rInfo RespondedResult) {
-            onPikCalled = true
-        },
-        OnListened:     func(lInfo *ListeningInfo) {
-            onLisCalled = true
-        },
-        OnUnListened:   func(lInfo *ListeningInfo) {
-            onUnlCalled = true
-        },
-        MaxBytes:       512,
-        Logger:         logger,
-        Concurrent:     100,
-        Timeout:        1 * time.Second,
-    })
+	listen.Init(&Config{
+		OnError: func(cInfo ConnectionInfo, err *types.Throw) {
+			onErrCalled = true
+		},
+		OnPick: func(cInfo ConnectionInfo, rInfo RespondedResult) {
+			onPikCalled = true
+		},
+		OnListened: func(lInfo *ListeningInfo) {
+			onLisCalled = true
+		},
+		OnUnListened: func(lInfo *ListeningInfo) {
+			onUnlCalled = true
+		},
+		MaxBytes:   512,
+		Logger:     logger,
+		Concurrent: 100,
+		Timeout:    1 * time.Second,
+	})
 
-    regErr  :=  listen.Register("test", fakePl)
+	regErr := listen.Register("test", fakePl)
 
-    if regErr != nil {
-        t.Error("listen.Register() failed due to error: %s", regErr)
+	if regErr != nil {
+		t.Errorf("listen.Register() failed due to error: %s", regErr)
 
-        return
-    }
+		return
+	}
 
-    ptcErr  :=  listen.Add("test", "8080@0.0.0.0")
+	ptcErr := listen.Add("test", "8080@0.0.0.0")
 
-    if ptcErr != nil {
-        t.Error("listen.Add() failed due to error: %s", regErr)
+	if ptcErr != nil {
+		t.Errorf("listen.Add() failed due to error: %s", regErr)
 
-        return
-    }
+		return
+	}
 
-    // Let the fake listener don't make any mistake
-    fakeListenerReturnError = false
+	// Let the fake listener don't make any mistake
+	fakeListenerReturnError = false
 
-    lisErr  :=  listen.Down()
+	lisErr := listen.Down()
 
-    if lisErr != nil {
-        t.Error("listen.Down() failed to being up Listener due to error: %s", lisErr)
+	if lisErr != nil {
+		t.Errorf("listen.Down() failed to being up Listener due to error: %s",
+			lisErr)
 
-        return
-    }
+		return
+	}
 
-    if !onUnlCalled {
-        t.Error("listen.Down() didn't call `OnUnListened` callback")
+	if !onUnlCalled {
+		t.Error("listen.Down() didn't call `OnUnListened` callback")
 
-        return
-    }
+		return
+	}
 
-    // Try again, this time with an error Listener
-    fakeListenerReturnError = true
+	// Try again, this time with an error Listener
+	fakeListenerReturnError = true
 
-    lisErr  =   listen.Down()
+	lisErr = listen.Down()
 
-    if lisErr == nil || !lisErr.Is(ErrListenerFakeErr2) {
-        t.Error("listen.Down() failed pickup expected error")
+	if lisErr == nil || !lisErr.Is(ErrListenerFakeErr2) {
+		t.Error("listen.Down() failed pickup expected error")
 
-        return
-    }
+		return
+	}
 }

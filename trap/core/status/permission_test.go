@@ -22,69 +22,69 @@
 package status
 
 import (
-    //"github.com/raincious/trap/trap/core/types"
+	//"github.com/raincious/trap/trap/core/types"
 
-    "testing"
+	"testing"
 )
 
 func TestPermissionAuthorize(t *testing.T) {
-    permission := Permission{}
+	permission := Permission{}
 
-    permission.Authorize("Test permission")
+	permission.Authorize("Test permission")
 
-    if !permission.Allowed("Test permission") {
-        t.Error("Failed asserting an authorized permission is authorized")
+	if !permission.Allowed("Test permission") {
+		t.Error("Failed asserting an authorized permission is authorized")
 
-        return
-    }
+		return
+	}
 }
 
 func TestPermissionAllowed(t *testing.T) {
-    permission := Permission{}
+	permission := Permission{}
 
-    permission.Authorize("Test permission")
+	permission.Authorize("Test permission")
 
-    if !permission.Allowed("Test permission") {
-        t.Error("Failed asserting an authorized permission is authorized")
+	if !permission.Allowed("Test permission") {
+		t.Error("Failed asserting an authorized permission is authorized")
 
-        return
-    }
+		return
+	}
 
-    if permission.Allowed("Another permission") {
-        t.Error("Failed asserting an unauthorized permission is unauthorized")
+	if permission.Allowed("Another permission") {
+		t.Error("Failed asserting an unauthorized permission is unauthorized")
 
-        return
-    }
+		return
+	}
 }
 
 func TestPermissionAll(t *testing.T) {
-    permission := Permission{}
+	permission := Permission{}
 
-    permission.Authorize("Test permission 1")
-    permission.Authorize("Test permission 2")
-    permission.Authorize("Test permission 3")
-    permission.Authorize("Test permission 4")
+	permission.Authorize("Test permission 1")
+	permission.Authorize("Test permission 2")
+	permission.Authorize("Test permission 3")
+	permission.Authorize("Test permission 4")
 
-    allPermissions := permission.All()
+	allPermissions := permission.All()
 
-    // Why 6 permissions?
-    // Because we record all permissions in a global shared variable which
-    // share the same value across different structs.
-    // So the permission we actually have in this table is:
-    // Test permission, Another permission and Test permission 1 - 4
-    if len(allPermissions) != 6 {
-        t.Error("Invalid amount of permissions")
+	// Why 6 permissions?
+	// Because we record all permissions in a global shared variable which
+	// share the same value across different structs.
+	// So the permission we actually have in this table is:
+	// Test permission, Another permission and Test permission 1 - 4
+	if len(allPermissions) != 6 {
+		t.Error("Invalid amount of permissions")
 
-        return
-    }
+		return
+	}
 
-    for pKey, pVal := range allPermissions {
-        if permission.Allowed(pKey) == pVal {
-           continue
-        }
+	for pKey, pVal := range allPermissions {
+		if permission.Allowed(pKey) == pVal {
+			continue
+		}
 
-        t.Error("Permission.All() exports an invalid permission")
+		t.Error("Permission.All() exports an invalid permission")
 
-        return
-    }
+		return
+	}
 }

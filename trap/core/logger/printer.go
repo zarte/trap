@@ -22,59 +22,59 @@
 package logger
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
+	"time"
 )
 
 type Printer interface {
-    Debug(types.String, time.Time, types.String)
-    Info(types.String, time.Time, types.String)
-    Warning(types.String, time.Time, types.String)
-    Error(types.String, time.Time, types.String)
+	Debug(types.String, time.Time, types.String)
+	Info(types.String, time.Time, types.String)
+	Warning(types.String, time.Time, types.String)
+	Error(types.String, time.Time, types.String)
 
-    Print(types.String, time.Time, types.String)
+	Print(types.String, time.Time, types.String)
 }
 
 type Printers []Printer
 
 func (l *Printers) Add(newPrinter Printer) {
-    oldPrinters     :=  append(*l, newPrinter)
+	oldPrinters := append(*l, newPrinter)
 
-    *l              =   oldPrinters
+	*l = oldPrinters
 }
 
 func (l Printers) Debug(context types.String,
-    now time.Time, msg types.String) {
-    for _, printer := range l {
-        printer.Debug(context, now, msg)
-    }
+	now time.Time, msg types.String) {
+	for _, printer := range l {
+		printer.Debug(context, now, msg)
+	}
 }
 
 func (l Printers) Info(context types.String,
-    now time.Time, msg types.String) {
-    for _, printer := range l {
-        printer.Info(context, now, msg)
-    }
+	now time.Time, msg types.String) {
+	for _, printer := range l {
+		printer.Info(context, now, msg)
+	}
 }
 
 func (l Printers) Warning(context types.String,
-    now time.Time, msg types.String) {
-    for _, printer := range l {
-        printer.Warning(context, now, msg)
-    }
+	now time.Time, msg types.String) {
+	for _, printer := range l {
+		printer.Warning(context, now, msg)
+	}
 }
 
 func (l Printers) Error(context types.String,
-    now time.Time, msg types.String) {
-    for _, printer := range l {
-        printer.Error(context, now, msg)
-    }
+	now time.Time, msg types.String) {
+	for _, printer := range l {
+		printer.Error(context, now, msg)
+	}
 }
 
 func (l Printers) Print(context types.String,
-    now time.Time, msg types.String) {
-    for _, printer := range l {
-        printer.Print(context, now, msg)
-    }
+	now time.Time, msg types.String) {
+	for _, printer := range l {
+		printer.Print(context, now, msg)
+	}
 }

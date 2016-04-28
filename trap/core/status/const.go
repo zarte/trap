@@ -22,5 +22,5 @@
 package status
 
 const (
-    STATUS_SERVER_SESSION_KEY_HEADER    =   "X-Trap-Token"
+	STATUS_SERVER_SESSION_KEY_HEADER = "X-Trap-Token"
 )

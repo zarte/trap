@@ -22,15 +22,15 @@
 package listen
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Protocol interface {
-    Init(*ProtocolConfig) (*types.Throw)
-    Spawn(types.String) (Listener, *types.Throw)
+	Init(*ProtocolConfig) *types.Throw
+	Spawn(types.String) (Listener, *types.Throw)
 }
 
 type Listener interface {
-    Up() (*ListeningInfo, *types.Throw)
-    Down() (*ListeningInfo, *types.Throw)
+	Up() (*ListeningInfo, *types.Throw)
+	Down() (*ListeningInfo, *types.Throw)
 }

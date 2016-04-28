@@ -22,91 +22,91 @@
 package permission
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
+	"testing"
 )
 
 func TestRegisterNewRegister(t *testing.T) {
-    reg := NewRegister()
+	reg := NewRegister()
 
-    if reg.currentIdx != 0 || reg.registered == nil {
-        t.Error("Inital value is incorrect")
+	if reg.currentIdx != 0 || reg.registered == nil {
+		t.Error("Inital value is incorrect")
 
-        return
-    }
+		return
+	}
 }
 
-func noItemIsTheSame(arr []types.UInt64) (bool) {
-    arrmaps     :=  map[types.UInt64]bool{}
+func noItemIsTheSame(arr []types.UInt64) bool {
+	arrmaps := map[types.UInt64]bool{}
 
-    for _, val := range arr {
-        if _, ok := arrmaps[val]; ok {
-            return false
-        }
+	for _, val := range arr {
+		if _, ok := arrmaps[val]; ok {
+			return false
+		}
 
-        arrmaps[val] = true
-    }
+		arrmaps[val] = true
+	}
 
-    return true
+	return true
 }
 
 func TestRegisterGet(t *testing.T) {
-    reg         :=  NewRegister()
-    vecs        :=  []types.UInt64{}
+	reg := NewRegister()
+	vecs := []types.UInt64{}
 
-    for i := types.UInt16(0); i < 64; i++ {
-        vecs    =   append(vecs, reg.Get(types.UInt16(i).String()))
-    }
+	for i := types.UInt16(0); i < 64; i++ {
+		vecs = append(vecs, reg.Get(types.UInt16(i).String()))
+	}
 
-    if !noItemIsTheSame(vecs) {
-        t.Error("There is at least one conflict in the result vectors")
+	if !noItemIsTheSame(vecs) {
+		t.Error("There is at least one conflict in the result vectors")
 
-        return
-    }
+		return
+	}
 }
 
 func TestRegisterAll(t *testing.T) {
-    reg     :=  NewRegister()
-    vec     :=  reg.Get("Name of the testing permission")
+	reg := NewRegister()
+	vec := reg.Get("Name of the testing permission")
 
-    if vec != reg.Get("Name of the testing permission") {
-        t.Error("Failed to get permission vector")
+	if vec != reg.Get("Name of the testing permission") {
+		t.Error("Failed to get permission vector")
 
-        return
-    }
+		return
+	}
 
-    allPermissions := reg.All()
+	allPermissions := reg.All()
 
-    if len(allPermissions) != 1 {
-        t.Error("Permission register should only contain one item, but it's not")
+	if len(allPermissions) != 1 {
+		t.Error("Permission register should only contain one item, but it's not")
 
-        return
-    }
+		return
+	}
 
-    if allPermissions["Name of the testing permission"] != vec {
-        t.Error("Regisrer.All() exports an invalid value")
+	if allPermissions["Name of the testing permission"] != vec {
+		t.Error("Regisrer.All() exports an invalid value")
 
-        return
-    }
+		return
+	}
 
-    vec2    :=  reg.Get("Another permission key name")
+	vec2 := reg.Get("Another permission key name")
 
-    if len(allPermissions) != 2 {
-        t.Error("Permission register should contain two items, but it's not")
+	if len(allPermissions) != 2 {
+		t.Error("Permission register should contain two items, but it's not")
 
-        return
-    }
+		return
+	}
 
-    if allPermissions["Name of the testing permission"] != vec {
-        t.Error("Regisrer.All() exports an invalid value")
+	if allPermissions["Name of the testing permission"] != vec {
+		t.Error("Regisrer.All() exports an invalid value")
 
-        return
-    }
+		return
+	}
 
-    if allPermissions["Another permission key name"] != vec2 {
-        t.Error("Regisrer.All() exports an invalid value")
+	if allPermissions["Another permission key name"] != vec2 {
+		t.Error("Regisrer.All() exports an invalid value")
 
-        return
-    }
+		return
+	}
 }

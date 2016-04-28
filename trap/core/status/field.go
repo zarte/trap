@@ -22,22 +22,22 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type RequestBase struct {
-    Token           types.String
+	Token types.String
 }
 
 type AuthRequest struct {
-    Password        types.String
+	Password types.String
 }
 
 type AuthRespond struct {
-    Token           types.String
-    Permissions     map[types.String]bool
+	Token       types.String
+	Permissions map[types.String]bool
 }
 
 type ClientDeletedRespond struct {
-    Result          bool
+	Result bool
 }

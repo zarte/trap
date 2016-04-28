@@ -22,15 +22,15 @@
 package tcp
 
 import (
-    "github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/listen"
 )
 
 type ListenerConfig struct {
-    listen.ListenerConfig
+	listen.ListenerConfig
 
-    Responder       Responder
+	Responder Responder
 }
 
 type ResponderConfig struct {
-    MaxBytes        uint
+	MaxBytes uint
 }

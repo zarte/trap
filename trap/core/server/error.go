@@ -22,31 +22,31 @@
 package server
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrServerNotYetStarted *types.Error =
-        types.NewError("`Server` is not yet started")
+	ErrServerNotYetStarted *types.Error = types.NewError(
+		"`Server` is not yet started")
 
-    ErrServerAlreadyUp *types.Error =
-        types.NewError("`Server` is already up")
+	ErrServerAlreadyUp *types.Error = types.NewError(
+		"`Server` is already up")
 
-    ErrServerIsBooting *types.Error =
-        types.NewError("`Server` is currently booting up")
+	ErrServerIsBooting *types.Error = types.NewError(
+		"`Server` is currently booting up")
 
-    ErrClientNotFound *types.Error =
-        types.NewError("Can't found client '%s'")
+	ErrClientNotFound *types.Error = types.NewError(
+		"Can't found client '%s'")
 
-    ErrClientAlreadyExisted *types.Error =
-        types.NewError("Client '%s' already existed")
+	ErrClientAlreadyExisted *types.Error = types.NewError(
+		"Client '%s' already existed")
 
-    ErrInvalidClientAddress *types.Error =
-        types.NewError("Client Address '%s' is invalid")
+	ErrInvalidClientAddress *types.Error = types.NewError(
+		"Client Address '%s' is invalid")
 
-    ErrInvalidServerAddress *types.Error =
-        types.NewError("Server Address '%s:%d' is invalid")
+	ErrInvalidServerAddress *types.Error = types.NewError(
+		"Server Address '%s:%d' is invalid")
 
-    ErrInvalidConnectionType *types.Error =
-        types.NewError("Connection Type for client '%s' is invalid")
+	ErrInvalidConnectionType *types.Error = types.NewError(
+		"Connection Type for client '%s' is invalid")
 )

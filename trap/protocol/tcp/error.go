@@ -22,10 +22,10 @@
 package tcp
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    ErrNoAnyResponder *types.Error =
-        types.NewError("You must register at least one responder before adding any ports")
+	ErrNoAnyResponder *types.Error = types.NewError(
+		"You must register at least one responder before adding any ports")
 )

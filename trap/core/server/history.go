@@ -22,63 +22,63 @@
 package server
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "math"
+	"math"
+	"time"
 )
 
 const (
-    HISTORY_LENGTH          =   types.Int64(12)
+	HISTORY_LENGTH = types.Int64(12)
 )
 
 type History struct {
-    Marked              types.UInt32
-    Inbound             types.UInt32
-    Hit                 types.UInt32
+	Marked  types.UInt32
+	Inbound types.UInt32
+	Hit     types.UInt32
 
-    Hours               types.Int64
+	Hours types.Int64
 }
 
-type Histories          [HISTORY_LENGTH]*History
+type Histories [HISTORY_LENGTH]*History
 
-func (h *Histories) GetSlot(referenceTime time.Time) (*History) {
-    hour                :=  types.Int64(
-                                math.Ceil(
-                                    time.Now().Sub(referenceTime).Hours()))
-    slot                :=  hour % HISTORY_LENGTH
+func (h *Histories) GetSlot(referenceTime time.Time) *History {
+	hour := types.Int64(
+		math.Ceil(
+			time.Now().Sub(referenceTime).Hours()))
+	slot := hour % HISTORY_LENGTH
 
-    if h[slot] == nil {
-        h[slot]         =   &History{
-            Marked:     0,
-            Inbound:    0,
-            Hit:        0,
-            Hours:      0,
-        }
-    }
+	if h[slot] == nil {
+		h[slot] = &History{
+			Marked:  0,
+			Inbound: 0,
+			Hit:     0,
+			Hours:   0,
+		}
+	}
 
-    his                 :=  h[slot]
+	his := h[slot]
 
-    if his.Hours != hour {
-        his.Marked      =   0
-        his.Inbound     =   0
-        his.Hit         =   0
-        his.Hours       =   hour
-    }
+	if his.Hours != hour {
+		his.Marked = 0
+		his.Inbound = 0
+		his.Hit = 0
+		his.Hours = hour
+	}
 
-    return his
+	return his
 }
 
-func (h *Histories) Histories() ([]History) {
-    historyLogs         :=  []History{}
+func (h *Histories) Histories() []History {
+	historyLogs := []History{}
 
-    for _, val := range h {
-        if val == nil {
-            continue
-        }
+	for _, val := range h {
+		if val == nil {
+			continue
+		}
 
-        historyLogs = append(historyLogs, *val)
-    }
+		historyLogs = append(historyLogs, *val)
+	}
 
-    return historyLogs
+	return historyLogs
 }

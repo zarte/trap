@@ -22,9 +22,9 @@
 package udp
 
 import (
-    "github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/listen"
 )
 
 type ListenerConfig struct {
-    listen.ListenerConfig
+	listen.ListenerConfig
 }

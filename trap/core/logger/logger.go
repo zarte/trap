@@ -22,121 +22,121 @@
 package logger
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "fmt"
-    "time"
+	"fmt"
+	"time"
 )
 
 type Logger struct {
-    printers            *Printers
-    logs                *Logs
-    mutex               *types.Mutex
+	printers *Printers
+	logs     *Logs
+	mutex    *types.Mutex
 
-    context             types.String
+	context types.String
 }
 
-func NewLogger() (*Logger) {
-    newLogger := &Logger{
-        printers:       &Printers{},
-        logs:           &Logs{},
-        mutex:          &types.Mutex{},
-        context:        "Trap",
-    }
+func NewLogger() *Logger {
+	newLogger := &Logger{
+		printers: &Printers{},
+		logs:     &Logs{},
+		mutex:    &types.Mutex{},
+		context:  "Trap",
+	}
 
-    return newLogger
+	return newLogger
 }
 
 func (l *Logger) Register(printer Printer) {
-    l.printers.Add(printer)
+	l.printers.Add(printer)
 }
 
-func (l *Logger) NewContext(s types.String) (*Logger) {
-    return &Logger{
-        printers:       l.printers,
-        logs:           l.logs,
-        mutex:          l.mutex,
-        context:        l.context + ":" + s,
-    }
+func (l *Logger) NewContext(s types.String) *Logger {
+	return &Logger{
+		printers: l.printers,
+		logs:     l.logs,
+		mutex:    l.mutex,
+		context:  l.context + ":" + s,
+	}
 }
 
 func (l *Logger) append(newLog Log) {
-    l.mutex.Exec(func() {
-        l.logs.Append(newLog, 128)
+	l.mutex.Exec(func() {
+		l.logs.Append(newLog, 128)
 
-        switch newLog.Type {
-            case LOG_TYPE_DEBUG:
-                l.printers.Debug(newLog.Context, newLog.Time, newLog.Message)
+		switch newLog.Type {
+		case LOG_TYPE_DEBUG:
+			l.printers.Debug(newLog.Context, newLog.Time, newLog.Message)
 
-            case LOG_TYPE_INFO:
-                l.printers.Info(newLog.Context, newLog.Time, newLog.Message)
+		case LOG_TYPE_INFO:
+			l.printers.Info(newLog.Context, newLog.Time, newLog.Message)
 
-            case LOG_TYPE_WARNING:
-                l.printers.Warning(newLog.Context, newLog.Time, newLog.Message)
+		case LOG_TYPE_WARNING:
+			l.printers.Warning(newLog.Context, newLog.Time, newLog.Message)
 
-            case LOG_TYPE_ERROR:
-                l.printers.Error(newLog.Context, newLog.Time, newLog.Message)
+		case LOG_TYPE_ERROR:
+			l.printers.Error(newLog.Context, newLog.Time, newLog.Message)
 
-            default:
-                l.printers.Print(newLog.Context, newLog.Time, newLog.Message)
-        }
-    })
+		default:
+			l.printers.Print(newLog.Context, newLog.Time, newLog.Message)
+		}
+	})
 }
 
 func (l *Logger) Debugf(s string, v ...interface{}) {
-    /* Disable debug totally after finish develpment */
-    l.append(Log{
-        Time:           time.Now(),
-        Type:           LOG_TYPE_DEBUG,
-        Context:        l.context,
-        Message:        types.String(fmt.Sprintf(s, v...)),
-    })
+	/* Disable debug totally after finish develpment */
+	l.append(Log{
+		Time:    time.Now(),
+		Type:    LOG_TYPE_DEBUG,
+		Context: l.context,
+		Message: types.String(fmt.Sprintf(s, v...)),
+	})
 }
 
 func (l *Logger) Infof(s string, v ...interface{}) {
-    l.append(Log{
-        Time:           time.Now(),
-        Type:           LOG_TYPE_INFO,
-        Context:        l.context,
-        Message:        types.String(fmt.Sprintf(s, v...)),
-    })
+	l.append(Log{
+		Time:    time.Now(),
+		Type:    LOG_TYPE_INFO,
+		Context: l.context,
+		Message: types.String(fmt.Sprintf(s, v...)),
+	})
 }
 
 func (l *Logger) Warningf(s string, v ...interface{}) {
-    l.append(Log{
-        Time:           time.Now(),
-        Type:           LOG_TYPE_WARNING,
-        Context:        l.context,
-        Message:        types.String(fmt.Sprintf(s, v...)),
-    })
+	l.append(Log{
+		Time:    time.Now(),
+		Type:    LOG_TYPE_WARNING,
+		Context: l.context,
+		Message: types.String(fmt.Sprintf(s, v...)),
+	})
 }
 
 func (l *Logger) Errorf(s string, v ...interface{}) {
-    l.append(Log{
-        Time:           time.Now(),
-        Type:           LOG_TYPE_ERROR,
-        Context:        l.context,
-        Message:        types.String(fmt.Sprintf(s, v...)),
-    })
+	l.append(Log{
+		Time:    time.Now(),
+		Type:    LOG_TYPE_ERROR,
+		Context: l.context,
+		Message: types.String(fmt.Sprintf(s, v...)),
+	})
 }
 
 func (l *Logger) Write(p []byte) (int, error) {
-    l.append(Log{
-        Time:           time.Now(),
-        Type:           LOG_TYPE_DEFAULT,
-        Context:        l.context,
-        Message:        types.String(fmt.Sprintf("%s", p)),
-    })
+	l.append(Log{
+		Time:    time.Now(),
+		Type:    LOG_TYPE_DEFAULT,
+		Context: l.context,
+		Message: types.String(fmt.Sprintf("%s", p)),
+	})
 
-    return len(p), nil
+	return len(p), nil
 }
 
-func (l *Logger) Dump() ([]LogExport) {
-    logs                :=  []LogExport{}
+func (l *Logger) Dump() []LogExport {
+	logs := []LogExport{}
 
-    l.mutex.Exec(func() {
-        logs            =   l.logs.Export()
-    })
+	l.mutex.Exec(func() {
+		logs = l.logs.Export()
+	})
 
-    return logs
+	return logs
 }

@@ -22,21 +22,21 @@
 package types
 
 import (
-    "sync"
+	"sync"
 )
 
 type Mutex struct {
-    sync.Mutex
+	sync.Mutex
 }
 
 func (m *Mutex) Exec(f func()) {
-    m.Lock()
+	m.Lock()
 
-    defer m.Unlock()
+	defer m.Unlock()
 
-    f()
+	f()
 }
 
 func (m *Mutex) RoutineExec(f func()) {
-    go m.Exec(f)
+	go m.Exec(f)
 }

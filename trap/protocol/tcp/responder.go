@@ -22,13 +22,13 @@
 package tcp
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
+	"net"
 )
 
 type Responder interface {
-    Handle(*net.TCPConn, *ResponderConfig) (listen.RespondedResult,
-        *types.Throw)
+	Handle(*net.TCPConn, *ResponderConfig) (listen.RespondedResult,
+		*types.Throw)
 }

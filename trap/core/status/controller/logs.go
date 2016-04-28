@@ -22,62 +22,62 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
-    "encoding/json"
+	"encoding/json"
+	"net/http"
 )
 
 type Logs struct {
-    SessionedJSON
+	SessionedJSON
 
-    GetLogs                         func() ([]logger.LogExport)
+	GetLogs func() []logger.LogExport
 }
 
 func (l *Logs) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    parentBefore                    :=  l.SessionedJSON.Before(w, r)
+	r *http.Request) *types.Throw {
+	parentBefore := l.SessionedJSON.Before(w, r)
 
-    if parentBefore != nil {
-        return parentBefore
-    }
+	if parentBefore != nil {
+		return parentBefore
+	}
 
-    session                         :=  l.Session()
+	session := l.Session()
 
-    if session == nil {
-        l.Error(status.ErrorRespond{
-            Code:   401,
-            Error:  status.ErrSessionLoginReqiured.Throw(),
-        }, w, r)
+	if session == nil {
+		l.Error(status.ErrorRespond{
+			Code:  401,
+			Error: status.ErrSessionLoginReqiured.Throw(),
+		}, w, r)
 
-        return status.ErrSessionLoginReqiured.Throw()
-    }
+		return status.ErrSessionLoginReqiured.Throw()
+	}
 
-    if !session.Account().Allowed("logs") {
-        l.Error(status.ErrorRespond{
-            Code:   403,
-            Error:  status.ErrSessionNoPermission.Throw(),
-        }, w, r)
+	if !session.Account().Allowed("logs") {
+		l.Error(status.ErrorRespond{
+			Code:  403,
+			Error: status.ErrSessionNoPermission.Throw(),
+		}, w, r)
 
-        return status.ErrSessionNoPermission.Throw()
-    }
+		return status.ErrSessionNoPermission.Throw()
+	}
 
-    return nil
+	return nil
 }
 
 func (l *Logs) Get(w http.ResponseWriter, r *http.Request) {
-    jsonData, jsonErr   :=  json.Marshal(l.GetLogs())
+	jsonData, jsonErr := json.Marshal(l.GetLogs())
 
-    if jsonErr != nil {
-        l.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
+	if jsonErr != nil {
+		l.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jsonErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    l.WriteGZIP(200, jsonData, w, r)
+	l.WriteGZIP(200, jsonData, w, r)
 }

@@ -22,40 +22,40 @@
 package permission
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 const (
-    registerFactor      =   types.UInt64(2)
+	registerFactor = types.UInt64(2)
 )
 
 type Register struct {
-    currentIdx          types.UInt64
-    registered          map[types.String]types.UInt64
+	currentIdx types.UInt64
+	registered map[types.String]types.UInt64
 }
 
-func NewRegister() (Register) {
-    return Register{
-        currentIdx:     0,
-        registered:     map[types.String]types.UInt64{},
-    }
+func NewRegister() Register {
+	return Register{
+		currentIdx: 0,
+		registered: map[types.String]types.UInt64{},
+	}
 }
 
-func (r *Register) Get(name types.String) (types.UInt64) {
-    if _, ok := r.registered[name]; ok {
-        return r.registered[name]
-    }
+func (r *Register) Get(name types.String) types.UInt64 {
+	if _, ok := r.registered[name]; ok {
+		return r.registered[name]
+	}
 
-    if r.currentIdx < 1 {
-        r.currentIdx    =   1
-    }
+	if r.currentIdx < 1 {
+		r.currentIdx = 1
+	}
 
-    r.currentIdx        =   r.currentIdx * registerFactor
-    r.registered[name]  =   r.currentIdx
+	r.currentIdx = r.currentIdx * registerFactor
+	r.registered[name] = r.currentIdx
 
-    return r.registered[name]
+	return r.registered[name]
 }
 
-func (r *Register) All() (map[types.String]types.UInt64) {
-    return r.registered
+func (r *Register) All() map[types.String]types.UInt64 {
+	return r.registered
 }

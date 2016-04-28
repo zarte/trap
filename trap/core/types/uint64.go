@@ -22,55 +22,55 @@
 package types
 
 import (
-    "strconv"
+	"strconv"
 )
 
 type UInt64 uint64
 
-func (i UInt64) String() (String) {
-    return String(strconv.FormatUint(uint64(i), 10))
+func (i UInt64) String() String {
+	return String(strconv.FormatUint(uint64(i), 10))
 }
 
-func (i UInt64) Int16() (Int16) {
-    if i > UINT64_MAX_INT16 {
-        return Int16(MAX_INT16)
-    }
+func (i UInt64) Int16() Int16 {
+	if i > UINT64_MAX_INT16 {
+		return Int16(MAX_INT16)
+	}
 
-    return Int16(i)
+	return Int16(i)
 }
 
-func (i UInt64) Int32() (Int32) {
-    if i > UINT64_MAX_INT32 {
-        return Int32(MAX_INT32)
-    }
+func (i UInt64) Int32() Int32 {
+	if i > UINT64_MAX_INT32 {
+		return Int32(MAX_INT32)
+	}
 
-    return Int32(i)
+	return Int32(i)
 }
 
-func (i UInt64) Int64() (Int64) {
-    if i > UINT64_MAX_INT64 {
-        return Int64(MAX_INT64)
-    }
+func (i UInt64) Int64() Int64 {
+	if i > UINT64_MAX_INT64 {
+		return Int64(MAX_INT64)
+	}
 
-    return Int64(i)
+	return Int64(i)
 }
 
-func (i UInt64) UInt16() (UInt16) {
-    if i > UINT64_MAX_UINT16 {
-        return UInt16(MAX_UINT16)
-    }
+func (i UInt64) UInt16() UInt16 {
+	if i > UINT64_MAX_UINT16 {
+		return UInt16(MAX_UINT16)
+	}
 
-    return UInt16(i)
+	return UInt16(i)
 }
 
-func (i UInt64) UInt32() (UInt32) {
-    if i > UINT64_MAX_UINT32 {
-        return UInt32(MAX_UINT32)
-    }
+func (i UInt64) UInt32() UInt32 {
+	if i > UINT64_MAX_UINT32 {
+		return UInt32(MAX_UINT32)
+	}
 
-    return UInt32(i)
+	return UInt32(i)
 }
 
-func (i UInt64) UInt64() (uint64) {
-    return uint64(i)
+func (i UInt64) UInt64() uint64 {
+	return uint64(i)
 }

@@ -22,189 +22,189 @@
 package event
 
 import (
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
+	"testing"
 )
 
 var (
-    ErrFakeFail *types.Error = types.NewError("This is a fake error")
+	ErrFakeFail *types.Error = types.NewError("This is a fake error")
 )
 
-func getEmptyLogger() (*logger.Logger) {
-    return logger.NewLogger()
+func getEmptyLogger() *logger.Logger {
+	return logger.NewLogger()
 }
 
-func getEmptyEvent() (*Event) {
-    e   :=  Event{}
+func getEmptyEvent() *Event {
+	e := Event{}
 
-    e.Init(&Config{
-        Logger:     getEmptyLogger(),
-    })
+	e.Init(&Config{
+		Logger: getEmptyLogger(),
+	})
 
-    return &e
+	return &e
 }
 
 func TestEventInit(t *testing.T) {
-    log :=  getEmptyLogger()
+	log := getEmptyLogger()
 
-    e   :=  Event{}
+	e := Event{}
 
-    e.Init(&Config{
-        Logger:     log,
-    })
+	e.Init(&Config{
+		Logger: log,
+	})
 
-    if e.error != nil {
-        t.Error("`Event` error is impossible to be un-nil")
+	if e.error != nil {
+		t.Error("`Event` error is impossible to be un-nil")
 
-        return
-    }
+		return
+	}
 
-    if e.events == nil {
-        t.Error("`Event` forgot init it's events map")
+	if e.events == nil {
+		t.Error("`Event` forgot init it's events map")
 
-        return
-    }
+		return
+	}
 }
 
 func TestEventRegisterNTrigger(t *testing.T) {
-    emptyParam      :=  Parameters{}
-    filledParam     :=  Parameters{}.AddString("VALUE", "String").AddString("VALUE2", "String2")
-    filledParam2    :=  Parameters{}.AddString("VALUE3", "String3")
-    resultString    :=  types.String("")
+	emptyParam := Parameters{}
+	filledParam := Parameters{}.AddString("VALUE", "String").AddString("VALUE2", "String2")
+	filledParam2 := Parameters{}.AddString("VALUE3", "String3")
+	resultString := types.String("")
 
-    e               :=  getEmptyEvent()
+	e := getEmptyEvent()
 
-    // Test normal
-    e.Register("test.succeed.callback", func (params *Parameters) (*types.Throw) {
-        resultString = params.Parse("This $((VALUE)) $((VALUE)) $((VALUE2)) $((VALUEX)) is parsed", []types.String{
-            "$((VALUE))",
-            "$((VALUE2))",
-        })
+	// Test normal
+	e.Register("test.succeed.callback", func(params *Parameters) *types.Throw {
+		resultString = params.Parse("This $((VALUE)) $((VALUE)) $((VALUE2)) $((VALUEX)) is parsed", []types.String{
+			"$((VALUE))",
+			"$((VALUE2))",
+		})
 
-        return nil
-    })
+		return nil
+	})
 
-    e.Register("test.failed.callback", func (params *Parameters) (*types.Throw) {
-        return ErrFakeFail.Throw()
-    })
+	e.Register("test.failed.callback", func(params *Parameters) *types.Throw {
+		return ErrFakeFail.Throw()
+	})
 
-    tError1         :=  e.Trigger("test.succeed.callback", filledParam)
+	tError1 := e.Trigger("test.succeed.callback", filledParam)
 
-    if tError1 != nil {
-        t.Error("Can't trigger test event due to error: %s", tError1)
+	if tError1 != nil {
+		t.Errorf("Can't trigger test event due to error: %s", tError1)
 
-        return
-    }
+		return
+	}
 
-    if resultString != "This String String String2 $((VALUEX)) is parsed" {
-        t.Error("Parsed string is not correct")
+	if resultString != "This String String String2 $((VALUEX)) is parsed" {
+		t.Error("Parsed string is not correct")
 
-        return
-    }
+		return
+	}
 
-    // Test failed callback
-    tError2         :=  e.Trigger("test.failed.callback", emptyParam)
+	// Test failed callback
+	tError2 := e.Trigger("test.failed.callback", emptyParam)
 
-    if tError2 == nil || !tError2.Is(ErrFakeFail) {
-        t.Errorf("Can't trigger test event due to error: %s", tError2)
+	if tError2 == nil || !tError2.Is(ErrFakeFail) {
+		t.Errorf("Can't trigger test event due to error: %s", tError2)
 
-        return
-    }
+		return
+	}
 
-    // Test unfilled Parameters in a callback that parses format
-    tError3         :=  e.Trigger("test.succeed.callback", emptyParam)
+	// Test unfilled Parameters in a callback that parses format
+	tError3 := e.Trigger("test.succeed.callback", emptyParam)
 
-    if tError3 != nil {
-        t.Error("Can't trigger test event due to error: %s", tError3)
+	if tError3 != nil {
+		t.Errorf("Can't trigger test event due to error: %s", tError3)
 
-        return
-    }
+		return
+	}
 
-    if resultString != "This    $((VALUEX)) is parsed" {
-        t.Error("Parsed string is not correct")
+	if resultString != "This    $((VALUEX)) is parsed" {
+		t.Error("Parsed string is not correct")
 
-        return
-    }
+		return
+	}
 
-    // Test a mistakenly filled Parameters in a callback that parses format
-    tError4         :=  e.Trigger("test.succeed.callback", filledParam2)
+	// Test a mistakenly filled Parameters in a callback that parses format
+	tError4 := e.Trigger("test.succeed.callback", filledParam2)
 
-    if tError4 != nil {
-        t.Error("Can't trigger test event due to error: %s", tError4)
+	if tError4 != nil {
+		t.Errorf("Can't trigger test event due to error: %s", tError4)
 
-        return
-    }
+		return
+	}
 
-    if resultString != "This    $((VALUEX)) is parsed" {
-        t.Error("Parsed string is not correct")
+	if resultString != "This    $((VALUEX)) is parsed" {
+		t.Error("Parsed string is not correct")
 
-        return
-    }
+		return
+	}
 }
 
 func TestEventRegisterNTriggerMultiCallbacks(t *testing.T) {
-    filledParam     :=  Parameters{}.
-                            AddString("STRING", "String")
+	filledParam := Parameters{}.
+		AddString("STRING", "String")
 
-    e               :=  getEmptyEvent()
+	e := getEmptyEvent()
 
-    results         :=  []types.String{}
+	results := []types.String{}
 
-    e.Register("test.callback", func(params *Parameters) (*types.Throw) {
-        return ErrFakeFail.Throw()
-    })
+	e.Register("test.callback", func(params *Parameters) *types.Throw {
+		return ErrFakeFail.Throw()
+	})
 
-    e.Register("test.callback", func(params *Parameters) (*types.Throw) {
-        results     =   append(results,
-                            params.Parse("This is a result $((STRING))", []types.String{"$((STRING))"}))
+	e.Register("test.callback", func(params *Parameters) *types.Throw {
+		results = append(results,
+			params.Parse("This is a result $((STRING))", []types.String{"$((STRING))"}))
 
-        return nil
-    })
+		return nil
+	})
 
-    e.Register("test.callback", func(params *Parameters) (*types.Throw) {
-        results     =   append(results,
-                            params.Parse("This is a result $((STRING)) 2", []types.String{"$((STRING))"}))
+	e.Register("test.callback", func(params *Parameters) *types.Throw {
+		results = append(results,
+			params.Parse("This is a result $((STRING)) 2", []types.String{"$((STRING))"}))
 
-        return nil
-    })
+		return nil
+	})
 
-    tError          :=  e.Trigger("test.callback", filledParam)
+	tError := e.Trigger("test.callback", filledParam)
 
-    if tError == nil || !tError.Is(ErrFakeFail) {
-        t.Errorf("Can't trigger test event due to error: %s", tError)
+	if tError == nil || !tError.Is(ErrFakeFail) {
+		t.Errorf("Can't trigger test event due to error: %s", tError)
 
-        return
-    }
+		return
+	}
 
-    if len(results) != 2 {
-        t.Errorf("Excepting '2' results, got '%d'", len(results))
+	if len(results) != 2 {
+		t.Errorf("Excepting '2' results, got '%d'", len(results))
 
-        return
-    }
+		return
+	}
 
-    if results[0] != "This is a result String" {
-        t.Error("Callback result is invalid")
+	if results[0] != "This is a result String" {
+		t.Error("Callback result is invalid")
 
-        return
-    }
+		return
+	}
 
-    if results[1] != "This is a result String 2" {
-        t.Error("Callback result is invalid")
+	if results[1] != "This is a result String 2" {
+		t.Error("Callback result is invalid")
 
-        return
-    }
+		return
+	}
 }
 
 func TestEventTriggerNonExisted(t *testing.T) {
-    e               :=  getEmptyEvent()
+	e := getEmptyEvent()
 
-    tError          :=  e.Trigger("test.undefined", Parameters{})
+	tError := e.Trigger("test.undefined", Parameters{})
 
-    if tError == nil || !tError.Is(ErrNoEvent) {
-        t.Errorf("Unexpected error: %s", tError)
+	if tError == nil || !tError.Is(ErrNoEvent) {
+		t.Errorf("Unexpected error: %s", tError)
 
-        return
-    }
+		return
+	}
 }

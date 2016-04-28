@@ -22,74 +22,74 @@
 package server
 
 import (
-    "testing"
+	"testing"
 )
 
 func TestDistributionsGetSlot(t *testing.T) {
-    dists       :=  Distributions{}
+	dists := Distributions{}
 
-    // Create a new slot
-    slot        :=  dists.GetSlot(16, "Test Port")
+	// Create a new slot
+	slot := dists.GetSlot(16, "Test Port")
 
-    if slot.Port != 16 || slot.Type != "Test Port" || slot.Hit != 0 {
-        t.Error("Distributions.GetSlot() created an invalid new slot")
+	if slot.Port != 16 || slot.Type != "Test Port" || slot.Hit != 0 {
+		t.Error("Distributions.GetSlot() created an invalid new slot")
 
-        return
-    }
+		return
+	}
 
-    // Update the slot, only update this one as it should be
-    slot.Hit    +=  1
+	// Update the slot, only update this one as it should be
+	slot.Hit += 1
 
-    // Re-get
-    slot        =   dists.GetSlot(16, "Test Port")
+	// Re-get
+	slot = dists.GetSlot(16, "Test Port")
 
-    if slot.Hit != 1 {
-        t.Error("Distributions.GetSlot() get an invalid slot")
+	if slot.Hit != 1 {
+		t.Error("Distributions.GetSlot() get an invalid slot")
 
-        return
-    }
+		return
+	}
 
-    slot        =   dists.GetSlot(18, "Test Port 2")
+	slot = dists.GetSlot(18, "Test Port 2")
 
-    if slot.Port != 18 || slot.Type != "Test Port 2" || slot.Hit != 0 {
-        t.Error("Distributions.GetSlot() created an invalid new slot")
+	if slot.Port != 18 || slot.Type != "Test Port 2" || slot.Hit != 0 {
+		t.Error("Distributions.GetSlot() created an invalid new slot")
 
-        return
-    }
+		return
+	}
 }
 
 func TestDistributionsDistributions(t *testing.T) {
-    dists       :=  Distributions{}
+	dists := Distributions{}
 
-    if len(dists.Distributions()) != 0 {
-        t.Error("Distributions.Distributions() not returning an empty slice")
+	if len(dists.Distributions()) != 0 {
+		t.Error("Distributions.Distributions() not returning an empty slice")
 
-        return
-    }
+		return
+	}
 
-    dists.GetSlot(2222, "Test Port 1")
+	dists.GetSlot(2222, "Test Port 1")
 
-    if len(dists.Distributions()) != 1 {
-        t.Error("Distributions.Distributions() returning invalid amount of items")
+	if len(dists.Distributions()) != 1 {
+		t.Error("Distributions.Distributions() returning invalid amount of items")
 
-        return
-    }
+		return
+	}
 
-    dists.GetSlot(2233, "Test Port 2")
+	dists.GetSlot(2233, "Test Port 2")
 
-    if len(dists.Distributions()) != 2 {
-        t.Error("Distributions.Distributions() returning invalid amount of items")
+	if len(dists.Distributions()) != 2 {
+		t.Error("Distributions.Distributions() returning invalid amount of items")
 
-        return
-    }
+		return
+	}
 
-    // Re-get, not create any new
-    dists.GetSlot(2222, "Test Port 1")
+	// Re-get, not create any new
+	dists.GetSlot(2222, "Test Port 1")
 
-    // Should be the same amount
-    if len(dists.Distributions()) != 2 {
-        t.Error("Distributions.Distributions() returning invalid amount of items")
+	// Should be the same amount
+	if len(dists.Distributions()) != 2 {
+		t.Error("Distributions.Distributions() returning invalid amount of items")
 
-        return
-    }
+		return
+	}
 }

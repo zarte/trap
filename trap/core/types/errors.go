@@ -22,12 +22,12 @@
 package types
 
 var (
-    ErrTypesSerializeInvalidDataLength *Error =
-        NewError("Byte length must be '%d' for serialization")
+	ErrTypesSerializeInvalidDataLength *Error = NewError(
+		"Byte length must be '%d' for serialization")
 
-    ErrTypesUnserializeInvalidDataLength *Error =
-        NewError("Byte length must be '%d' for unserialize")
+	ErrTypesUnserializeInvalidDataLength *Error = NewError(
+		"Byte length must be '%d' for unserialize")
 
-    ErrTypesUnserializeInvalidResult *Error =
-        NewError("Unserialize result is invalid")
+	ErrTypesUnserializeInvalidResult *Error = NewError(
+		"Unserialize result is invalid")
 )

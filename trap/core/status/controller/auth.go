@@ -22,113 +22,113 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
-    "net/http"
-    "encoding/json"
+	"encoding/json"
+	"net"
+	"net/http"
 )
 
 type Auth struct {
-    JSON
+	JSON
 
-    Verify      func(net.IP, types.String) (*status.Session, *types.Throw)
-    Auth        func(net.IP, types.String) (*status.Session, *types.Throw)
+	Verify func(net.IP, types.String) (*status.Session, *types.Throw)
+	Auth   func(net.IP, types.String) (*status.Session, *types.Throw)
 }
 
 func (a *Auth) Get(w http.ResponseWriter, r *http.Request) {
-    userIP, userIPErr := a.GetIPFormString(r.RemoteAddr)
+	userIP, userIPErr := a.GetIPFormString(r.RemoteAddr)
 
-    if userIPErr != nil {
-        a.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  userIPErr,
-        }, w, r)
+	if userIPErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  400,
+			Error: userIPErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    sessionInfo, vErr := a.Verify(userIP, types.String(
-        r.Header.Get(status.STATUS_SERVER_SESSION_KEY_HEADER)))
+	sessionInfo, vErr := a.Verify(userIP, types.String(
+		r.Header.Get(status.STATUS_SERVER_SESSION_KEY_HEADER)))
 
-    if vErr != nil {
-        a.Error(status.ErrorRespond{
-            Code: 403,
-            Error: vErr,
-        }, w, r)
+	if vErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  403,
+			Error: vErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    responseData, jResErr := json.Marshal(status.AuthRespond{
-        Token:              sessionInfo.Key,
-        Permissions:        sessionInfo.Account().Permissions(),
-    })
+	responseData, jResErr := json.Marshal(status.AuthRespond{
+		Token:       sessionInfo.Key,
+		Permissions: sessionInfo.Account().Permissions(),
+	})
 
-    if jResErr != nil {
-        a.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jResErr),
-        }, w, r)
+	if jResErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jResErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    a.WriteGZIP(200, responseData, w, r)
+	a.WriteGZIP(200, responseData, w, r)
 }
 
 func (a *Auth) Post(w http.ResponseWriter, r *http.Request) {
-    var authField status.AuthRequest
+	var authField status.AuthRequest
 
-    decoder                 :=  json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(r.Body)
 
-    decodeErr               :=  decoder.Decode(&authField)
+	decodeErr := decoder.Decode(&authField)
 
-    if decodeErr != nil {
-        a.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  types.ConvertError(decodeErr),
-        }, w, r)
+	if decodeErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  400,
+			Error: types.ConvertError(decodeErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    userIP, userIPErr       :=  a.GetIPFormString(r.RemoteAddr)
+	userIP, userIPErr := a.GetIPFormString(r.RemoteAddr)
 
-    if userIPErr != nil {
-        a.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  userIPErr,
-        }, w, r)
+	if userIPErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  400,
+			Error: userIPErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    sessionData, vErr       :=  a.Auth(userIP, authField.Password)
+	sessionData, vErr := a.Auth(userIP, authField.Password)
 
-    if vErr != nil {
-        a.Error(status.ErrorRespond{
-            Code:   403,
-            Error:  vErr,
-        }, w, r)
+	if vErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  403,
+			Error: vErr,
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    responseData, jResErr   :=  json.Marshal(status.AuthRespond{
-        Token:              sessionData.Key,
-        Permissions:        sessionData.Account().Permissions(),
-    })
+	responseData, jResErr := json.Marshal(status.AuthRespond{
+		Token:       sessionData.Key,
+		Permissions: sessionData.Account().Permissions(),
+	})
 
-    if jResErr != nil {
-        a.Error(status.ErrorRespond{
-            Code:   500,
-            Error:  types.ConvertError(jResErr),
-        }, w, r)
+	if jResErr != nil {
+		a.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jResErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    a.WriteGZIP(200, responseData, w, r)
+	a.WriteGZIP(200, responseData, w, r)
 }

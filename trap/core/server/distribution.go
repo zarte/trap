@@ -22,37 +22,38 @@
 package server
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Distribution struct {
-    Port                types.UInt16
-    Type                types.String
-    Hit                 types.UInt32
+	Port types.UInt16
+	Type types.String
+	Hit  types.UInt32
 }
 
-type Distributions      map[types.String]*Distribution
+type Distributions map[types.String]*Distribution
 
-func (d Distributions) GetSlot(port types.UInt16, typeName types.String) (*Distribution) {
-    pType               :=  port.String() + ":" + typeName;
+func (d Distributions) GetSlot(
+	port types.UInt16, typeName types.String) *Distribution {
+	pType := port.String() + ":" + typeName
 
-    if _, ok := d[pType]; !ok {
-        d[pType]        =   &Distribution{
-            Port:       port,
-            Type:       typeName,
-            Hit:        0,
-        }
-    }
+	if _, ok := d[pType]; !ok {
+		d[pType] = &Distribution{
+			Port: port,
+			Type: typeName,
+			Hit:  0,
+		}
+	}
 
-    return d[pType]
+	return d[pType]
 }
 
-func (d Distributions) Distributions() ([]Distribution) {
-    result              :=  []Distribution{}
+func (d Distributions) Distributions() []Distribution {
+	result := []Distribution{}
 
-    for _, val := range d {
-        result          =   append(result, *val)
-    }
+	for _, val := range d {
+		result = append(result, *val)
+	}
 
-    return result
+	return result
 }

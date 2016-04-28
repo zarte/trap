@@ -22,63 +22,62 @@
 package responder
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/listen"
-    "github.com/raincious/trap/trap/protocol/tcp"
+	"github.com/raincious/trap/trap/core/listen"
+	"github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/protocol/tcp"
 
-    "io"
-    "net"
+	"io"
+	"net"
 )
 
 type Echo struct {
-
 }
 
 func (e *Echo) Handle(conn *net.TCPConn,
-    config *tcp.ResponderConfig) (listen.RespondedResult, *types.Throw) {
-    readLen                     :=  uint(256)
+	config *tcp.ResponderConfig) (listen.RespondedResult, *types.Throw) {
+	readLen := uint(256)
 
-    result                      :=  listen.RespondedResult{
-                                        Suggestion: listen.RESPOND_SUGGEST_MARK,
-                                        ReceivedSample: []byte{},
-                                        RespondedData: []byte{},
-                                    }
+	result := listen.RespondedResult{
+		Suggestion:     listen.RESPOND_SUGGEST_MARK,
+		ReceivedSample: []byte{},
+		RespondedData:  []byte{},
+	}
 
-    totalLen                    :=  uint(0)
-    maxLen                      :=  config.MaxBytes
+	totalLen := uint(0)
+	maxLen := config.MaxBytes
 
-    if maxLen < 256 {
-        readLen                 =   maxLen
-    }
+	if maxLen < 256 {
+		readLen = maxLen
+	}
 
-    for {
-        buffer                  :=  make([]byte, readLen)
+	for {
+		buffer := make([]byte, readLen)
 
-        rLen, rErr              :=  conn.Read(buffer)
+		rLen, rErr := conn.Read(buffer)
 
-        if rErr == io.EOF {
-            break
-        } else if rErr != nil {
-            if totalLen > 0 {
-                break;
-            }
+		if rErr == io.EOF {
+			break
+		} else if rErr != nil {
+			if totalLen > 0 {
+				break
+			}
 
-            return result, types.ConvertError(rErr)
-        }
+			return result, types.ConvertError(rErr)
+		}
 
-        totalLen                +=  uint(rLen)
+		totalLen += uint(rLen)
 
-        if totalLen > maxLen {
-            break
-        }
+		if totalLen > maxLen {
+			break
+		}
 
-        conn.Write(buffer[:rLen])
+		conn.Write(buffer[:rLen])
 
-        result.ReceivedSample   =   append(result.ReceivedSample,
-                                        buffer[:rLen]...)
-    }
+		result.ReceivedSample = append(result.ReceivedSample,
+			buffer[:rLen]...)
+	}
 
-    result.RespondedData        =   result.ReceivedSample
+	result.RespondedData = result.ReceivedSample
 
-    return result, nil
+	return result, nil
 }

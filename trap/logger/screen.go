@@ -22,40 +22,40 @@
 package logger
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "fmt"
+	"fmt"
+	"time"
 )
 
-type ScreenPrinter struct {}
+type ScreenPrinter struct{}
 
-func NewScreenPrinter() (*ScreenPrinter) {
-    return &ScreenPrinter{}
+func NewScreenPrinter() *ScreenPrinter {
+	return &ScreenPrinter{}
 }
 
 func (l *ScreenPrinter) print(w types.String, c types.String,
-    t time.Time, m types.String) {
-    fmt.Printf("  <%3.3s> %-30.30s [%19.19s]: %s\r\n", w, c,
-        t.Format(time.StampMilli), m)
+	t time.Time, m types.String) {
+	fmt.Printf("  <%3.3s> %-30.30s [%19.19s]: %s\r\n", w, c,
+		t.Format(time.StampMilli), m)
 }
 
 func (l *ScreenPrinter) Info(c types.String, t time.Time, m types.String) {
-    l.print("INF", c, t, m)
+	l.print("INF", c, t, m)
 }
 
 func (l *ScreenPrinter) Debug(c types.String, t time.Time, m types.String) {
-    l.print("DBG", c, t, m)
+	l.print("DBG", c, t, m)
 }
 
 func (l *ScreenPrinter) Warning(c types.String, t time.Time, m types.String) {
-    l.print("WRN", c, t, m)
+	l.print("WRN", c, t, m)
 }
 
 func (l *ScreenPrinter) Error(c types.String, t time.Time, m types.String) {
-    l.print("ERR", c, t, m)
+	l.print("ERR", c, t, m)
 }
 
 func (l *ScreenPrinter) Print(c types.String, t time.Time, m types.String) {
-    l.print("DEF", c, t, m)
+	l.print("DEF", c, t, m)
 }

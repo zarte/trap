@@ -22,93 +22,93 @@
 package types
 
 import (
-    "testing"
-    "time"
-    "sync"
+	"sync"
+	"testing"
+	"time"
 )
 
 func testMutexExec(t *testing.T) {
-    mx      := Mutex{}
-    tWG1    := sync.WaitGroup{}
-    tWG2    := sync.WaitGroup{}
-    val     := []byte{}
+	mx := Mutex{}
+	tWG1 := sync.WaitGroup{}
+	tWG2 := sync.WaitGroup{}
+	val := []byte{}
 
-    tWG1.Add(1)
-    tWG2.Add(1)
+	tWG1.Add(1)
+	tWG2.Add(1)
 
-    go mx.Exec(func() { // Callback 1
-        defer tWG2.Done()
+	go mx.Exec(func() { // Callback 1
+		defer tWG2.Done()
 
-        tWG1.Done()
+		tWG1.Done()
 
-        time.Sleep(100 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 
-        val = append(val, 'A')
-    })
+		val = append(val, 'A')
+	})
 
-    tWG1.Wait() // We can confirm the callback 1 is running
+	tWG1.Wait() // We can confirm the callback 1 is running
 
-    tWG2.Add(1)
+	tWG2.Add(1)
 
-    go mx.Exec(func() { // Callback 2
-        defer tWG2.Done()
+	go mx.Exec(func() { // Callback 2
+		defer tWG2.Done()
 
-        val = append(val, 'B')
-    })
+		val = append(val, 'B')
+	})
 
-    tWG2.Wait()
+	tWG2.Wait()
 
-    if string(val) != "AB" {
-        t.Error("Mutex failed to control the running order")
-    }
+	if string(val) != "AB" {
+		t.Error("Mutex failed to control the running order")
+	}
 }
 
 func TestMutexExec(t *testing.T) {
-    // Test 3 times to avoid any false negative
-    testMutexExec(t)
-    testMutexExec(t)
-    testMutexExec(t)
+	// Test 3 times to avoid any false negative
+	testMutexExec(t)
+	testMutexExec(t)
+	testMutexExec(t)
 }
 
 func testMutexRoutineExec(t *testing.T) {
-    mx      := Mutex{}
-    tWG1    := sync.WaitGroup{}
-    tWG2    := sync.WaitGroup{}
-    val     := []byte{}
+	mx := Mutex{}
+	tWG1 := sync.WaitGroup{}
+	tWG2 := sync.WaitGroup{}
+	val := []byte{}
 
-    tWG1.Add(1)
-    tWG2.Add(1)
+	tWG1.Add(1)
+	tWG2.Add(1)
 
-    mx.RoutineExec(func() { // Callback 1
-        defer tWG2.Done()
+	mx.RoutineExec(func() { // Callback 1
+		defer tWG2.Done()
 
-        tWG1.Done()
+		tWG1.Done()
 
-        time.Sleep(100 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 
-        val = append(val, 'A')
-    })
+		val = append(val, 'A')
+	})
 
-    tWG1.Wait() // We can confirm the callback 1 is running
+	tWG1.Wait() // We can confirm the callback 1 is running
 
-    tWG2.Add(1)
+	tWG2.Add(1)
 
-    mx.RoutineExec(func() { // Callback 2
-        defer tWG2.Done()
+	mx.RoutineExec(func() { // Callback 2
+		defer tWG2.Done()
 
-        val = append(val, 'B')
-    })
+		val = append(val, 'B')
+	})
 
-    tWG2.Wait()
+	tWG2.Wait()
 
-    if string(val) != "AB" {
-        t.Error("RoutineExec failed to control the running order")
-    }
+	if string(val) != "AB" {
+		t.Error("RoutineExec failed to control the running order")
+	}
 }
 
 func TestMutexRoutineExec(t *testing.T) {
-    // Test 3 times to avoid any false negative
-    testMutexRoutineExec(t)
-    testMutexRoutineExec(t)
-    testMutexRoutineExec(t)
+	// Test 3 times to avoid any false negative
+	testMutexRoutineExec(t)
+	testMutexRoutineExec(t)
+	testMutexRoutineExec(t)
 }

@@ -22,40 +22,40 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status/permission"
+	"github.com/raincious/trap/trap/core/status/permission"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 var (
-    permissionRegister      =   permission.NewRegister()
+	permissionRegister = permission.NewRegister()
 )
 
 type Permission struct {
-    permission              types.UInt64
+	permission types.UInt64
 }
 
 func (p *Permission) Authorize(name types.String) {
-    permissionVal           :=  permissionRegister.Get(name)
+	permissionVal := permissionRegister.Get(name)
 
-    p.permission            =   p.permission | permissionVal
+	p.permission = p.permission | permissionVal
 }
 
-func (p *Permission) Allowed(name types.String) (bool) {
-    permissionVal           :=  permissionRegister.Get(name)
+func (p *Permission) Allowed(name types.String) bool {
+	permissionVal := permissionRegister.Get(name)
 
-    if (p.permission & permissionVal) == 0 {
-        return false
-    }
+	if (p.permission & permissionVal) == 0 {
+		return false
+	}
 
-    return true
+	return true
 }
 
-func (p *Permission) All() (map[types.String]bool) {
-    permissions             :=  map[types.String]bool{}
+func (p *Permission) All() map[types.String]bool {
+	permissions := map[types.String]bool{}
 
-    for name, permissionVal := range permissionRegister.All() {
-        permissions[name]   =   (p.permission & permissionVal) != 0
-    }
+	for name, permissionVal := range permissionRegister.All() {
+		permissions[name] = (p.permission & permissionVal) != 0
+	}
 
-    return permissions
+	return permissions
 }

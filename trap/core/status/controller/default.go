@@ -22,153 +22,152 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net"
-    "net/http"
-    "compress/gzip"
+	"compress/gzip"
+	"net"
+	"net/http"
+	"time"
 )
 
 type Default struct {
-
 }
 
-func (d *Default) Init() (*types.Throw) {
-    return nil
+func (d *Default) Init() *types.Throw {
+	return nil
 }
 
 func (d *Default) Get(w http.ResponseWriter, r *http.Request) {
-    d.Error(status.ErrorRespond{
-        Code:       405,
-        Error:      status.ErrRequestMethodNotImplemented.Throw(r.Method),
-    }, w, r)
+	d.Error(status.ErrorRespond{
+		Code:  405,
+		Error: status.ErrRequestMethodNotImplemented.Throw(r.Method),
+	}, w, r)
 }
 
 func (d *Default) Post(w http.ResponseWriter, r *http.Request) {
-    d.Error(status.ErrorRespond{
-        Code:       405,
-        Error:      status.ErrRequestMethodNotImplemented.Throw(r.Method),
-    }, w, r)
+	d.Error(status.ErrorRespond{
+		Code:  405,
+		Error: status.ErrRequestMethodNotImplemented.Throw(r.Method),
+	}, w, r)
 }
 
 func (d *Default) Put(w http.ResponseWriter, r *http.Request) {
-    d.Error(status.ErrorRespond{
-        Code:       405,
-        Error:      status.ErrRequestMethodNotImplemented.Throw(r.Method),
-    }, w, r)
+	d.Error(status.ErrorRespond{
+		Code:  405,
+		Error: status.ErrRequestMethodNotImplemented.Throw(r.Method),
+	}, w, r)
 }
 
 func (d *Default) Delete(w http.ResponseWriter, r *http.Request) {
-    d.Error(status.ErrorRespond{
-        Code:       405,
-        Error:      status.ErrRequestMethodNotImplemented.Throw(r.Method),
-    }, w, r)
+	d.Error(status.ErrorRespond{
+		Code:  405,
+		Error: status.ErrRequestMethodNotImplemented.Throw(r.Method),
+	}, w, r)
 }
 
 func (d *Default) Head(w http.ResponseWriter, r *http.Request) {
-    d.Error(status.ErrorRespond{
-        Code:       405,
-        Error:      status.ErrRequestMethodNotImplemented.Throw(r.Method),
-    }, w, r)
+	d.Error(status.ErrorRespond{
+		Code:  405,
+		Error: status.ErrRequestMethodNotImplemented.Throw(r.Method),
+	}, w, r)
 }
 
 func (d *Default) Options(w http.ResponseWriter, r *http.Request) {
-    d.Error(status.ErrorRespond{
-        Code:       405,
-        Error:      status.ErrRequestMethodNotImplemented.Throw(r.Method),
-    }, w, r)
+	d.Error(status.ErrorRespond{
+		Code:  405,
+		Error: status.ErrRequestMethodNotImplemented.Throw(r.Method),
+	}, w, r)
 }
 
 func (d *Default) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	r *http.Request) *types.Throw {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
 
-    return nil
+	return nil
 }
 
 func (d *Default) Error(err status.ErrorRespond, w http.ResponseWriter,
-    r *http.Request) {
-    d.WriteGZIP(err.Code, []byte(err.Error.Error()), w, r)
+	r *http.Request) {
+	d.WriteGZIP(err.Code, []byte(err.Error.Error()), w, r)
 }
 
 func (d *Default) GetIPFormString(addr string) (net.IP, *types.Throw) {
-    userHost, _, ipSplitErr := net.SplitHostPort(addr)
+	userHost, _, ipSplitErr := net.SplitHostPort(addr)
 
-    if ipSplitErr != nil {
-        return nil, types.ConvertError(ipSplitErr)
-    }
+	if ipSplitErr != nil {
+		return nil, types.ConvertError(ipSplitErr)
+	}
 
-    userIP := net.ParseIP(userHost)
+	userIP := net.ParseIP(userHost)
 
-    if userIP == nil {
-        return nil, status.ErrInvalidUserIPAddress.Throw(userHost)
-    }
+	if userIP == nil {
+		return nil, status.ErrInvalidUserIPAddress.Throw(userHost)
+	}
 
-    return userIP, nil
+	return userIP, nil
 }
 
-func (d *Default) IsGZIPSupported(r *http.Request) (bool) {
-    clientEncodings :=  types.String(r.Header.Get("Accept-Encoding")).Lower()
+func (d *Default) IsGZIPSupported(r *http.Request) bool {
+	clientEncodings := types.String(r.Header.Get("Accept-Encoding")).Lower()
 
-    if !clientEncodings.Contains("gzip") {
-        return false
-    }
+	if !clientEncodings.Contains("gzip") {
+		return false
+	}
 
-    return true
+	return true
 }
 
 func (d *Default) WriteGZIP(code int, data []byte, w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    if !d.IsGZIPSupported(r) || len(data) < 512 {
-        w.WriteHeader(code)
+	r *http.Request) *types.Throw {
+	if !d.IsGZIPSupported(r) || len(data) < 512 {
+		w.WriteHeader(code)
 
-        w.Write(data)
+		w.Write(data)
 
-        return nil
-    }
+		return nil
+	}
 
-    w.Header().Set("Content-Encoding", "gzip")
-    w.Header().Set("Vary", " Accept-Encoding")
+	w.Header().Set("Content-Encoding", "gzip")
+	w.Header().Set("Vary", " Accept-Encoding")
 
-    w.WriteHeader(code)
+	w.WriteHeader(code)
 
-    gzipWriter              :=  gzip.NewWriter(w)
+	gzipWriter := gzip.NewWriter(w)
 
-    defer gzipWriter.Close()
+	defer gzipWriter.Close()
 
-    _, wError               :=  gzipWriter.Write(data)
+	_, wError := gzipWriter.Write(data)
 
-    if wError != nil {
-        return types.ConvertError(wError)
-    }
+	if wError != nil {
+		return types.ConvertError(wError)
+	}
 
-    return nil
+	return nil
 }
 
-func (d *Default) IsUnmodified(modifiedTime time.Time, r *http.Request) (bool) {
-    lastModSince            :=  r.Header.Get("If-Modified-Since")
+func (d *Default) IsUnmodified(modifiedTime time.Time, r *http.Request) bool {
+	lastModSince := r.Header.Get("If-Modified-Since")
 
-    if lastModSince == "" {
-        return false
-    }
+	if lastModSince == "" {
+		return false
+	}
 
-    sinceTime, sTimeErr     :=  time.Parse(time.RFC1123, lastModSince)
+	sinceTime, sTimeErr := time.Parse(time.RFC1123, lastModSince)
 
-    if sTimeErr != nil {
-        return false
-    }
+	if sTimeErr != nil {
+		return false
+	}
 
-    sinceTime               =   sinceTime.Truncate(time.Second)
+	sinceTime = sinceTime.Truncate(time.Second)
 
-    if sinceTime.After(time.Now()) {
-        return false
-    }
+	if sinceTime.After(time.Now()) {
+		return false
+	}
 
-    if sinceTime.Before(modifiedTime.Truncate(time.Second)) {
-        return false
-    }
+	if sinceTime.Before(modifiedTime.Truncate(time.Second)) {
+		return false
+	}
 
-    return true
+	return true
 }

@@ -22,43 +22,43 @@
 package net
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
+	"net"
 )
 
 var (
-    ErrInvalidIPAddress *types.Error =
-        types.NewError("'%s' is not an IP address")
+	ErrInvalidIPAddress *types.Error = types.NewError(
+		"'%s' is not an IP address")
 
-    ErrInvalidPort *types.Error =
-        types.NewError("'%s' is not an invalid port")
+	ErrInvalidPort *types.Error = types.NewError(
+		"'%s' is not an invalid port")
 )
 
 type Net struct {
-
 }
 
-func (n *Net) ParseConfig(cfg types.String) (net.IP, types.UInt16, *types.Throw) {
-    var ip net.IP
+func (n *Net) ParseConfig(
+	cfg types.String) (net.IP, types.UInt16, *types.Throw) {
+	var ip net.IP
 
-    portStr, ipAddrStr  :=  cfg.SpiltWith("@")
+	portStr, ipAddrStr := cfg.SpiltWith("@")
 
-    port                :=  portStr.UInt16()
+	port := portStr.UInt16()
 
-    if port <= 0 {
-        return net.IP{}, 0, ErrInvalidPort.Throw(portStr)
-    }
+	if port <= 0 {
+		return net.IP{}, 0, ErrInvalidPort.Throw(portStr)
+	}
 
-    if ipAddrStr != "" {
-        ip              =   net.ParseIP(ipAddrStr.String())
+	if ipAddrStr != "" {
+		ip = net.ParseIP(ipAddrStr.String())
 
-        if ip == nil {
-            return net.IP{}, 0, ErrInvalidIPAddress.Throw(ipAddrStr)
-        }
-    } else {
-        ip              =   net.ParseIP("0.0.0.0")
-    }
+		if ip == nil {
+			return net.IP{}, 0, ErrInvalidIPAddress.Throw(ipAddrStr)
+		}
+	} else {
+		ip = net.ParseIP("0.0.0.0")
+	}
 
-    return ip, port, nil
+	return ip, port, nil
 }

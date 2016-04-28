@@ -22,436 +22,436 @@
 package event
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
+	"testing"
 )
 
 func TestParameterSetGetInt16(t *testing.T) {
-    param1  :=  Parameter{}
-    param2  :=  Parameter{}
+	param1 := Parameter{}
+	param2 := Parameter{}
 
-    param1.setInt16(types.INT16_MAX_INT16)
-    param2.setInt16(types.INT16_MIN_INT16)
+	param1.setInt16(types.INT16_MAX_INT16)
+	param2.setInt16(types.INT16_MIN_INT16)
 
-    if types.INT16_MAX_INT16 != param1.GetInt16() {
-        t.Error("Parameter.GetInt16() didn't outputs the original value")
+	if types.INT16_MAX_INT16 != param1.GetInt16() {
+		t.Error("Parameter.GetInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT16_MIN_INT16 != param2.GetInt16() {
-        t.Error("Parameter.GetInt16() didn't outputs the original value")
+	if types.INT16_MIN_INT16 != param2.GetInt16() {
+		t.Error("Parameter.GetInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT16_MAX_INT16.String() != param1.String() {
-        t.Error("Parameter.GetInt16() didn't outputs the original value")
+	if types.INT16_MAX_INT16.String() != param1.String() {
+		t.Error("Parameter.GetInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT16_MIN_INT16.String() != param2.String() {
-        t.Error("Parameter.GetInt16() didn't outputs the original value")
+	if types.INT16_MIN_INT16.String() != param2.String() {
+		t.Error("Parameter.GetInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt32() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetUInt64() != 0 ||
-        param1.GetStr() != "" ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt32() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetUInt64() != 0 ||
+		param1.GetStr() != "" ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 
-    if param2.GetInt32() != 0 ||
-        param2.GetInt64() != 0 ||
-        param2.GetUInt16() != 0 ||
-        param2.GetUInt32() != 0 ||
-        param2.GetUInt64() != 0 ||
-        param2.GetStr() != "" ||
-        string(param2.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param2.GetInt32() != 0 ||
+		param2.GetInt64() != 0 ||
+		param2.GetUInt16() != 0 ||
+		param2.GetUInt32() != 0 ||
+		param2.GetUInt64() != 0 ||
+		param2.GetStr() != "" ||
+		string(param2.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetInt32(t *testing.T) {
-    param1  :=  Parameter{}
-    param2  :=  Parameter{}
+	param1 := Parameter{}
+	param2 := Parameter{}
 
-    param1.setInt32(types.INT32_MAX_INT32)
-    param2.setInt32(types.INT32_MIN_INT32)
+	param1.setInt32(types.INT32_MAX_INT32)
+	param2.setInt32(types.INT32_MIN_INT32)
 
-    if types.INT32_MAX_INT32 != param1.GetInt32() {
-        t.Error("Parameter.GetInt32() didn't outputs the original value")
+	if types.INT32_MAX_INT32 != param1.GetInt32() {
+		t.Error("Parameter.GetInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT32_MIN_INT32 != param2.GetInt32() {
-        t.Error("Parameter.GetInt32() didn't outputs the original value")
+	if types.INT32_MIN_INT32 != param2.GetInt32() {
+		t.Error("Parameter.GetInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT32_MAX_INT32.String() != param1.String() {
-        t.Error("Parameter.GetInt32() didn't outputs the original value")
+	if types.INT32_MAX_INT32.String() != param1.String() {
+		t.Error("Parameter.GetInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT32_MIN_INT32.String() != param2.String() {
-        t.Error("Parameter.GetInt32() didn't outputs the original value")
+	if types.INT32_MIN_INT32.String() != param2.String() {
+		t.Error("Parameter.GetInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetUInt64() != 0 ||
-        param1.GetStr() != "" ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetUInt64() != 0 ||
+		param1.GetStr() != "" ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 
-    if param2.GetInt16() != 0 ||
-        param2.GetInt64() != 0 ||
-        param2.GetUInt16() != 0 ||
-        param2.GetUInt32() != 0 ||
-        param2.GetUInt64() != 0 ||
-        param2.GetStr() != "" ||
-        string(param2.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param2.GetInt16() != 0 ||
+		param2.GetInt64() != 0 ||
+		param2.GetUInt16() != 0 ||
+		param2.GetUInt32() != 0 ||
+		param2.GetUInt64() != 0 ||
+		param2.GetStr() != "" ||
+		string(param2.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetInt64(t *testing.T) {
-    param1  :=  Parameter{}
-    param2  :=  Parameter{}
+	param1 := Parameter{}
+	param2 := Parameter{}
 
-    param1.setInt64(types.INT64_MAX_INT64)
-    param2.setInt64(types.INT64_MIN_INT64)
+	param1.setInt64(types.INT64_MAX_INT64)
+	param2.setInt64(types.INT64_MIN_INT64)
 
-    if types.INT64_MAX_INT64 != param1.GetInt64() {
-        t.Error("Parameter.GetInt64() didn't outputs the original value")
+	if types.INT64_MAX_INT64 != param1.GetInt64() {
+		t.Error("Parameter.GetInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT64_MIN_INT64 != param2.GetInt64() {
-        t.Error("Parameter.GetInt64() didn't outputs the original value")
+	if types.INT64_MIN_INT64 != param2.GetInt64() {
+		t.Error("Parameter.GetInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT64_MAX_INT64.String() != param1.String() {
-        t.Error("Parameter.GetInt64() didn't outputs the original value")
+	if types.INT64_MAX_INT64.String() != param1.String() {
+		t.Error("Parameter.GetInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.INT64_MIN_INT64.String() != param2.String() {
-        t.Error("Parameter.GetInt64() didn't outputs the original value")
+	if types.INT64_MIN_INT64.String() != param2.String() {
+		t.Error("Parameter.GetInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt32() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetUInt64() != 0 ||
-        param1.GetStr() != "" ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt32() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetUInt64() != 0 ||
+		param1.GetStr() != "" ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 
-    if param2.GetInt16() != 0 ||
-        param2.GetInt32() != 0 ||
-        param2.GetUInt16() != 0 ||
-        param2.GetUInt32() != 0 ||
-        param2.GetUInt64() != 0 ||
-        param2.GetStr() != "" ||
-        string(param2.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param2.GetInt16() != 0 ||
+		param2.GetInt32() != 0 ||
+		param2.GetUInt16() != 0 ||
+		param2.GetUInt32() != 0 ||
+		param2.GetUInt64() != 0 ||
+		param2.GetStr() != "" ||
+		string(param2.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetUInt16(t *testing.T) {
-    param1  :=  Parameter{}
-    param2  :=  Parameter{}
+	param1 := Parameter{}
+	param2 := Parameter{}
 
-    param1.setUInt16(types.UINT16_MAX_UINT16)
-    param2.setUInt16(types.UINT16_MIN_UINT16)
+	param1.setUInt16(types.UINT16_MAX_UINT16)
+	param2.setUInt16(types.UINT16_MIN_UINT16)
 
-    if types.UINT16_MAX_UINT16 != param1.GetUInt16() {
-        t.Error("Parameter.GetUInt16() didn't outputs the original value")
+	if types.UINT16_MAX_UINT16 != param1.GetUInt16() {
+		t.Error("Parameter.GetUInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT16_MIN_UINT16 != param2.GetUInt16() {
-        t.Error("Parameter.GetUInt16() didn't outputs the original value")
+	if types.UINT16_MIN_UINT16 != param2.GetUInt16() {
+		t.Error("Parameter.GetUInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT16_MAX_UINT16.String() != param1.String() {
-        t.Error("Parameter.GetUInt16() didn't outputs the original value")
+	if types.UINT16_MAX_UINT16.String() != param1.String() {
+		t.Error("Parameter.GetUInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT16_MIN_UINT16.String() != param2.String() {
-        t.Error("Parameter.GetUInt16() didn't outputs the original value")
+	if types.UINT16_MIN_UINT16.String() != param2.String() {
+		t.Error("Parameter.GetUInt16() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt32() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetUInt64() != 0 ||
-        param1.GetStr() != "" ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt32() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetUInt64() != 0 ||
+		param1.GetStr() != "" ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 
-    if param2.GetInt16() != 0 ||
-        param2.GetInt32() != 0 ||
-        param2.GetInt64() != 0 ||
-        param2.GetUInt32() != 0 ||
-        param2.GetUInt64() != 0 ||
-        param2.GetStr() != "" ||
-        string(param2.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param2.GetInt16() != 0 ||
+		param2.GetInt32() != 0 ||
+		param2.GetInt64() != 0 ||
+		param2.GetUInt32() != 0 ||
+		param2.GetUInt64() != 0 ||
+		param2.GetStr() != "" ||
+		string(param2.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetUInt32(t *testing.T) {
-    param1  :=  Parameter{}
-    param2  :=  Parameter{}
+	param1 := Parameter{}
+	param2 := Parameter{}
 
-    param1.setUInt32(types.UINT32_MAX_UINT32)
-    param2.setUInt32(types.UINT32_MIN_UINT32)
+	param1.setUInt32(types.UINT32_MAX_UINT32)
+	param2.setUInt32(types.UINT32_MIN_UINT32)
 
-    if types.UINT32_MAX_UINT32 != param1.GetUInt32() {
-        t.Error("Parameter.GetUInt32() didn't outputs the original value")
+	if types.UINT32_MAX_UINT32 != param1.GetUInt32() {
+		t.Error("Parameter.GetUInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT32_MIN_UINT32 != param2.GetUInt32() {
-        t.Error("Parameter.GetUInt32() didn't outputs the original value")
+	if types.UINT32_MIN_UINT32 != param2.GetUInt32() {
+		t.Error("Parameter.GetUInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT32_MAX_UINT32.String() != param1.String() {
-        t.Error("Parameter.GetUInt32() didn't outputs the original value")
+	if types.UINT32_MAX_UINT32.String() != param1.String() {
+		t.Error("Parameter.GetUInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT32_MIN_UINT32.String() != param2.String() {
-        t.Error("Parameter.GetUInt32() didn't outputs the original value")
+	if types.UINT32_MIN_UINT32.String() != param2.String() {
+		t.Error("Parameter.GetUInt32() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt32() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt64() != 0 ||
-        param1.GetStr() != "" ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt32() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt64() != 0 ||
+		param1.GetStr() != "" ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 
-    if param2.GetInt16() != 0 ||
-        param2.GetInt32() != 0 ||
-        param2.GetInt64() != 0 ||
-        param2.GetUInt16() != 0 ||
-        param2.GetUInt64() != 0 ||
-        param2.GetStr() != "" ||
-        string(param2.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param2.GetInt16() != 0 ||
+		param2.GetInt32() != 0 ||
+		param2.GetInt64() != 0 ||
+		param2.GetUInt16() != 0 ||
+		param2.GetUInt64() != 0 ||
+		param2.GetStr() != "" ||
+		string(param2.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetUInt64(t *testing.T) {
-    param1  :=  Parameter{}
-    param2  :=  Parameter{}
+	param1 := Parameter{}
+	param2 := Parameter{}
 
-    param1.setUInt64(types.UINT64_MAX_UINT64)
-    param2.setUInt64(types.UINT64_MIN_UINT64)
+	param1.setUInt64(types.UINT64_MAX_UINT64)
+	param2.setUInt64(types.UINT64_MIN_UINT64)
 
-    if types.UINT64_MAX_UINT64 != param1.GetUInt64() {
-        t.Error("Parameter.GetUInt64() didn't outputs the original value")
+	if types.UINT64_MAX_UINT64 != param1.GetUInt64() {
+		t.Error("Parameter.GetUInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT64_MIN_UINT64 != param2.GetUInt64() {
-        t.Error("Parameter.GetUInt64() didn't outputs the original value")
+	if types.UINT64_MIN_UINT64 != param2.GetUInt64() {
+		t.Error("Parameter.GetUInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT64_MAX_UINT64.String() != param1.String() {
-        t.Error("Parameter.GetUInt64() didn't outputs the original value")
+	if types.UINT64_MAX_UINT64.String() != param1.String() {
+		t.Error("Parameter.GetUInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if types.UINT64_MIN_UINT64.String() != param2.String() {
-        t.Error("Parameter.GetUInt64() didn't outputs the original value")
+	if types.UINT64_MIN_UINT64.String() != param2.String() {
+		t.Error("Parameter.GetUInt64() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt32() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetStr() != "" ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt32() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetStr() != "" ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 
-    if param2.GetInt16() != 0 ||
-        param2.GetInt32() != 0 ||
-        param2.GetInt64() != 0 ||
-        param2.GetUInt16() != 0 ||
-        param2.GetUInt32() != 0 ||
-        param2.GetStr() != "" ||
-        string(param2.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param2.GetInt16() != 0 ||
+		param2.GetInt32() != 0 ||
+		param2.GetInt64() != 0 ||
+		param2.GetUInt16() != 0 ||
+		param2.GetUInt32() != 0 ||
+		param2.GetStr() != "" ||
+		string(param2.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetStr(t *testing.T) {
-    param1  :=  Parameter{}
-    param1.setStr("This is a simple string")
+	param1 := Parameter{}
+	param1.setStr("This is a simple string")
 
-    if "This is a simple string" != param1.GetStr() {
-        t.Error("Parameter.GetStr() didn't outputs the original value")
+	if "This is a simple string" != param1.GetStr() {
+		t.Error("Parameter.GetStr() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt32() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetUInt64() != 0 ||
-        string(param1.GetBytes()) != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt32() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetUInt64() != 0 ||
+		string(param1.GetBytes()) != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameterSetGetBytes(t *testing.T) {
-    param1  :=  Parameter{}
-    param1.setBytes([]byte("This is a simple string"))
+	param1 := Parameter{}
+	param1.setBytes([]byte("This is a simple string"))
 
-    if "This is a simple string" != string(param1.GetBytes()) {
-        t.Error("Parameter.GetBytes() didn't outputs the original value")
+	if "This is a simple string" != string(param1.GetBytes()) {
+		t.Error("Parameter.GetBytes() didn't outputs the original value")
 
-        return
-    }
+		return
+	}
 
-    if param1.GetInt16() != 0 ||
-        param1.GetInt32() != 0 ||
-        param1.GetInt64() != 0 ||
-        param1.GetUInt16() != 0 ||
-        param1.GetUInt32() != 0 ||
-        param1.GetUInt64() != 0 ||
-        param1.GetStr() != "" {
-        t.Error("The Parameter outputs unexpected value")
+	if param1.GetInt16() != 0 ||
+		param1.GetInt32() != 0 ||
+		param1.GetInt64() != 0 ||
+		param1.GetUInt16() != 0 ||
+		param1.GetUInt32() != 0 ||
+		param1.GetUInt64() != 0 ||
+		param1.GetStr() != "" {
+		t.Error("The Parameter outputs unexpected value")
 
-        return
-    }
+		return
+	}
 }
 
 func TestParameters(t *testing.T) {
-    format      :=  types.String("$((INT16)) $((INT32)) $((INT64)) $((UINT16)) " +
-                    "$((UINT32)) $((UINT64)) $((STRING)) $((BYTES))")
+	format := types.String("$((INT16)) $((INT32)) $((INT64)) $((UINT16)) " +
+		"$((UINT32)) $((UINT64)) $((STRING)) $((BYTES))")
 
-    labels      :=  []types.String{
-                        "$((INT16))",
-                        "$((INT32))",
-                        "$((INT64))",
-                        "$((UINT16))",
-                        "$((UINT32))",
-                        "$((UINT64))",
-                        "$((STRING))",
-                        "$((BYTES))",
-    }
+	labels := []types.String{
+		"$((INT16))",
+		"$((INT32))",
+		"$((INT64))",
+		"$((UINT16))",
+		"$((UINT32))",
+		"$((UINT64))",
+		"$((STRING))",
+		"$((BYTES))",
+	}
 
-    excepted    :=  types.INT16_MAX_INT16.String().Join(" ",
-                        types.INT32_MAX_INT32.String(),
-                        " ",
-                        types.INT64_MAX_INT64.String(),
-                        " ",
-                        types.UINT16_MAX_UINT16.String(),
-                        " ",
-                        types.UINT32_MAX_UINT32.String(),
-                        " ",
-                        types.UINT64_MAX_UINT64.String(),
-                        " ",
-                        "TEST String ",
-                        "Test BYTES",
-    )
+	excepted := types.INT16_MAX_INT16.String().Join(" ",
+		types.INT32_MAX_INT32.String(),
+		" ",
+		types.INT64_MAX_INT64.String(),
+		" ",
+		types.UINT16_MAX_UINT16.String(),
+		" ",
+		types.UINT32_MAX_UINT32.String(),
+		" ",
+		types.UINT64_MAX_UINT64.String(),
+		" ",
+		"TEST String ",
+		"Test BYTES",
+	)
 
-    params      :=  Parameters{}.
-                        AddInt16("INT16", types.INT16_MAX_INT16).
-                        AddInt32("INT32", types.INT32_MAX_INT32).
-                        AddInt64("INT64", types.INT64_MAX_INT64).
-                        AddUInt16("UINT16", types.UINT16_MAX_UINT16).
-                        AddUInt32("UINT32", types.UINT32_MAX_UINT32).
-                        AddUInt64("UINT64", types.UINT64_MAX_UINT64).
-                        AddString("STRING", "TEST String").
-                        AddBytes("BYTES", []byte("Test BYTES"))
+	params := Parameters{}.
+		AddInt16("INT16", types.INT16_MAX_INT16).
+		AddInt32("INT32", types.INT32_MAX_INT32).
+		AddInt64("INT64", types.INT64_MAX_INT64).
+		AddUInt16("UINT16", types.UINT16_MAX_UINT16).
+		AddUInt32("UINT32", types.UINT32_MAX_UINT32).
+		AddUInt64("UINT64", types.UINT64_MAX_UINT64).
+		AddString("STRING", "TEST String").
+		AddBytes("BYTES", []byte("Test BYTES"))
 
-    if params.Parse(format, labels) != excepted {
-        t.Error("Parameters parsed a wrong result")
+	if params.Parse(format, labels) != excepted {
+		t.Error("Parameters parsed a wrong result")
 
-        return
-    }
+		return
+	}
 }

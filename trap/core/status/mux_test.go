@@ -22,207 +22,206 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
-    "testing"
-    "bytes"
-    "errors"
+	"bytes"
+	"errors"
+	"net/http"
+	"testing"
 )
 
 type dummyHttpHandler struct {
-    called          bool
+	called bool
 }
 
 func (d *dummyHttpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-    d.called        =   true
+	d.called = true
 }
 
 type dummyResponseWriter struct {
-    headers         http.Header
+	headers http.Header
 }
 
-func (d dummyResponseWriter) Header() (http.Header) {
-    return d.headers
+func (d dummyResponseWriter) Header() http.Header {
+	return d.headers
 }
 
 func (d dummyResponseWriter) Write(data []byte) (int, error) {
-    return 0, errors.New("Can't write dummy responder")
+	return 0, errors.New("Can't write dummy responder")
 }
 
 func (d dummyResponseWriter) WriteHeader(code int) {}
 
 type dummyController struct {
-    initCalled      bool
-    beforeCalled    bool
+	initCalled   bool
+	beforeCalled bool
 
-    getCalled       bool
-    postCalled      bool
-    putCalled       bool
-    deleteCalled    bool
-    headCalled      bool
-    optionsCalled   bool
+	getCalled     bool
+	postCalled    bool
+	putCalled     bool
+	deleteCalled  bool
+	headCalled    bool
+	optionsCalled bool
 }
 
-func (d *dummyController) Init() (*types.Throw) {
-    d.initCalled    =   true
+func (d *dummyController) Init() *types.Throw {
+	d.initCalled = true
 
-    return nil
+	return nil
 }
 
 func (d *dummyController) Get(w http.ResponseWriter, r *http.Request) {
-    d.getCalled     =   true
+	d.getCalled = true
 }
 
 func (d *dummyController) Post(w http.ResponseWriter, r *http.Request) {
-    d.postCalled    =   true
+	d.postCalled = true
 }
 
 func (d *dummyController) Put(w http.ResponseWriter, r *http.Request) {
-    d.putCalled     =   true
+	d.putCalled = true
 }
 
 func (d *dummyController) Delete(w http.ResponseWriter, r *http.Request) {
-    d.deleteCalled  =   true
+	d.deleteCalled = true
 }
 
 func (d *dummyController) Head(w http.ResponseWriter, r *http.Request) {
-    d.headCalled    =   true
+	d.headCalled = true
 }
 
 func (d *dummyController) Options(w http.ResponseWriter, r *http.Request) {
-    d.optionsCalled =   true
+	d.optionsCalled = true
 }
 
 func (d *dummyController) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    d.beforeCalled  =   true
+	r *http.Request) *types.Throw {
+	d.beforeCalled = true
 
-    return nil
+	return nil
 }
 
 func (d *dummyController) Error(err ErrorRespond, w http.ResponseWriter,
-    r *http.Request) {}
-
-func TestMuxNewMux(t *testing.T) {
-    dummyHandler    :=  &dummyHttpHandler{
-        called:         false,
-    }
-    dummyCrtl       :=  &dummyController{
-
-    }
-
-    resp            :=  dummyResponseWriter{
-        headers:        http.Header{},
-    }
-    req, reqErr     :=  http.NewRequest("GET", "/handler",
-                            bytes.NewBufferString(""))
-
-    if reqErr != nil {
-        t.Errorf("Failed to create request struct for this test due to error: %s",
-            reqErr)
-
-        return
-    }
-
-    mux             :=  NewMux()
-
-    mux.Handle("/handler", dummyHandler)
-    mux.HandleFunc("/handlefunc", func(w http.ResponseWriter, r *http.Request) {
-
-    })
-    mux.HandleController("/handlecontroller", dummyCrtl)
-
-    mux.ServeHTTP(resp, req)
+	r *http.Request) {
 }
 
-func getNewHTTPRequest(method string, url string) (*http.Request) {
-    req, _          :=  http.NewRequest(method, url,
-                            bytes.NewBufferString(""))
+func TestMuxNewMux(t *testing.T) {
+	dummyHandler := &dummyHttpHandler{
+		called: false,
+	}
+	dummyCrtl := &dummyController{}
 
-    return req
+	resp := dummyResponseWriter{
+		headers: http.Header{},
+	}
+	req, reqErr := http.NewRequest("GET", "/handler",
+		bytes.NewBufferString(""))
+
+	if reqErr != nil {
+		t.Errorf("Failed to create request struct for this test due to error: %s",
+			reqErr)
+
+		return
+	}
+
+	mux := NewMux()
+
+	mux.Handle("/handler", dummyHandler)
+	mux.HandleFunc("/handlefunc", func(w http.ResponseWriter, r *http.Request) {
+
+	})
+	mux.HandleController("/handlecontroller", dummyCrtl)
+
+	mux.ServeHTTP(resp, req)
+}
+
+func getNewHTTPRequest(method string, url string) *http.Request {
+	req, _ := http.NewRequest(method, url,
+		bytes.NewBufferString(""))
+
+	return req
 }
 
 func TestMuxHandle(t *testing.T) {
-    resp            :=  dummyResponseWriter{
-        headers:        http.Header{},
-    }
+	resp := dummyResponseWriter{
+		headers: http.Header{},
+	}
 
-    dummyHandler    :=  &dummyHttpHandler{
-        called:         false,
-    }
+	dummyHandler := &dummyHttpHandler{
+		called: false,
+	}
 
-    mux             :=  NewMux()
+	mux := NewMux()
 
-    mux.Handle("/handler", dummyHandler)
+	mux.Handle("/handler", dummyHandler)
 
-    for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"} {
-        dummyHandler.called     =   false
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"} {
+		dummyHandler.called = false
 
-        mux.ServeHTTP(resp, getNewHTTPRequest(method, "/handler"))
+		mux.ServeHTTP(resp, getNewHTTPRequest(method, "/handler"))
 
-        if !dummyHandler.called {
-            t.Error("Failed asserting that the handler is called")
+		if !dummyHandler.called {
+			t.Error("Failed asserting that the handler is called")
 
-            return
-        }
-    }
+			return
+		}
+	}
 }
 
 func TestMuxHandleFunc(t *testing.T) {
-    called          :=  false
-    resp            :=  dummyResponseWriter{
-        headers:        http.Header{},
-    }
+	called := false
+	resp := dummyResponseWriter{
+		headers: http.Header{},
+	}
 
-    mux             :=  NewMux()
+	mux := NewMux()
 
-    mux.HandleFunc("/handler", func(w http.ResponseWriter, r *http.Request) {
-        called      =   true
-    })
+	mux.HandleFunc("/handler", func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
 
-    for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"} {
-        called      =   false
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"} {
+		called = false
 
-        mux.ServeHTTP(resp, getNewHTTPRequest(method, "/handler"))
+		mux.ServeHTTP(resp, getNewHTTPRequest(method, "/handler"))
 
-        if !called {
-            t.Error("Failed asserting that the handler is called")
+		if !called {
+			t.Error("Failed asserting that the handler is called")
 
-            return
-        }
-    }
+			return
+		}
+	}
 }
 
 func TestMuxHandleController(t *testing.T) {
-    resp            :=  dummyResponseWriter{
-        headers:        http.Header{},
-    }
-    dummyCrtl       :=  &dummyController{
-        initCalled:     false,
-        beforeCalled:   false,
-        getCalled:      false,
-        postCalled:     false,
-        putCalled:      false,
-        deleteCalled:   false,
-        headCalled:     false,
-        optionsCalled:  false,
-    }
+	resp := dummyResponseWriter{
+		headers: http.Header{},
+	}
+	dummyCrtl := &dummyController{
+		initCalled:    false,
+		beforeCalled:  false,
+		getCalled:     false,
+		postCalled:    false,
+		putCalled:     false,
+		deleteCalled:  false,
+		headCalled:    false,
+		optionsCalled: false,
+	}
 
-    mux             :=  NewMux()
+	mux := NewMux()
 
-    mux.HandleController("/handler", dummyCrtl)
+	mux.HandleController("/handler", dummyCrtl)
 
-    for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"} {
-        mux.ServeHTTP(resp, getNewHTTPRequest(method, "/handler"))
-    }
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"} {
+		mux.ServeHTTP(resp, getNewHTTPRequest(method, "/handler"))
+	}
 
-    if !dummyCrtl.initCalled || !dummyCrtl.getCalled ||
-        !dummyCrtl.postCalled || !dummyCrtl.putCalled ||
-        !dummyCrtl.deleteCalled || !dummyCrtl.headCalled ||
-        !dummyCrtl.optionsCalled {
-            t.Error("Controller call is incompleted")
+	if !dummyCrtl.initCalled || !dummyCrtl.getCalled ||
+		!dummyCrtl.postCalled || !dummyCrtl.putCalled ||
+		!dummyCrtl.deleteCalled || !dummyCrtl.headCalled ||
+		!dummyCrtl.optionsCalled {
+		t.Error("Controller call is incompleted")
 
-            return
-        }
+		return
+	}
 }

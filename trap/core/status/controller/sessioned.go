@@ -22,128 +22,128 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
-    "net/http"
+	"net"
+	"net/http"
 )
 
 type Sessioned struct {
-    Default
+	Default
 
-    Verify      func(net.IP, types.String) (*status.Session, *types.Throw)
+	Verify func(net.IP, types.String) (*status.Session, *types.Throw)
 
-    session     *status.Session
+	session *status.Session
 }
 
-func (s *Sessioned) Session() (*status.Session) {
-    return s.session
+func (s *Sessioned) Session() *status.Session {
+	return s.session
 }
 
-func (s *Sessioned) GetSessionID(r *http.Request) (types.String) {
-    headerID                :=  r.Header.Get(
-                                    status.STATUS_SERVER_SESSION_KEY_HEADER)
+func (s *Sessioned) GetSessionID(r *http.Request) types.String {
+	headerID := r.Header.Get(
+		status.STATUS_SERVER_SESSION_KEY_HEADER)
 
-    if headerID != "" {
-        return types.String(headerID)
-    }
+	if headerID != "" {
+		return types.String(headerID)
+	}
 
-    return types.String("")
+	return types.String("")
 }
 
 func (s *Sessioned) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    userIP, userIPErr := s.GetIPFormString(r.RemoteAddr)
+	r *http.Request) *types.Throw {
+	userIP, userIPErr := s.GetIPFormString(r.RemoteAddr)
 
-    if userIPErr != nil {
-        s.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  userIPErr,
-        }, w, r)
+	if userIPErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  400,
+			Error: userIPErr,
+		}, w, r)
 
-        return userIPErr
-    }
+		return userIPErr
+	}
 
-    session, vErr   :=  s.Verify(userIP, s.GetSessionID(r))
+	session, vErr := s.Verify(userIP, s.GetSessionID(r))
 
-    if vErr != nil {
-        s.Error(status.ErrorRespond{
-            Code: 403,
-            Error: vErr,
-        }, w, r)
+	if vErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  403,
+			Error: vErr,
+		}, w, r)
 
-        return vErr
-    }
+		return vErr
+	}
 
-    s.session       =   session
+	s.session = session
 
-    w.Header().Set("Cache-Control", "private, max-age=0, no-cache")
+	w.Header().Set("Cache-Control", "private, max-age=0, no-cache")
 
-    return nil
+	return nil
 }
 
 type SessionedJSON struct {
-    JSON
+	JSON
 
-    Verify      func(net.IP, types.String) (*status.Session, *types.Throw)
+	Verify func(net.IP, types.String) (*status.Session, *types.Throw)
 
-    session     *status.Session
+	session *status.Session
 }
 
-func (s *SessionedJSON) Session() (*status.Session) {
-    return s.session
+func (s *SessionedJSON) Session() *status.Session {
+	return s.session
 }
 
-func (s *SessionedJSON) GetSessionID(r *http.Request) (types.String) {
-    headerID                :=  r.Header.Get(
-                                    status.STATUS_SERVER_SESSION_KEY_HEADER)
+func (s *SessionedJSON) GetSessionID(r *http.Request) types.String {
+	headerID := r.Header.Get(
+		status.STATUS_SERVER_SESSION_KEY_HEADER)
 
-    if headerID != "" {
-        return types.String(headerID)
-    }
+	if headerID != "" {
+		return types.String(headerID)
+	}
 
-    return types.String("")
+	return types.String("")
 }
 
 func (s *SessionedJSON) Before(w http.ResponseWriter,
-    r *http.Request) (*types.Throw) {
-    beforeErr := s.JSON.Before(w, r)
+	r *http.Request) *types.Throw {
+	beforeErr := s.JSON.Before(w, r)
 
-    if beforeErr != nil {
-        s.Error(status.ErrorRespond{
-            Code:   500,
-            Error:  beforeErr,
-        }, w, r)
+	if beforeErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  500,
+			Error: beforeErr,
+		}, w, r)
 
-        return beforeErr
-    }
+		return beforeErr
+	}
 
-    userIP, userIPErr := s.GetIPFormString(r.RemoteAddr)
+	userIP, userIPErr := s.GetIPFormString(r.RemoteAddr)
 
-    if userIPErr != nil {
-        s.Error(status.ErrorRespond{
-            Code:   400,
-            Error:  userIPErr,
-        }, w, r)
+	if userIPErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  400,
+			Error: userIPErr,
+		}, w, r)
 
-        return userIPErr
-    }
+		return userIPErr
+	}
 
-    session, vErr   :=  s.Verify(userIP, s.GetSessionID(r))
+	session, vErr := s.Verify(userIP, s.GetSessionID(r))
 
-    if vErr != nil {
-        s.Error(status.ErrorRespond{
-            Code: 403,
-            Error: vErr,
-        }, w, r)
+	if vErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  403,
+			Error: vErr,
+		}, w, r)
 
-        return vErr
-    }
+		return vErr
+	}
 
-    s.session       =   session
+	s.session = session
 
-    w.Header().Set("Cache-Control", "private, max-age=0, no-cache")
+	w.Header().Set("Cache-Control", "private, max-age=0, no-cache")
 
-    return nil
+	return nil
 }

@@ -22,13 +22,13 @@
 package event
 
 import (
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/types"
 )
 
 type Config struct {
-    Logger      *logger.Logger
+	Logger *logger.Logger
 }
 
-type Callback func(*Parameters) (*types.Throw)
+type Callback func(*Parameters) *types.Throw
 type Callbacks map[types.String][]Callback

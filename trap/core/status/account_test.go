@@ -22,90 +22,90 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
+	"testing"
 )
 
 func TestAccountsRegister(t *testing.T) {
-    accounts    :=  Accounts{}
+	accounts := Accounts{}
 
-    acc, regErr :=  accounts.Register("The test pass",
-                        []types.String{"Test permission 1", "Test permission 2"})
+	acc, regErr := accounts.Register("The test pass",
+		[]types.String{"Test permission 1", "Test permission 2"})
 
-    if regErr != nil {
-        t.Errorf("Accounts.Register() failed register account due to error: %s",
-            regErr)
+	if regErr != nil {
+		t.Errorf("Accounts.Register() failed register account due to error: %s",
+			regErr)
 
-        return
-    }
+		return
+	}
 
-    // Let's by the way test the Account a little bit here
-    if !acc.Allowed("Test permission 1") ||
-        !acc.Allowed("Test permission 2") ||
-        len(acc.Permissions()) == 0 {
-        t.Error("Accounts.Register() didn't succefully initialize the Account")
+	// Let's by the way test the Account a little bit here
+	if !acc.Allowed("Test permission 1") ||
+		!acc.Allowed("Test permission 2") ||
+		len(acc.Permissions()) == 0 {
+		t.Error("Accounts.Register() didn't succefully initialize the Account")
 
-        return
-    }
+		return
+	}
 
-    acc, regErr =   accounts.Register("The test pass",
-                        []types.String{"Test permission 3", "Test permission 4"})
+	acc, regErr = accounts.Register("The test pass",
+		[]types.String{"Test permission 3", "Test permission 4"})
 
-    if regErr == nil || !regErr.Is(ErrAccountAlreadyExisted) {
-        t.Errorf("Accounts.Register() failed register account due to error: %s",
-            regErr)
+	if regErr == nil || !regErr.Is(ErrAccountAlreadyExisted) {
+		t.Errorf("Accounts.Register() failed register account due to error: %s",
+			regErr)
 
-        return
-    }
+		return
+	}
 
-    if acc != nil {
-        t.Error("Accounts.Register() mistakenly filled account")
+	if acc != nil {
+		t.Error("Accounts.Register() mistakenly filled account")
 
-        return
-    }
+		return
+	}
 }
 
 func TestAccountsGet(t *testing.T) {
-    accounts        :=  Accounts{}
+	accounts := Accounts{}
 
-    regAcc, regErr  :=  accounts.Register("The test pass",
-                            []types.String{"Test permission 1", "Test permission 2"})
+	regAcc, regErr := accounts.Register("The test pass",
+		[]types.String{"Test permission 1", "Test permission 2"})
 
-    if regErr != nil {
-        t.Errorf("Accounts.Register() failed to register account due to error: %s",
-            regErr)
+	if regErr != nil {
+		t.Errorf("Accounts.Register() failed to register account due to error: %s",
+			regErr)
 
-        return
-    }
+		return
+	}
 
-    getAcc, getErr  :=  accounts.Get("The test pass")
+	getAcc, getErr := accounts.Get("The test pass")
 
-    if getErr != nil {
-        t.Error("Accounts.Get() failed to get the account due to error: %s",
-            getErr)
+	if getErr != nil {
+		t.Errorf("Accounts.Get() failed to get the account due to error: %s",
+			getErr)
 
-        return
-    }
+		return
+	}
 
-    if getAcc != regAcc {
-        t.Error("Accounts.Get() failed to get the correct Account")
+	if getAcc != regAcc {
+		t.Error("Accounts.Get() failed to get the correct Account")
 
-        return
-    }
+		return
+	}
 
-    // Try get an account which is not existed
-    getAcc, getErr  =   accounts.Get("An account which not existed")
+	// Try get an account which is not existed
+	getAcc, getErr = accounts.Get("An account which not existed")
 
-    if getErr == nil || !getErr.Is(ErrAccountNotFound) {
-        t.Error("Accounts.Get() got an account which is not existed, impossible")
+	if getErr == nil || !getErr.Is(ErrAccountNotFound) {
+		t.Error("Accounts.Get() got an account which is not existed, impossible")
 
-        return
-    }
+		return
+	}
 
-    if getAcc != nil {
-        t.Error("Accounts.Get() mistakenly filled the Account result")
+	if getAcc != nil {
+		t.Error("Accounts.Get() mistakenly filled the Account result")
 
-        return
-    }
+		return
+	}
 }

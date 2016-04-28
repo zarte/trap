@@ -22,47 +22,47 @@
 package types
 
 import (
-    "strconv"
+	"strconv"
 )
 
 type Int16 int16
 
-func (i Int16) String() (String) {
-    return String(strconv.FormatInt(int64(i), 10))
+func (i Int16) String() String {
+	return String(strconv.FormatInt(int64(i), 10))
 }
 
-func (i Int16) Int16() (int16) {
-    return int16(i)
+func (i Int16) Int16() int16 {
+	return int16(i)
 }
 
-func (i Int16) Int32() (Int32) {
-    return Int32(i)
+func (i Int16) Int32() Int32 {
+	return Int32(i)
 }
 
-func (i Int16) Int64() (Int64) {
-    return Int64(i)
+func (i Int16) Int64() Int64 {
+	return Int64(i)
 }
 
-func (i Int16) UInt16() (UInt16) {
-    if i < INT16_MIN_UINT16 {
-        return UInt16(MIN_UINT16)
-    }
+func (i Int16) UInt16() UInt16 {
+	if i < INT16_MIN_UINT16 {
+		return UInt16(MIN_UINT16)
+	}
 
-    return UInt16(i)
+	return UInt16(i)
 }
 
-func (i Int16) UInt32() (UInt32) {
-    if i < INT16_MIN_UINT32 {
-        return UInt32(MIN_UINT32)
-    }
+func (i Int16) UInt32() UInt32 {
+	if i < INT16_MIN_UINT32 {
+		return UInt32(MIN_UINT32)
+	}
 
-    return UInt32(i)
+	return UInt32(i)
 }
 
-func (i Int16) UInt64() (UInt64) {
-    if i < INT16_MIN_UINT64 {
-        return UInt64(MIN_UINT64)
-    }
+func (i Int16) UInt64() UInt64 {
+	if i < INT16_MIN_UINT64 {
+		return UInt64(MIN_UINT64)
+	}
 
-    return UInt64(i)
+	return UInt64(i)
 }

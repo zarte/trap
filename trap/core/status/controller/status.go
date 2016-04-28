@@ -22,31 +22,31 @@
 package controller
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/status"
-    "github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net/http"
-    "encoding/json"
+	"encoding/json"
+	"net/http"
 )
 
 type Status struct {
-    SessionedJSON
+	SessionedJSON
 
-    GetStatus   func() (server.Status)
+	GetStatus func() server.Status
 }
 
 func (s *Status) Get(w http.ResponseWriter, r *http.Request) {
-    jsonData, jsonErr := json.Marshal(s.GetStatus())
+	jsonData, jsonErr := json.Marshal(s.GetStatus())
 
-    if jsonErr != nil {
-        s.Error(status.ErrorRespond{
-            Code: 500,
-            Error: types.ConvertError(jsonErr),
-        }, w, r)
+	if jsonErr != nil {
+		s.Error(status.ErrorRespond{
+			Code:  500,
+			Error: types.ConvertError(jsonErr),
+		}, w, r)
 
-        return
-    }
+		return
+	}
 
-    s.WriteGZIP(200, jsonData, w, r)
+	s.WriteGZIP(200, jsonData, w, r)
 }

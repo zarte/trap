@@ -22,68 +22,68 @@
 package logger
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
+	"time"
 )
 
 type Log struct {
-    Time        time.Time
-    Type        int
-    Context     types.String
-    Message     types.String
+	Time    time.Time
+	Type    int
+	Context types.String
+	Message types.String
 }
 
 type LogExport struct {
-    Time        time.Time
-    Type        types.String
-    Context     types.String
-    Message     types.String
+	Time    time.Time
+	Type    types.String
+	Context types.String
+	Message types.String
 }
 
 type Logs []Log
 
 func (l *Logs) Append(log Log, maxLen int) {
-    oldLogs         :=  append(*l, log)
+	oldLogs := append(*l, log)
 
-    totalLen        :=  len(oldLogs)
+	totalLen := len(oldLogs)
 
-    if totalLen > maxLen {
-        oldLogs     =   oldLogs[totalLen - maxLen:]
-    }
+	if totalLen > maxLen {
+		oldLogs = oldLogs[totalLen-maxLen:]
+	}
 
-    *l              =   oldLogs
+	*l = oldLogs
 }
 
-func (l *Logs) Export() ([]LogExport) {
-    exported        :=  []LogExport{}
+func (l *Logs) Export() []LogExport {
+	exported := []LogExport{}
 
-    oldLogs         :=  *l
+	oldLogs := *l
 
-    for i := len(oldLogs) - 1; i >= 0; i-- {
-        lType       :=  types.String("Default")
+	for i := len(oldLogs) - 1; i >= 0; i-- {
+		lType := types.String("Default")
 
-        switch oldLogs[i].Type {
-            case LOG_TYPE_DEBUG:
-                lType   =   "Debug"
+		switch oldLogs[i].Type {
+		case LOG_TYPE_DEBUG:
+			lType = "Debug"
 
-            case LOG_TYPE_INFO:
-                lType   =   "Information"
+		case LOG_TYPE_INFO:
+			lType = "Information"
 
-            case LOG_TYPE_WARNING:
-                lType   =   "Warning"
+		case LOG_TYPE_WARNING:
+			lType = "Warning"
 
-            case LOG_TYPE_ERROR:
-                lType   =   "Error"
-        }
+		case LOG_TYPE_ERROR:
+			lType = "Error"
+		}
 
-        exported    =   append(exported, LogExport{
-            Time:           oldLogs[i].Time,
-            Type:           lType,
-            Context:        oldLogs[i].Context,
-            Message:        oldLogs[i].Message,
-        })
-    }
+		exported = append(exported, LogExport{
+			Time:    oldLogs[i].Time,
+			Type:    lType,
+			Context: oldLogs[i].Context,
+			Message: oldLogs[i].Message,
+		})
+	}
 
-    return exported
+	return exported
 }

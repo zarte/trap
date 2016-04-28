@@ -22,167 +22,167 @@
 package status
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
-    "time"
-    "crypto/rand"
-    "encoding/base64"
+	"crypto/rand"
+	"encoding/base64"
+	"net"
+	"time"
 )
 
 type Session struct {
-    IP                              net.IP
-    Created                         time.Time
-    Key                             types.String
+	IP      net.IP
+	Created time.Time
+	Key     types.String
 
-    LastSeen                        time.Time
-    Expire                          time.Duration
+	LastSeen time.Time
+	Expire   time.Duration
 
-    account                         *Account
+	account *Account
 }
 
 type SessionDump struct {
-    IP                              net.IP
-    Created                         time.Time
+	IP      net.IP
+	Created time.Time
 
-    LastSeen                        time.Time
-    Expire                          time.Duration
+	LastSeen time.Time
+	Expire   time.Duration
 
-    Permissions                     map[types.String]bool
+	Permissions map[types.String]bool
 }
 
 func (s *Session) Bump() {
-    s.LastSeen                      =   time.Now()
+	s.LastSeen = time.Now()
 }
 
-func (s *Session) Account() (*Account) {
-    return s.account
+func (s *Session) Account() *Account {
+	return s.account
 }
 
-func (s *Session) Expired() (bool) {
-    if s.LastSeen.Add(s.Expire).After(time.Now()) {
-        return false
-    }
+func (s *Session) Expired() bool {
+	if s.LastSeen.Add(s.Expire).After(time.Now()) {
+		return false
+	}
 
-    return true
+	return true
 }
 
 type Sessions map[types.String]*Session
 
-func (s Sessions) getRandomKey() (types.String) {
-    rBytes                          :=  make([]byte, 32)
+func (s Sessions) getRandomKey() types.String {
+	rBytes := make([]byte, 32)
 
-    _, rErr                         :=  rand.Read(rBytes)
+	_, rErr := rand.Read(rBytes)
 
-    if rErr != nil {
-        return types.String("")
-    }
+	if rErr != nil {
+		return types.String("")
+	}
 
-    return types.String(base64.URLEncoding.EncodeToString(rBytes))
+	return types.String(base64.URLEncoding.EncodeToString(rBytes))
 }
 
 func (s Sessions) scanExpired() {
-    for key, val := range s {
-        if !val.Expired() {
-            continue
-        }
+	for key, val := range s {
+		if !val.Expired() {
+			continue
+		}
 
-        delete(s, key)
-    }
+		delete(s, key)
+	}
 }
 
 func (s Sessions) Add(ip net.IP, account *Account,
-    expire time.Duration) (*Session, *types.Throw) {
-    maxRetry                        :=  3
-    ipStr                           :=  types.String(ip.String())
+	expire time.Duration) (*Session, *types.Throw) {
+	maxRetry := 3
+	ipStr := types.String(ip.String())
 
-    // Add new session for user
-    newSession                      :=  &Session{
-        IP:                         ip,
-        Created:                    time.Now(),
-        Key:                        "",
+	// Add new session for user
+	newSession := &Session{
+		IP:      ip,
+		Created: time.Now(),
+		Key:     "",
 
-        LastSeen:                   time.Now(),
-        Expire:                     expire,
+		LastSeen: time.Now(),
+		Expire:   expire,
 
-        account:                    account,
-    }
+		account: account,
+	}
 
-    for {
-        newSession.Key              =   s.getRandomKey()
+	for {
+		newSession.Key = s.getRandomKey()
 
-        if _, ok := s[ipStr + ":" + newSession.Key]; !ok {
-            break
-        }
+		if _, ok := s[ipStr+":"+newSession.Key]; !ok {
+			break
+		}
 
-        newSession.Key              =   ""
+		newSession.Key = ""
 
-        if maxRetry <= 0 {
-            break
-        }
+		if maxRetry <= 0 {
+			break
+		}
 
-        maxRetry                    -=  1
-    }
+		maxRetry -= 1
+	}
 
-    if newSession.Key == "" {
-        return nil, ErrFailedGenerateSessionKey.Throw(ip)
-    }
+	if newSession.Key == "" {
+		return nil, ErrFailedGenerateSessionKey.Throw(ip)
+	}
 
-    s.scanExpired()
+	s.scanExpired()
 
-    s[ipStr + ":" + newSession.Key] =   newSession
+	s[ipStr+":"+newSession.Key] = newSession
 
-    return s[ipStr + ":" + newSession.Key], nil
+	return s[ipStr+":"+newSession.Key], nil
 }
 
-func (s Sessions) Delete(sessionKey types.String) (*types.Throw) {
-    for key, val := range s {
-        if val.Key != sessionKey {
-            continue
-        }
+func (s Sessions) Delete(sessionKey types.String) *types.Throw {
+	for key, val := range s {
+		if val.Key != sessionKey {
+			continue
+		}
 
-        delete(s, key)
+		delete(s, key)
 
-        return nil
-    }
+		return nil
+	}
 
-    return ErrSessionKeyNotFound.Throw(sessionKey)
+	return ErrSessionKeyNotFound.Throw(sessionKey)
 }
 
 func (s Sessions) Verify(ip net.IP,
-    sessionKey types.String) (*Session, *types.Throw) {
-    ipStr                           :=  types.String(ip.String())
-    keyName                         :=  ipStr + ":" + sessionKey
+	sessionKey types.String) (*Session, *types.Throw) {
+	ipStr := types.String(ip.String())
+	keyName := ipStr + ":" + sessionKey
 
-    if _, ok := s[keyName]; !ok {
-        return nil, ErrSessionNotFound.Throw(sessionKey, ipStr)
-    }
+	if _, ok := s[keyName]; !ok {
+		return nil, ErrSessionNotFound.Throw(sessionKey, ipStr)
+	}
 
-    if s[keyName].Expired() {
-        delete(s, keyName)
+	if s[keyName].Expired() {
+		delete(s, keyName)
 
-        return nil, ErrSessionExpired.Throw(sessionKey, ipStr)
-    }
+		return nil, ErrSessionExpired.Throw(sessionKey, ipStr)
+	}
 
-    s[keyName].Bump()
+	s[keyName].Bump()
 
-    return s[keyName], nil
+	return s[keyName], nil
 }
 
-func (s Sessions) Dump() ([]SessionDump) {
-    result := []SessionDump{}
+func (s Sessions) Dump() []SessionDump {
+	result := []SessionDump{}
 
-    for _, sess := range s {
-        result = append(result, SessionDump{
-            IP:                     sess.IP,
-            Created:                sess.Created,
+	for _, sess := range s {
+		result = append(result, SessionDump{
+			IP:      sess.IP,
+			Created: sess.Created,
 
-            LastSeen:               sess.LastSeen,
-            Expire:                 sess.Expire,
+			LastSeen: sess.LastSeen,
+			Expire:   sess.Expire,
 
-            Permissions:            sess.Account().Permissions(),
-        })
-    }
+			Permissions: sess.Account().Permissions(),
+		})
+	}
 
-    return result
+	return result
 }

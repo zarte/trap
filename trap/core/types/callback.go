@@ -21,10 +21,10 @@
 
 package types
 
-type Callback   func() (*Throw)
-type Callbacks  []Callback
+type Callback func() *Throw
+type Callbacks []Callback
 
 type CallbackPair struct {
-    Alpha       Callback
-    Beta        Callback
+	Alpha Callback
+	Beta  Callback
 }
