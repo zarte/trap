@@ -89,7 +89,7 @@ func TestClientInfoUnserialize(t *testing.T) {
 		return
 	}
 
-	if data.Marked != false {
+	if data.Marked == false {
 		t.Errorf("ClientInfo.Unserialize() failed to unserialize ClientInfo:"+
 			"Expecting 'Marked' to be '%v', got '%v'",
 			false, data.Marked)

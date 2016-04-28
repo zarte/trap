@@ -91,7 +91,7 @@ func TestMessagerPack(t *testing.T) {
 		),
 	}
 	expecting := string([]byte{
-		0, 0, 2, 0, 0, 2, 49, 50, 51, 52, 53, 54, 55,
+		0, 0, 0, 0, 0, 0, 2, 49, 50, 51, 52, 53, 54, 55,
 		56, 57, 48, 49, 50, 51, 52, 53, 54, 55, 56,
 		57, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
 		48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 48,
@@ -606,7 +606,7 @@ func TestMessagerParse(t *testing.T) {
 	}()
 
 	messager.parse(dummyIO, &[]byte{}, func(b []byte) *types.Throw {
-		dataIdx := curTestIndex - 2
+		dataIdx := curTestIndex - 1
 
 		if dataIdx >= 0 {
 			if !bytes.Equal(b, testDataOne[dataIdx]) {
@@ -632,7 +632,7 @@ func TestMessagerParse(t *testing.T) {
 	curTestIndex = 0
 
 	messager.parse(dummyIO, &[]byte{}, func(b []byte) *types.Throw {
-		dataIdx := curTestIndex - 2
+		dataIdx := curTestIndex - 1
 
 		if dataIdx >= 0 {
 			if !bytes.Equal(b, testDataTwo[dataIdx]) {

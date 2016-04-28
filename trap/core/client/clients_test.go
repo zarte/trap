@@ -345,8 +345,9 @@ func TestClientsExport(t *testing.T) {
 		return
 	}
 
-	if !exported[0].Address.Equal(ip1.IP()) ||
-		!exported[1].Address.Equal(ip2.IP()) {
+	// Hash table, order can be altered
+	if (!exported[0].Address.Equal(ip1.IP()) && !exported[1].Address.Equal(ip1.IP())) ||
+		(!exported[0].Address.Equal(ip2.IP()) && !exported[1].Address.Equal(ip2.IP())) {
 		t.Error("Failed to convert string to IP due to error")
 
 		return
