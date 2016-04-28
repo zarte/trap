@@ -108,6 +108,7 @@
      */
     "synchronize_interface": "0.0.0.0",
     "synchronize_port": 0,
+    "synchronize_max_receive_length": 40960,
     "synchronize_certificate": "",
     "synchronize_certificate_key": "",
     "synchronize_passphrase": "asdjiwu9fp,puMU&)#Y({#$NEU&$({NWF",
