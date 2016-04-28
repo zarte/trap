@@ -22,126 +22,139 @@
 package client
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
+	"time"
+)
+
+type MarkType byte
+type UnmarkType byte
+
+const (
+	CLIENT_MARK_MANUAL MarkType = iota
+	CLIENT_MARK_PICK
+	CLIENT_MARK_OTHER
+)
+
+const (
+	CLIENT_UNMARK_MANUAL UnmarkType = iota
+	CLIENT_UNMARK_EXPIRE
 )
 
 type Clients struct {
-    clients                 map[types.IP]*Client
-
-    onMark                  func(*Client)
-    onUnmark                func(*Client)
-    onRecord                func(*Client, Record)
+	clients  map[types.IP]*Client
+	onMark   func(*Client, MarkType)
+	onUnmark func(*Client, UnmarkType)
+	onRecord func(*Client, Record)
 }
 
-func NewClients(config Config) (*Clients) {
-    return &Clients{
-        clients:            map[types.IP]*Client{},
-        onMark:             config.OnMark,
-        onUnmark:           config.OnUnmark,
-        onRecord:           config.OnRecord,
-    }
+func NewClients(config Config) *Clients {
+	return &Clients{
+		clients:  map[types.IP]*Client{},
+		onMark:   config.OnMark,
+		onUnmark: config.OnUnmark,
+		onRecord: config.OnRecord,
+	}
 }
 
 func (c *Clients) Get(ip types.IP) (*Client, bool) {
-    isNew                   :=  false
+	isNew := false
 
-    if _, ok := c.clients[ip]; !ok {
-        c.clients[ip]       =   &Client{
-            address:            ip.IP(),
-            firstSeen:          time.Now(),
-            lastSeen:           time.Now(),
-            count:              0,
-            records:            []Record{},
-            marked:             false,
+	if _, ok := c.clients[ip]; !ok {
+		c.clients[ip] = &Client{
+			address:        ip.IP(),
+			firstSeen:      time.Now(),
+			lastSeen:       time.Now(),
+			count:          0,
+			records:        []Record{},
+			lastRecord:     nil,
+			marked:         false,
+			onMark:         c.onMark,
+			onUnmark:       c.onUnmark,
+			onRecord:       c.onRecord,
+			tolerateCount:  0,
+			tolerateExpire: time.Duration(0),
+			restrictExpire: time.Duration(0),
+		}
 
-            onMark:             c.onMark,
-            onUnmark:           c.onUnmark,
-            onRecord:           c.onRecord,
+		isNew = true
+	}
 
-            tolerateCount:      0,
-            tolerateExpire:     time.Duration(0),
-            restrictExpire:     time.Duration(0),
-        }
-
-        isNew               =   true
-    }
-
-    return c.clients[ip], isNew
+	return c.clients[ip], isNew
 }
 
-func (c *Clients) Has(ip types.IP) (bool) {
-    if _, ok := c.clients[ip]; !ok {
-        return false
-    }
+func (c *Clients) Has(ip types.IP) bool {
+	if _, ok := c.clients[ip]; !ok {
+		return false
+	}
 
-    return true
+	return true
 }
 
-func (c *Clients) Len() (int) {
-    return len(c.clients)
+func (c *Clients) Len() int {
+	return len(c.clients)
 }
 
-func (c *Clients) Delete(ip types.IP) (*types.Throw) {
-    if !c.Has(ip) {
-        return ErrClientNotFound.Throw(ip)
-    }
+func (c *Clients) Delete(ip types.IP, ty UnmarkType) *types.Throw {
+	if !c.Has(ip) {
+		return ErrClientNotFound.Throw(ip)
+	}
 
-    if c.clients[ip].marked {
-        c.clients[ip].Unmark()
-    }
+	if c.clients[ip].marked {
+		c.clients[ip].Unmark(ty)
+	}
 
-    delete(c.clients, ip)
+	delete(c.clients, ip)
 
-    return nil
+	return nil
 }
 
-func (c *Clients) Scan(callback func(types.IP, *Client) (*types.Throw)) (*types.Throw) {
-    var err *types.Throw    =   nil
+func (c *Clients) Scan(
+	callback func(types.IP, *Client) *types.Throw) *types.Throw {
+	var err *types.Throw = nil
 
-    for key, val := range c.clients {
-        callbackErr         :=  callback(key, val)
+	for key, val := range c.clients {
+		callbackErr := callback(key, val)
 
-        if callbackErr == nil {
-            continue
-        }
+		if callbackErr == nil {
+			continue
+		}
 
-        err = callbackErr
+		err = callbackErr
 
-        break
-    }
+		break
+	}
 
-    return err
+	return err
 }
 
-func (c *Clients) Clear() (*types.Throw) {
-    var err *types.Throw    =   nil
+func (c *Clients) Clear() *types.Throw {
+	var err *types.Throw = nil
 
-    for key, _ := range c.clients {
-        deleteErr           :=  c.Delete(key)
+	for key, _ := range c.clients {
+		deleteErr := c.Delete(key, CLIENT_UNMARK_EXPIRE)
 
-        if deleteErr != nil {
-            err = deleteErr
-        }
-    }
+		if deleteErr != nil {
+			err = deleteErr
+		}
+	}
 
-    return err
+	return err
 }
 
-func (c *Clients) Export() ([]ClientExport) {
-    clients                 :=  []ClientExport{}
+func (c *Clients) Export() []ClientExport {
+	clients := []ClientExport{}
 
-    for _, clientInfo := range c.clients {
-        clients             =   append(clients, ClientExport{
-            Address:            clientInfo.Address(),
-            FirstSeen:          clientInfo.FirstSeen(),
-            LastSeen:           clientInfo.LastSeen(),
-            Count:              clientInfo.Count(),
-            Records:            clientInfo.Records(),
-            Marked:             clientInfo.Marked(),
-        })
-    }
+	for _, clientInfo := range c.clients {
+		clients = append(clients, ClientExport{
+			Address:   clientInfo.Address(),
+			FirstSeen: clientInfo.FirstSeen(),
+			LastSeen:  clientInfo.LastSeen(),
+			Count:     clientInfo.Count(),
+			Records:   clientInfo.Records(),
+			Marked:    clientInfo.Marked(),
+		})
+	}
 
-    return clients
+	return clients
 }

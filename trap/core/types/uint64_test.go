@@ -31,14 +31,14 @@ func TestUInt64ToString(t *testing.T) {
 	maxUInt64 := UInt64(MAX_UINT64)
 
 	if maxUInt64.String().String() != strconv.FormatUint(uint64(MAX_UINT64), 10) {
-		t.Error("UInt64.String() failed convert number '%d' to string", maxUInt64.UInt64())
+		t.Errorf("UInt64.String() failed convert number '%d' to string", maxUInt64.UInt64())
 	}
 
 	// Try min
 	minUInt64 := UInt64(MIN_UINT64)
 
 	if minUInt64.String().String() != strconv.FormatUint(uint64(MIN_UINT64), 10) {
-		t.Error("UInt64.String() failed convert number '%d' to string", minUInt64.UInt64())
+		t.Errorf("UInt64.String() failed convert number '%d' to string", minUInt64.UInt64())
 	}
 }
 

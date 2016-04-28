@@ -22,332 +22,333 @@
 package client
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "testing"
-    //"net"
-    //"time"
+	"testing"
+	//"net"
+	//"time"
 )
 
 var (
-    errFakeError *types.Error = types.NewError("This is a fake error")
+	errFakeError *types.Error = types.NewError(
+		"This is a fake error")
 )
 
 func TestClientsNewClients(t *testing.T) {
-    clients := NewClients(Config{
-        OnMark:             func(*Client) {},
-        OnUnmark:           func(*Client) {},
-        OnRecord:           func(*Client, Record) {},
-    })
+	clients := NewClients(Config{
+		OnMark:   func(*Client, MarkType) {},
+		OnUnmark: func(*Client, UnmarkType) {},
+		OnRecord: func(*Client, Record) {},
+	})
 
-    if clients.Len() != 0 {
-        t.Error("Invalid number of a completely new Client Map")
+	if clients.Len() != 0 {
+		t.Error("Invalid number of a completely new Client Map")
 
-        return
-    }
+		return
+	}
 }
 
 func TestClientsGet(t *testing.T) {
-    clients         :=  NewClients(Config{
-        OnMark:         func(*Client) {},
-        OnUnmark:       func(*Client) {},
-        OnRecord:       func(*Client, Record) {},
-    })
-    ip, ipErr       :=  types.ConvertIPFromString("127.0.0.1")
+	clients := NewClients(Config{
+		OnMark:   func(*Client, MarkType) {},
+		OnUnmark: func(*Client, UnmarkType) {},
+		OnRecord: func(*Client, Record) {},
+	})
+	ip, ipErr := types.ConvertIPFromString("127.0.0.1")
 
-    if ipErr != nil {
-        t.Error("Failed to convert IP address from string")
+	if ipErr != nil {
+		t.Error("Failed to convert IP address from string")
 
-        return
-    }
+		return
+	}
 
-    client, isNew   :=  clients.Get(ip)
+	client, isNew := clients.Get(ip)
 
-    if !isNew {
-        t.Error("Failed asserting a new client is new")
+	if !isNew {
+		t.Error("Failed asserting a new client is new")
 
-        return
-    }
+		return
+	}
 
-    if !client.Address().Equal(ip.IP()) {
-        t.Error("The new client contains invalid IP address")
+	if !client.Address().Equal(ip.IP()) {
+		t.Error("The new client contains invalid IP address")
 
-        return
-    }
+		return
+	}
 
-    if clients.Len() != 1 {
-        t.Error("Failed asserting '1' client in the list")
+	if clients.Len() != 1 {
+		t.Error("Failed asserting '1' client in the list")
 
-        return
-    }
+		return
+	}
 
-    if !clients.Has(ip) {
-        t.Error("Can't found a client which is existed")
+	if !clients.Has(ip) {
+		t.Error("Can't found a client which is existed")
 
-        return
-    }
+		return
+	}
 }
 
 func TestClientsHas(t *testing.T) {
-    clients         :=  NewClients(Config{
-        OnMark:         func(*Client) {},
-        OnUnmark:       func(*Client) {},
-        OnRecord:       func(*Client, Record) {},
-    })
-    ip1, ipErr1     :=  types.ConvertIPFromString("127.0.0.1")
-    ip2, ipErr2     :=  types.ConvertIPFromString("127.0.0.2")
+	clients := NewClients(Config{
+		OnMark:   func(*Client, MarkType) {},
+		OnUnmark: func(*Client, UnmarkType) {},
+		OnRecord: func(*Client, Record) {},
+	})
+	ip1, ipErr1 := types.ConvertIPFromString("127.0.0.1")
+	ip2, ipErr2 := types.ConvertIPFromString("127.0.0.2")
 
-    if ipErr1 != nil || ipErr2 != nil {
-        t.Error("Failed to convert IP address from string")
+	if ipErr1 != nil || ipErr2 != nil {
+		t.Error("Failed to convert IP address from string")
 
-        return
-    }
+		return
+	}
 
-    clients.Get(ip1)
+	clients.Get(ip1)
 
-    if !clients.Has(ip1) {
-        t.Error("Failed asserting an existed client is existed")
+	if !clients.Has(ip1) {
+		t.Error("Failed asserting an existed client is existed")
 
-        return
-    }
+		return
+	}
 
-    if clients.Has(ip2) {
-        t.Error("Failed asserting an not existed client is not existed")
+	if clients.Has(ip2) {
+		t.Error("Failed asserting an not existed client is not existed")
 
-        return
-    }
+		return
+	}
 
-    if clients.Len() != 1 {
-        t.Error("Has method can't change length of a client map")
+	if clients.Len() != 1 {
+		t.Error("Has method can't change length of a client map")
 
-        return
-    }
+		return
+	}
 }
 
 func TestClientsDelete(t *testing.T) {
-    clients         :=  NewClients(Config{
-        OnMark:         func(*Client) {},
-        OnUnmark:       func(*Client) {},
-        OnRecord:       func(*Client, Record) {},
-    })
-    ip, ipErr       :=  types.ConvertIPFromString("127.0.0.1")
+	clients := NewClients(Config{
+		OnMark:   func(*Client, MarkType) {},
+		OnUnmark: func(*Client, UnmarkType) {},
+		OnRecord: func(*Client, Record) {},
+	})
+	ip, ipErr := types.ConvertIPFromString("127.0.0.1")
 
-    if ipErr != nil {
-        t.Error("Failed to convert IP address from string")
+	if ipErr != nil {
+		t.Error("Failed to convert IP address from string")
 
-        return
-    }
+		return
+	}
 
-    clients.Get(ip)
+	clients.Get(ip)
 
-    if !clients.Has(ip) {
-        t.Error("Failed asserting an existed client is existed")
+	if !clients.Has(ip) {
+		t.Error("Failed asserting an existed client is existed")
 
-        return
-    }
+		return
+	}
 
-    deleteErr       :=  clients.Delete(ip)
+	deleteErr := clients.Delete(ip, CLIENT_UNMARK_MANUAL)
 
-    if deleteErr != nil {
-        t.Errorf("Can't delete client due to error: %s", deleteErr)
+	if deleteErr != nil {
+		t.Errorf("Can't delete client due to error: %s", deleteErr)
 
-        return
-    }
+		return
+	}
 
-    deleteErr       =   clients.Delete(ip)
+	deleteErr = clients.Delete(ip, CLIENT_UNMARK_MANUAL)
 
-    if deleteErr == nil || !deleteErr.Is(ErrClientNotFound) {
-        t.Errorf("Unexpected error when trying to delete a non-existed client: %s",
-            deleteErr)
+	if deleteErr == nil || !deleteErr.Is(ErrClientNotFound) {
+		t.Errorf("Unexpected error when trying to delete a non-existed client: %s",
+			deleteErr)
 
-        return
-    }
+		return
+	}
 }
 
 func TestClientsScan(t *testing.T) {
-    scaned          :=  0
-    clients         :=  NewClients(Config{
-        OnMark:         func(*Client) {},
-        OnUnmark:       func(*Client) {},
-        OnRecord:       func(*Client, Record) {},
-    })
+	scaned := 0
+	clients := NewClients(Config{
+		OnMark:   func(*Client, MarkType) {},
+		OnUnmark: func(*Client, UnmarkType) {},
+		OnRecord: func(*Client, Record) {},
+	})
 
-    clients.Scan(func(ip types.IP, client *Client) (*types.Throw) {
-        scaned++
+	clients.Scan(func(ip types.IP, client *Client) *types.Throw {
+		scaned++
 
-        return nil
-    })
+		return nil
+	})
 
-    if scaned != 0 {
-        t.Error("Unexpected scanning count")
+	if scaned != 0 {
+		t.Error("Unexpected scanning count")
 
-        return
-    }
+		return
+	}
 
-    ip1, ipErr1     :=  types.ConvertIPFromString("127.0.0.1")
+	ip1, ipErr1 := types.ConvertIPFromString("127.0.0.1")
 
-    if ipErr1 != nil {
-        t.Errorf("Failed to convert string to IP due to error: %s", ipErr1)
+	if ipErr1 != nil {
+		t.Errorf("Failed to convert string to IP due to error: %s", ipErr1)
 
-        return
-    }
+		return
+	}
 
-    clients.Get(ip1)
+	clients.Get(ip1)
 
-    scaned = 0
+	scaned = 0
 
-    clients.Scan(func(ip types.IP, client *Client) (*types.Throw) {
-        scaned++
+	clients.Scan(func(ip types.IP, client *Client) *types.Throw {
+		scaned++
 
-        return nil
-    })
+		return nil
+	})
 
-    if scaned != 1 {
-        t.Error("Unexpected scanning count")
+	if scaned != 1 {
+		t.Error("Unexpected scanning count")
 
-        return
-    }
+		return
+	}
 
-    ip2, ipErr2     :=  types.ConvertIPFromString("127.0.0.2")
+	ip2, ipErr2 := types.ConvertIPFromString("127.0.0.2")
 
-    if ipErr2 != nil {
-        t.Errorf("Failed to convert string to IP due to error: %s", ipErr2)
+	if ipErr2 != nil {
+		t.Errorf("Failed to convert string to IP due to error: %s", ipErr2)
 
-        return
-    }
+		return
+	}
 
-    clients.Get(ip2)
+	clients.Get(ip2)
 
-    scaned = 0
+	scaned = 0
 
-    clients.Scan(func(ip types.IP, client *Client) (*types.Throw) {
-        scaned++
+	clients.Scan(func(ip types.IP, client *Client) *types.Throw {
+		scaned++
 
-        return nil
-    })
+		return nil
+	})
 
-    if scaned != 2 {
-        t.Error("Unexpected scanning count")
+	if scaned != 2 {
+		t.Error("Unexpected scanning count")
 
-        return
-    }
+		return
+	}
 
-    scaned = 0
+	scaned = 0
 
-    scanErr := clients.Scan(func(ip types.IP, client *Client) (*types.Throw) {
-        scaned++
+	scanErr := clients.Scan(func(ip types.IP, client *Client) *types.Throw {
+		scaned++
 
-        if scaned >= 1 {
-            return errFakeError.Throw()
-        }
+		if scaned >= 1 {
+			return errFakeError.Throw()
+		}
 
-        return nil
-    })
+		return nil
+	})
 
-    if scaned != 1 {
-        t.Error("Unexpected scanning count")
+	if scaned != 1 {
+		t.Error("Unexpected scanning count")
 
-        return
-    }
+		return
+	}
 
-    if scanErr == nil || !scanErr.Is(errFakeError) {
-        t.Error("Unexpected error when scanning clients map")
+	if scanErr == nil || !scanErr.Is(errFakeError) {
+		t.Error("Unexpected error when scanning clients map")
 
-        return
-    }
+		return
+	}
 }
 
 func TestClientsClear(t *testing.T) {
-    markCalled      :=  false
-    unmarkCalled    :=  false
-    clients         :=  NewClients(Config{
-        OnMark:         func(*Client) {
-            markCalled      = true
-        },
-        OnUnmark:       func(*Client) {
-            unmarkCalled    = true
-        },
-        OnRecord:       func(*Client, Record) {},
-    })
+	markCalled := false
+	unmarkCalled := false
+	clients := NewClients(Config{
+		OnMark: func(*Client, MarkType) {
+			markCalled = true
+		},
+		OnUnmark: func(*Client, UnmarkType) {
+			unmarkCalled = true
+		},
+		OnRecord: func(*Client, Record) {},
+	})
 
-    ip1, ipErr1     :=  types.ConvertIPFromString("127.0.0.1")
-    ip2, ipErr2     :=  types.ConvertIPFromString("127.0.0.2")
+	ip1, ipErr1 := types.ConvertIPFromString("127.0.0.1")
+	ip2, ipErr2 := types.ConvertIPFromString("127.0.0.2")
 
-    if ipErr1 != nil || ipErr2 != nil {
-        t.Error("Failed to convert string to IP due to error")
+	if ipErr1 != nil || ipErr2 != nil {
+		t.Error("Failed to convert string to IP due to error")
 
-        return
-    }
+		return
+	}
 
-    clients.Get(ip1)
-    client2, _      :=  clients.Get(ip2)
+	clients.Get(ip1)
+	client2, _ := clients.Get(ip2)
 
-    client2.Mark()
+	client2.Mark(CLIENT_MARK_MANUAL)
 
-    if clients.Len() != 2 {
-        t.Error("Unexpected amount of clients")
+	if clients.Len() != 2 {
+		t.Error("Unexpected amount of clients")
 
-        return
-    }
+		return
+	}
 
-    if clients.Len() != 2 {
-        t.Error("Unexpected amount of clients")
+	if clients.Len() != 2 {
+		t.Error("Unexpected amount of clients")
 
-        return
-    }
+		return
+	}
 
-    clearErr        :=  clients.Clear()
+	clearErr := clients.Clear()
 
-    if clearErr != nil {
-        t.Errorf("Failed clear clients due to error: %s", clearErr)
+	if clearErr != nil {
+		t.Errorf("Failed clear clients due to error: %s", clearErr)
 
-        return
-    }
+		return
+	}
 
-    if clients.Len() != 0 {
-        t.Error("Unexpected amount of clients")
+	if clients.Len() != 0 {
+		t.Error("Unexpected amount of clients")
 
-        return
-    }
+		return
+	}
 
-    if !markCalled || !unmarkCalled {
-        t.Error("Expected callback hasn't been call")
+	if !markCalled || !unmarkCalled {
+		t.Error("Expected callback hasn't been call")
 
-        return
-    }
+		return
+	}
 }
 
 func TestClientsExport(t *testing.T) {
-    clients         :=  NewClients(Config{
-        OnMark:         func(*Client) {},
-        OnUnmark:       func(*Client) {},
-        OnRecord:       func(*Client, Record) {},
-    })
+	clients := NewClients(Config{
+		OnMark:   func(*Client, MarkType) {},
+		OnUnmark: func(*Client, UnmarkType) {},
+		OnRecord: func(*Client, Record) {},
+	})
 
-    ip1, ipErr1     :=  types.ConvertIPFromString("127.0.0.1")
-    ip2, ipErr2     :=  types.ConvertIPFromString("127.0.0.2")
+	ip1, ipErr1 := types.ConvertIPFromString("127.0.0.1")
+	ip2, ipErr2 := types.ConvertIPFromString("127.0.0.2")
 
-    if ipErr1 != nil || ipErr2 != nil {
-        t.Error("Failed to convert string to IP due to error")
+	if ipErr1 != nil || ipErr2 != nil {
+		t.Error("Failed to convert string to IP due to error")
 
-        return
-    }
+		return
+	}
 
-    clients.Get(ip1)
-    clients.Get(ip2)
+	clients.Get(ip1)
+	clients.Get(ip2)
 
-    exported := clients.Export()
+	exported := clients.Export()
 
-    if len(exported) != 2 {
-        t.Error("Unexpected amount of exported clients")
+	if len(exported) != 2 {
+		t.Error("Unexpected amount of exported clients")
 
-        return
-    }
+		return
+	}
 
-    if !exported[0].Address.Equal(ip1.IP()) ||
-        !exported[1].Address.Equal(ip2.IP()) {
-        t.Error("Failed to convert string to IP due to error")
+	if !exported[0].Address.Equal(ip1.IP()) ||
+		!exported[1].Address.Equal(ip2.IP()) {
+		t.Error("Failed to convert string to IP due to error")
 
-        return
-    }
+		return
+	}
 }

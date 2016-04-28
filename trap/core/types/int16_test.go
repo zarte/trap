@@ -38,14 +38,14 @@ func TestInt16ToString(t *testing.T) {
 	maxInt16 := Int16(MAX_INT16)
 
 	if maxInt16.String().String() != strconv.FormatInt(int64(MAX_INT16), 10) {
-		t.Error("Int16.String() failed convert number '%d' to string", maxInt16.Int16())
+		t.Errorf("Int16.String() failed convert number '%d' to string", maxInt16.Int16())
 	}
 
 	// Try min
 	minInt16 := Int16(MIN_INT16)
 
 	if minInt16.String().String() != strconv.FormatInt(int64(MIN_INT16), 10) {
-		t.Error("Int16.String() failed convert number '%d' to string", minInt16.Int16())
+		t.Errorf("Int16.String() failed convert number '%d' to string", minInt16.Int16())
 	}
 }
 

@@ -22,129 +22,130 @@
 package client
 
 import (
-    "github.com/raincious/trap/trap/core/types"
+	"github.com/raincious/trap/trap/core/types"
 
-    "time"
-    "net"
+	"net"
+	"time"
 )
 
 const (
-    CLIENT_EXPIRED_NO       =   iota
-    CLIENT_EXPIRED_YES
-    CLIENT_EXPIRED_RESTRICTED
+	CLIENT_EXPIRED_NO = iota
+	CLIENT_EXPIRED_YES
+	CLIENT_EXPIRED_RESTRICTED
 )
 
 type Client struct {
-    address                 net.IP
-
-    firstSeen               time.Time
-    lastSeen                time.Time
-
-    count                   types.UInt32
-
-    records                 []Record
-
-    marked                  bool
-
-    onMark                  func(*Client)
-    onUnmark                func(*Client)
-    onRecord                func(*Client, Record)
-
-    tolerateCount           types.UInt32
-    tolerateExpire          time.Duration
-    restrictExpire          time.Duration
+	address        net.IP
+	firstSeen      time.Time
+	lastSeen       time.Time
+	count          types.UInt32
+	records        []Record
+	lastRecord     *Record
+	marked         bool
+	onMark         func(*Client, MarkType)
+	onUnmark       func(*Client, UnmarkType)
+	onRecord       func(*Client, Record)
+	tolerateCount  types.UInt32
+	tolerateExpire time.Duration
+	restrictExpire time.Duration
 }
 
-func (c *Client) Address() (net.IP) {
-    return c.address
+func (c *Client) Address() net.IP {
+	return c.address
 }
 
-func (c *Client) FirstSeen() (time.Time) {
-    return c.firstSeen
+func (c *Client) FirstSeen() time.Time {
+	return c.firstSeen
 }
 
-func (c *Client) LastSeen() (time.Time) {
-    return c.lastSeen
+func (c *Client) LastSeen() time.Time {
+	return c.lastSeen
 }
 
-func (c *Client) Count() (types.UInt32) {
-    return c.count
+func (c *Client) Count() types.UInt32 {
+	return c.count
 }
 
-func (c *Client) Marked() (bool) {
-    return c.marked
+func (c *Client) Marked() bool {
+	return c.marked
 }
 
 func (c *Client) Record(record Record, maxLen types.UInt16) {
-    dataLen                 :=  types.Int32(len(c.records)).UInt16()
+	dataLen := types.Int32(len(c.records)).UInt16()
 
-    c.records               =   append(c.records, record)
+	c.records = append(c.records, record)
 
-    if dataLen > maxLen {
-        c.records           =   c.records[dataLen - maxLen:]
-    }
+	if dataLen > maxLen {
+		c.records = c.records[dataLen-maxLen:]
+	}
 
-    c.onRecord(c, record)
+	c.lastRecord = &c.records[len(c.records)-1]
+
+	c.onRecord(c, record)
 }
 
-func (c *Client) Records() ([]Record) {
-    return c.records
+func (c *Client) Records() []Record {
+	return c.records
 }
 
-func (c *Client) Mark() {
-    oldMarkStatus           :=  c.marked
-
-    c.marked                =   true
-
-    if !oldMarkStatus {
-        c.onMark(c)
-    }
+func (c *Client) LastRecord() *Record {
+	return c.lastRecord
 }
 
-func (c *Client) Unmark() {
-    oldUnmarkStatus         :=  c.marked
+func (c *Client) Mark(ty MarkType) {
+	oldMarkStatus := c.marked
 
-    c.marked                =   false
+	c.marked = true
 
-    if oldUnmarkStatus {
-        c.onUnmark(c)
-    }
+	if !oldMarkStatus {
+		c.onMark(c, ty)
+	}
+}
+
+func (c *Client) Unmark(ty UnmarkType) {
+	oldUnmarkStatus := c.marked
+
+	c.marked = false
+
+	if oldUnmarkStatus {
+		c.onUnmark(c, ty)
+	}
 }
 
 func (c *Client) Bump() {
-    c.lastSeen              =   time.Now()
+	c.lastSeen = time.Now()
 
-    if c.count + 1 > types.UINT32_MAX_UINT32 {
-        return
-    }
+	if c.count+1 > types.UINT32_MAX_UINT32 {
+		return
+	}
 
-    c.count                 +=  1
+	c.count += 1
 }
 
 func (c *Client) Rebump() {
-    c.count                 =   1
-    c.lastSeen              =   time.Now()
+	c.count = 1
+	c.lastSeen = time.Now()
 }
 
 func (c *Client) Tolerate(count types.UInt32, expire time.Duration,
-    restrict time.Duration) {
-    c.tolerateCount         =   count
-    c.tolerateExpire        =   expire
-    c.restrictExpire        =   restrict
+	restrict time.Duration) {
+	c.tolerateCount = count
+	c.tolerateExpire = expire
+	c.restrictExpire = restrict
 }
 
-func (c *Client) Expired(now time.Time) (int) {
-    expireTime              :=  c.lastSeen.Add(c.tolerateExpire)
+func (c *Client) Expired(now time.Time) int {
+	expireTime := c.lastSeen.Add(c.tolerateExpire)
 
-    if !now.After(expireTime) {
-        return CLIENT_EXPIRED_NO
-    }
+	if !now.After(expireTime) {
+		return CLIENT_EXPIRED_NO
+	}
 
-    restrictTime            :=  expireTime.Add(c.restrictExpire)
+	restrictTime := expireTime.Add(c.restrictExpire)
 
-    if c.count >= c.tolerateCount && !now.After(restrictTime) {
-        return CLIENT_EXPIRED_RESTRICTED
-    }
+	if c.count >= c.tolerateCount && !now.After(restrictTime) {
+		return CLIENT_EXPIRED_RESTRICTED
+	}
 
-    return CLIENT_EXPIRED_YES
+	return CLIENT_EXPIRED_YES
 }

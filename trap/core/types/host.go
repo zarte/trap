@@ -34,10 +34,15 @@ const (
 )
 
 var (
-	ErrHostInvalidIP *Error = NewError("'%s' is not an IP address")
+	ErrHostInvalidIP *Error = NewError(
+		"'%s' is not an IP address")
 
 	emptyIP = IP{}
+	zeroIP4 = ConvertIP(net.ParseIP("0.0.0.0"))
+	zeroIP6 = ConvertIP(net.ParseIP("::"))
 )
+
+type IPAddressString String
 
 type IP [IP_ADDR_SLICE_LEN]byte
 
@@ -65,7 +70,15 @@ func (ip *IP) IsEmpty() bool {
 	return true
 }
 
-func (ip *IP) MarshalText() ([]byte, error) {
+func (ip *IP) IsZero() bool {
+	if !ip.IsEqual(&zeroIP4) && !ip.IsEqual(&zeroIP6) {
+		return false
+	}
+
+	return true
+}
+
+func (ip IP) MarshalText() ([]byte, error) {
 	return []byte(ip.String()), nil
 }
 
@@ -74,7 +87,7 @@ func (ip *IP) UnmarshalText(text []byte) error {
 
 	var err *Throw = nil
 
-	newIP, err = ConvertIPFromString(String(text[:]))
+	newIP, err = ConvertIPFromString(String(text))
 
 	if err != nil {
 		return errors.New(err.Error())
@@ -145,6 +158,13 @@ func (a *IPAddress) IsEmpty() bool {
 
 func (a IPAddress) String() String {
 	return String(a.IP.String()).Join(":", a.Port.String())
+}
+
+func (a IPAddress) Wrapped() IPAddressWrapped {
+	return IPAddressWrapped{
+		ip:  a,
+		str: IPAddressString(a.String()),
+	}
 }
 
 func (a *IPAddress) Serialize() ([]byte, *Throw) {
@@ -250,8 +270,22 @@ func (ipAddrs *IPAddresses) Unserialize(data []byte) *Throw {
 	return nil
 }
 
-func (ipAddrs *IPAddresses) Contains(companions *IPAddresses) Int64 {
-	result := Int64(0)
+func (ipAddrs *IPAddresses) Contains(companions *IPAddresses) bool {
+	for _, ipAddr := range *ipAddrs {
+		for _, companion := range *companions {
+			if !companion.IsEqual(&ipAddr) {
+				continue
+			}
+
+			return true
+		}
+	}
+
+	return false
+}
+
+func (ipAddrs *IPAddresses) Intersection(companions *IPAddresses) IPAddresses {
+	intersection := IPAddresses{}
 
 	for _, ipAddr := range *ipAddrs {
 		for _, companion := range *companions {
@@ -259,11 +293,170 @@ func (ipAddrs *IPAddresses) Contains(companions *IPAddresses) Int64 {
 				continue
 			}
 
-			result += 1
+			intersection = append(intersection, companion)
+		}
+	}
+
+	return intersection
+}
+
+func (ipAddrs *IPAddresses) Searchable() SearchableIPAddresses {
+	searchable := SearchableIPAddresses{
+		data:  map[IPAddressString]IPAddressWrapped{},
+		order: []IPAddressString{},
+	}
+
+	searchable.Import(*ipAddrs)
+
+	return searchable
+}
+
+type IPAddressWrapped struct {
+	ip  IPAddress
+	str IPAddressString
+}
+
+func (ip *IPAddressWrapped) String() IPAddressString {
+	return ip.str
+}
+
+func (ip *IPAddressWrapped) IPAddress() IPAddress {
+	return ip.ip
+}
+
+type SearchableIPAddresses struct {
+	data  map[IPAddressString]IPAddressWrapped
+	order []IPAddressString
+}
+
+func (ipMap *SearchableIPAddresses) Import(addrs IPAddresses) {
+	for _, ip := range addrs {
+		wrap := ip.Wrapped()
+
+		ipMap.data[wrap.String()] = wrap
+		ipMap.order = append(ipMap.order, wrap.String())
+	}
+}
+
+func (ipMap *SearchableIPAddresses) Export() IPAddresses {
+	result := make(IPAddresses, len(ipMap.order))
+
+	for index, key := range ipMap.order {
+		ip := ipMap.data[key]
+
+		result[index] = ip.IPAddress()
+	}
+
+	return result
+}
+
+func (ipMap SearchableIPAddresses) has(addrStr IPAddressString) bool {
+	if _, ok := ipMap.data[addrStr]; !ok {
+		return false
+	}
+
+	return true
+}
+
+func (ipMap *SearchableIPAddresses) Has(ip *IPAddressWrapped) bool {
+	return ipMap.has(ip.String())
+}
+
+func (ipMap *SearchableIPAddresses) Intersection(
+	ips *SearchableIPAddresses,
+) SearchableIPAddresses {
+	result := SearchableIPAddresses{
+		data:  map[IPAddressString]IPAddressWrapped{},
+		order: []IPAddressString{},
+	}
+
+	if ips.Len() < ipMap.Len() {
+		for key, val := range ips.data {
+			if !ipMap.has(key) {
+				continue
+			}
+
+			result.Insert(val)
+		}
+	} else {
+		for key, val := range ipMap.data {
+			if !ips.has(key) {
+				continue
+			}
+
+			result.Insert(val)
 		}
 	}
 
 	return result
+}
+
+func (ipMap *SearchableIPAddresses) Contains(ips *SearchableIPAddresses) bool {
+	if ips.Len() < ipMap.Len() {
+		for key, _ := range ips.data {
+			if !ipMap.has(key) {
+				continue
+			}
+
+			return true
+		}
+	} else {
+		for key, _ := range ipMap.data {
+			if !ips.has(key) {
+				continue
+			}
+
+			return true
+		}
+	}
+
+	return false
+}
+
+func (ipMap *SearchableIPAddresses) Insert(newIP IPAddressWrapped) {
+	ipMap.data[newIP.String()] = newIP
+	ipMap.order = append(ipMap.order, newIP.String())
+}
+
+func (ipMap *SearchableIPAddresses) Delete(newIP *IPAddressWrapped) bool {
+	addrString := newIP.String()
+
+	if !ipMap.has(addrString) {
+		return false
+	}
+
+	delete(ipMap.data, addrString)
+
+	for orderIdx := len(ipMap.order) - 1; orderIdx >= 0; orderIdx-- {
+		if ipMap.order[orderIdx] != addrString {
+			continue
+		}
+
+		ipMap.order = append(ipMap.order[:orderIdx],
+			ipMap.order[orderIdx+1:]...)
+
+		break
+	}
+
+	return true
+}
+
+func (ipMap *SearchableIPAddresses) Through(
+	callback func(key IPAddressString, val IPAddressWrapped) *Throw,
+) {
+	var err *Throw = nil
+
+	for orderIdx := len(ipMap.order) - 1; orderIdx >= 0; orderIdx-- {
+		err = callback(ipMap.order[orderIdx], ipMap.data[ipMap.order[orderIdx]])
+
+		if err != nil {
+			break
+		}
+	}
+}
+
+func (ipMap *SearchableIPAddresses) Len() int {
+	return len(ipMap.data)
 }
 
 func ConvertAddress(addr net.Addr) (HostAddress, *Throw) {
@@ -316,4 +509,11 @@ func ConvertIPAddress(addr net.Addr) (IPAddress, *Throw) {
 		IP:   ip,
 		Port: String(aPort).UInt16(),
 	}, nil
+}
+
+func NewSearchableIPAddresses() SearchableIPAddresses {
+	return SearchableIPAddresses{
+		data:  map[IPAddressString]IPAddressWrapped{},
+		order: []IPAddressString{},
+	}
 }

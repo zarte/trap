@@ -22,350 +22,367 @@
 package trap
 
 import (
-    "github.com/raincious/trap/trap/core/types"
-    "github.com/raincious/trap/trap/core/logger"
-    "github.com/raincious/trap/trap/core/client"
-    "github.com/raincious/trap/trap/core/server"
-    "github.com/raincious/trap/trap/core/status"
-    "github.com/raincious/trap/trap/core/status/controller"
+	"github.com/raincious/trap/trap/core/client"
+	"github.com/raincious/trap/trap/core/logger"
+	"github.com/raincious/trap/trap/core/server"
+	"github.com/raincious/trap/trap/core/status"
+	"github.com/raincious/trap/trap/core/status/controller"
+	synchronize "github.com/raincious/trap/trap/core/sync"
+	"github.com/raincious/trap/trap/core/types"
 
-    "net"
-    "net/http"
-    "crypto/tls"
-    "sync"
-    "time"
+	"crypto/tls"
+	"net"
+	"net/http"
+	"sync"
+	"time"
 )
 
 type Status struct {
-    ip                  types.IP
-    host                types.String
-    port                types.UInt16
-
-    tlsCertFile         types.String
-    tlsKeyFile          types.String
-
-    accounts            status.Accounts
-
-    logger              *logger.Logger
-
-    status              *http.Server
-    server              *Server
-    serverRWLock        types.Mutex
-
-    sessions            status.Sessions
-
-    sessionRWLock       types.Mutex
-
-    statusListener      net.Listener
-    statusDownWait      sync.WaitGroup
+	ip             types.IP
+	host           types.String
+	port           types.UInt16
+	tlsCertFile    types.String
+	tlsKeyFile     types.String
+	accounts       status.Accounts
+	logger         *logger.Logger
+	status         *http.Server
+	server         *Server
+	sync           *Sync
+	serverRWLock   types.Mutex
+	sessions       status.Sessions
+	sessionRWLock  types.Mutex
+	statusListener net.Listener
+	statusDownWait sync.WaitGroup
 }
 
-func NewStatus() (*Status) {
-    ip, ipErr           :=  types.ConvertIPFromString("127.0.0.1")
+func NewStatus() *Status {
+	ip, ipErr := types.ConvertIPFromString("127.0.0.1")
 
-    if ipErr != nil {
-        ip              =   types.IP{}
-    }
+	if ipErr != nil {
+		ip = types.IP{}
+	}
 
-    return &Status{
-        ip:             ip,
-        host:           "127.0.0.1",
-        port:           1793,
-        accounts:       status.Accounts{},
-        sessions:       status.Sessions{},
-        serverRWLock:   types.Mutex{},
-        sessionRWLock:  types.Mutex{},
-        statusDownWait: sync.WaitGroup{},
-    }
+	return &Status{
+		ip:             ip,
+		host:           "127.0.0.1",
+		port:           1793,
+		accounts:       status.Accounts{},
+		sessions:       status.Sessions{},
+		serverRWLock:   types.Mutex{},
+		sessionRWLock:  types.Mutex{},
+		statusDownWait: sync.WaitGroup{},
+	}
 }
 
 func (this *Status) SetLogger(l *logger.Logger) {
-    this.logger         =   l.NewContext("Status")
+	this.logger = l.NewContext("Status")
 }
 
 func (this *Status) SetServer(s *Server) {
-    this.server         =   s
+	this.server = s
+}
+
+func (this *Status) SetSync(s *Sync) {
+	this.sync = s
 }
 
 func (this *Status) LoadCert(pem types.String, key types.String) {
-    this.tlsCertFile    =   pem
-    this.tlsKeyFile     =   key
+	this.tlsCertFile = pem
+	this.tlsKeyFile = key
 }
 
 func (this *Status) IP(ip types.IP) {
-    this.ip             =   ip
+	this.ip = ip
 }
 
 func (this *Status) Host(host types.String) {
-    this.host           =   host
+	this.host = host
 }
 
 func (this *Status) Port(port types.UInt16) {
-    this.port           =   port
+	this.port = port
 }
 
 func (this *Status) Account(pass types.String,
-    permissions []types.String) (*status.Account, *types.Throw) {
-    return this.accounts.Register(pass, permissions)
+	permissions []types.String) (*status.Account, *types.Throw) {
+	return this.accounts.Register(pass, permissions)
 }
 
 func (this *Status) verifyUser(ip net.IP,
-    sessionKey types.String) (*status.Session, *types.Throw) {
-    var sess    *status.Session =   nil
-    var err     *types.Throw    =   nil
+	sessionKey types.String) (*status.Session, *types.Throw) {
+	var sess *status.Session = nil
+	var err *types.Throw = nil
 
-    this.sessionRWLock.Exec(func() {
-        sess, err               =   this.sessions.Verify(ip, sessionKey)
-    })
+	this.sessionRWLock.Exec(func() {
+		sess, err = this.sessions.Verify(ip, sessionKey)
+	})
 
-    return sess, err
+	return sess, err
 }
 
 func (this *Status) authUser(ip net.IP,
-    pass types.String) (*status.Session, *types.Throw) {
-    var result                  *status.Session = nil
-    var resultErr               *types.Throw = nil
+	pass types.String) (*status.Session, *types.Throw) {
+	var result *status.Session = nil
+	var resultErr *types.Throw = nil
 
-    account, accountErr         :=  this.accounts.Get(pass)
+	account, accountErr := this.accounts.Get(pass)
 
-    if accountErr != nil {
-        this.server.AddClient(server.ClientInfo{
-            Client:             types.ConvertIP(ip),
-            Server:             types.IPAddress{
-                                    IP:             types.IP{},
-                                    Port:           this.port,
-                                },
-            Type:               "status_ui",
-            Marked:             true,
-        })
+	if accountErr != nil {
+		_, cliAddErr := this.server.AddClient(server.ClientInfo{
+			Client: types.ConvertIP(ip),
+			Server: types.IPAddress{
+				IP:   types.ConvertIP(net.ParseIP("0.0.0.0")),
+				Port: this.port,
+			},
+			Type:   "status_ui",
+			Marked: true,
+		})
 
-        this.logger.Warningf("Bad authorization attempt from '%s'", ip)
+		if cliAddErr != nil {
+			this.logger.Warningf("Can't mark bad client '%s' due to error: %s",
+				ip, cliAddErr)
+		}
 
-        return nil, accountErr
-    }
+		this.logger.Warningf("Bad authorization attempt from '%s'", ip)
 
-    this.logger.Infof("A new session has been binded with '%s'", ip)
+		return nil, accountErr
+	}
 
-    this.sessionRWLock.Exec(func() {
-        result, resultErr       =   this.sessions.Add(ip, account,
-                                        12 * time.Hour)
-    })
+	this.logger.Infof("A new session has been binded with '%s'", ip)
 
-    return result, resultErr
+	this.sessionRWLock.Exec(func() {
+		result, resultErr = this.sessions.Add(ip, account,
+			12*time.Hour)
+	})
+
+	return result, resultErr
 }
 
-func (this *Status) getAllSessions() ([]status.SessionDump) {
-    var dump []status.SessionDump
+func (this *Status) getAllSessions() []status.SessionDump {
+	var dump []status.SessionDump
 
-    this.sessionRWLock.Exec(func() {
-        dump                    =   this.sessions.Dump()
-    })
+	this.sessionRWLock.Exec(func() {
+		dump = this.sessions.Dump()
+	})
 
-    return dump
+	return dump
+}
+
+func (this *Status) getSyncInfo() synchronize.Status {
+	return this.sync.Status()
 }
 
 func (this *Status) getNewServer(httpAddr string) (*http.Server, *types.Throw) {
-    httpMux         :=  status.NewMux()
+	httpMux := status.NewMux()
 
-    httpMux.HandleController("/", &controller.Home{})
+	httpMux.HandleController("/", &controller.Home{})
 
-    httpMux.HandleController("/api/auth", &controller.Auth{
-        Verify:             this.verifyUser,
-        Auth:               this.authUser,
-    })
+	httpMux.HandleController("/api/auth", &controller.Auth{
+		Verify: this.verifyUser,
+		Auth:   this.authUser,
+	})
 
-    httpMux.HandleController("/api/status", &controller.Status{
-        SessionedJSON:      controller.SessionedJSON{
-                                Verify:         this.verifyUser,
-                            },
-        GetStatus:          func() (server.Status) {
-                                return this.server.Status()
-                            },
-    })
+	httpMux.HandleController("/api/status", &controller.Status{
+		SessionedJSON: controller.SessionedJSON{
+			Verify: this.verifyUser,
+		},
+		GetStatus: func() server.Status {
+			return this.server.Status()
+		},
+	})
 
-    httpMux.HandleController("/api/clients", &controller.Clients{
-        SessionedJSON:      controller.SessionedJSON{
-                                Verify:         this.verifyUser,
-                            },
-        GetClients:         func() ([]client.ClientExport) {
-                                return this.server.Clients()
-                            },
-    })
-    httpMux.HandleController("/api/client", &controller.Client{
-        SessionedJSON:      controller.SessionedJSON{
-                                Verify:         this.verifyUser,
-                            },
-        GetClient:          func(addr types.IP) (*client.Client, *types.Throw) {
-                                return this.server.Client(addr)
-                            },
-        AddClient:          func(cCon server.ClientInfo) (*client.Client,
-                                *types.Throw) {
-                                return this.server.AddClient(cCon)
-                            },
-        DelClient:          func(addr types.IP) (*types.Throw) {
-                                return this.server.RemoveClient(addr)
-                            },
-    })
+	httpMux.HandleController("/api/clients", &controller.Clients{
+		SessionedJSON: controller.SessionedJSON{
+			Verify: this.verifyUser,
+		},
+		GetClients: func() []client.ClientExport {
+			return this.server.Clients()
+		},
+	})
+	httpMux.HandleController("/api/client", &controller.Client{
+		SessionedJSON: controller.SessionedJSON{
+			Verify: this.verifyUser,
+		},
+		GetClient: func(addr types.IP) (*client.Client, *types.Throw) {
+			return this.server.Client(addr)
+		},
+		AddClient: func(cCon server.ClientInfo) (*client.Client,
+			*types.Throw) {
+			return this.server.AddClient(cCon)
+		},
+		DelClient: func(addr types.IP) *types.Throw {
+			return this.server.RemoveClient(addr)
+		},
+	})
 
-    httpMux.HandleController("/api/logs", &controller.Logs{
-        SessionedJSON:      controller.SessionedJSON{
-                                Verify:         this.verifyUser,
-                            },
-        GetLogs:            func() ([]logger.LogExport) {
-                                return this.logger.Dump()
-                            },
-    })
+	httpMux.HandleController("/api/logs", &controller.Logs{
+		SessionedJSON: controller.SessionedJSON{
+			Verify: this.verifyUser,
+		},
+		GetLogs: func() []logger.LogExport {
+			return this.logger.Dump()
+		},
+	})
 
-    httpMux.HandleController("/api/sessions", &controller.Sessions{
-        SessionedJSON:      controller.SessionedJSON{
-                                Verify:         this.verifyUser,
-                            },
-        GetSessions:        func() ([]status.SessionDump) {
-                                return this.getAllSessions()
-                            },
-    })
+	httpMux.HandleController("/api/sessions", &controller.Sessions{
+		SessionedJSON: controller.SessionedJSON{
+			Verify: this.verifyUser,
+		},
+		GetSessions: func() []status.SessionDump {
+			return this.getAllSessions()
+		},
+	})
 
-    return &http.Server{
-        Addr:               httpAddr,
-        Handler:            httpMux,
-        WriteTimeout:       32 * time.Second,
-        ReadTimeout:        16 * time.Second,
-        TLSNextProto:       nil,
-        TLSConfig:          nil,
-    }, nil
+	httpMux.HandleController("/api/sync", &controller.Sync{
+		SessionedJSON: controller.SessionedJSON{
+			Verify: this.verifyUser,
+		},
+		GetSyncInfo: func() synchronize.Status {
+			return this.getSyncInfo()
+		},
+	})
+
+	return &http.Server{
+		Addr:         httpAddr,
+		Handler:      httpMux,
+		WriteTimeout: 32 * time.Second,
+		ReadTimeout:  16 * time.Second,
+		TLSNextProto: nil,
+		TLSConfig:    nil,
+	}, nil
 }
 
-func (this *Status) up() (*types.Throw) {
-    var tlsConfig *tls.Config = nil
+func (this *Status) up() *types.Throw {
+	var tlsConfig *tls.Config = nil
 
-    // Check if the server is down before start a new one
-    if this.status != nil || this.statusListener != nil {
-        return status.ErrServerAlreadyUp.Throw()
-    }
+	// Check if the server is down before start a new one
+	if this.status != nil || this.statusListener != nil {
+		return status.ErrServerAlreadyUp.Throw()
+	}
 
-    // No server? no up
-    if this.server == nil {
-        return status.ErrServerNotSet.Throw()
-    }
+	// No server? no up
+	if this.server == nil {
+		return status.ErrServerNotSet.Throw()
+	}
 
-    listenOn                :=  &net.TCPAddr{
-        IP:                     this.ip.IP(),
-        Port:                   int(this.port.Int32()),
-    }
+	listenOn := &net.TCPAddr{
+		IP:   this.ip.IP(),
+		Port: int(this.port.Int32()),
+	}
 
-    // Create an instance of the http status server
-    sServer, sErr       :=  this.getNewServer(listenOn.String())
+	// Create an instance of the http status server
+	sServer, sErr := this.getNewServer(listenOn.String())
 
-    if sErr != nil {
-        return types.ConvertError(sErr)
-    }
+	if sErr != nil {
+		return types.ConvertError(sErr)
+	}
 
-    this.status         =   sServer
+	this.status = sServer
 
-    listener, lErr      :=  net.Listen("tcp", listenOn.String())
+	listener, lErr := net.Listen("tcp", listenOn.String())
 
-    if lErr != nil {
-        return types.ConvertError(lErr)
-    }
+	if lErr != nil {
+		return types.ConvertError(lErr)
+	}
 
-    if this.tlsCertFile != "" && this.tlsKeyFile != "" {
-        tlsCert, tctErr :=  tls.LoadX509KeyPair(
-                                this.tlsCertFile.String(),
-                                this.tlsKeyFile.String())
+	if this.tlsCertFile != "" && this.tlsKeyFile != "" {
+		tlsCert, tctErr := tls.LoadX509KeyPair(
+			this.tlsCertFile.String(),
+			this.tlsKeyFile.String())
 
-        if tctErr != nil {
-            return types.ConvertError(tctErr)
-        }
+		if tctErr != nil {
+			return types.ConvertError(tctErr)
+		}
 
-        tlsConfig       =   &tls.Config{
-                                InsecureSkipVerify: true,
-                                Certificates: []tls.Certificate{tlsCert},
-                            }
+		tlsConfig = &tls.Config{
+			InsecureSkipVerify: true,
+			Certificates:       []tls.Certificate{tlsCert},
+		}
 
-        // Replace the raw TCP listener with TLS listner
-        listener        =   tls.NewListener(listener, tlsConfig)
+		// Replace the raw TCP listener with TLS listner
+		listener = tls.NewListener(listener, tlsConfig)
 
-        this.logger.Infof("TLS enabled")
-    }
+		this.logger.Infof("TLS enabled")
+	}
 
-    go func() {
-        this.statusDownWait.Add(1)
+	go func() {
+		this.statusDownWait.Add(1)
 
-        defer this.statusDownWait.Done()
+		defer this.statusDownWait.Done()
 
-        this.logger.Infof("Serving `Status` server at: %s", listenOn)
+		this.logger.Infof("Serving `Status` server at: %s", listenOn)
 
-        this.statusListener =   listener
+		this.statusListener = listener
 
-        this.status.TLSConfig = tlsConfig
+		this.status.TLSConfig = tlsConfig
 
-        servErr             :=  this.status.Serve(listener)
+		servErr := this.status.Serve(listener)
 
-        if servErr != nil {
-            this.logger.Infof("`Status` server closed due to error: %s",
-                servErr)
+		if servErr != nil {
+			this.logger.Infof("`Status` server closed due to error: %s",
+				servErr)
 
-            return
-        }
-    }()
+			return
+		}
+	}()
 
-    return nil
+	return nil
 }
 
-func (this *Status) down() (*types.Throw) {
-    if this.status == nil {
-        return status.ErrServerNotDownable.Throw()
-    }
+func (this *Status) down() *types.Throw {
+	if this.status == nil {
+		return status.ErrServerNotDownable.Throw()
+	}
 
-    if this.statusListener == nil {
-        return status.ErrServerNotDownable.Throw()
-    }
+	if this.statusListener == nil {
+		return status.ErrServerNotDownable.Throw()
+	}
 
-    this.statusListener.Close()
-    this.statusDownWait.Wait()
+	this.statusListener.Close()
+	this.statusDownWait.Wait()
 
-    this.status         =   nil
-    this.statusListener =   nil
+	this.status = nil
+	this.statusListener = nil
 
-    return nil
+	return nil
 }
 
-func (this *Status) Reset() (*types.Throw) {
-    var e *types.Throw  =   nil
+func (this *Status) Reset() *types.Throw {
+	var e *types.Throw = nil
 
-    this.serverRWLock.Exec(func() {
-        e               =   this.down()
+	this.serverRWLock.Exec(func() {
+		e = this.down()
 
-        // If there is error and it's not 'Server already down'
-        if e != nil && !e.Is(status.ErrServerNotDownable) {
-            return
-        }
+		// If there is error and it's not 'Server already down'
+		if e != nil && !e.Is(status.ErrServerNotDownable) {
+			return
+		}
 
-        this.accounts   =   status.Accounts{}
-        this.sessions   =   status.Sessions{}
+		this.accounts = status.Accounts{}
+		this.sessions = status.Sessions{}
 
-        // Needs manual up
-    })
+		// Needs manual up
+	})
 
-    return e
+	return e
 }
 
-func (this *Status) Serv() (*types.Throw) {
-    var e *types.Throw  =   nil
+func (this *Status) Serv() *types.Throw {
+	var e *types.Throw = nil
 
-    this.serverRWLock.Exec(func() {
-        e               =   this.up()
-    })
+	this.serverRWLock.Exec(func() {
+		e = this.up()
+	})
 
-    return e
+	return e
 }
 
-func (this *Status) Down() (*types.Throw) {
-    var e *types.Throw  =   nil
+func (this *Status) Down() *types.Throw {
+	var e *types.Throw = nil
 
-    this.serverRWLock.Exec(func() {
-        e               =   this.down()
-    })
+	this.serverRWLock.Exec(func() {
+		e = this.down()
+	})
 
-    return e
+	return e
 }

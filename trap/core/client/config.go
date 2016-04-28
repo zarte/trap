@@ -22,7 +22,7 @@
 package client
 
 type Config struct {
-    OnMark                  func(*Client)
-    OnUnmark                func(*Client)
-    OnRecord                func(*Client, Record)
+	OnMark   func(*Client, MarkType)
+	OnUnmark func(*Client, UnmarkType)
+	OnRecord func(*Client, Record)
 }

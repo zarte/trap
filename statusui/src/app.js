@@ -45,6 +45,7 @@
             records: {
                 source: {
                     clients: {
+                        data: [],
                         listOrder: [],
                         clientMap: {},
                         loaded: false,
@@ -54,7 +55,6 @@
                         fetcher: function(vueObj, finished) {
                             vueObj.requestJson('GET', '/api/clients', {}, function(data) {
                                 vueObj.clientList = data;
-
                                 vueObj.records.source.clients.loaded = true;
                             }, function(jqXHR, textStatus, errorThrown) {
                                 switch (jqXHR.status) {
@@ -91,6 +91,93 @@
 
                                 vueObj.records.source.sessions.data = d;
                                 vueObj.records.source.sessions.loaded = true;
+                            }, function(jqXHR, textStatus, errorThrown) {
+                                switch (jqXHR.status) {
+                                    case 403:
+                                        vueObj.auth = null;
+                                        break;
+                                }
+                            }, finished);
+                        }
+                    },
+                    sync: {
+                        data: {
+                            server: {
+                                ip: "",
+                                port: 0
+                            },
+                            partners: [],
+                            indirects: [],
+                        },
+                        loaded: false,
+                        isLoaded: function(vueObj) {
+                            return vueObj.records.source.sync.loaded;
+                        },
+                        fetcher: function(vueObj, finished) {
+                            vueObj.requestJson('GET', '/api/sync', {}, function(data) {
+                                var partners = [];
+                                var indirects = [];
+
+                                for (var i in data.Nodes) {
+                                    partners.push({
+                                        IP: data.Nodes[i].Address.IP,
+                                        Port: data.Nodes[i].Address.Port,
+                                        Delay: data.Nodes[i].Delay,
+                                        Rx: data.Nodes[i].Stats.RX,
+                                        Tx: data.Nodes[i].Stats.TX,
+                                        Connected: data.Nodes[i].Connected,
+                                        Type: "Initiative",
+                                        Weight: data.Nodes[i].Stats.RX + data.Nodes[i].Stats.TX
+                                    });
+
+                                    for (var j in data.Nodes[i].Partner) {
+                                        indirects.push({
+                                            IP: data.Nodes[i].Partner[j].IP,
+                                            Port: data.Nodes[i].Partner[j].Port,
+                                            Via: {
+                                                IP: data.Nodes[i].Address.IP,
+                                                Port: data.Nodes[i].Address.Port
+                                            }
+                                        });
+                                    }
+                                }
+
+                                for (var i in data.Server.Clients) {
+                                    partners.push({
+                                        IP: data.Server.Clients[i].Remote.IP,
+                                        Port: data.Server.Clients[i].Remote.Port,
+                                        Delay: null,
+                                        Rx: data.Server.Clients[i].Stats.RX,
+                                        Tx: data.Server.Clients[i].Stats.TX,
+                                        Connected: true,
+                                        Type: "Passive",
+                                        Weight: data.Server.Clients[i].Stats.RX + data.Server.Clients[i].Stats.TX
+                                    });
+                                }
+
+                                partners.sort(function(a, b) {
+                                    return (b.Connected - a.Connected
+                                        || b.Weight - a.Weight
+                                        || a.IP.localeCompare(b.IP)
+                                        || a.Port - b.Port);
+                                });
+
+                                indirects.sort(function(a, b) {
+                                    return (a.Via.IP.localeCompare(b.Via.IP)
+                                        || a.Via.Port - b.Via.Port
+                                        || a.IP.localeCompare(b.IP)
+                                        || a.Port - b.Port);
+                                });
+
+                                vueObj.records.source.sync.data = {
+                                    server: {
+                                        ip: data.Server.IP,
+                                        port: data.Server.Port
+                                    },
+                                    partners: partners,
+                                    indirects: indirects
+                                };
+                                vueObj.records.source.sync.loaded = true;
                             }, function(jqXHR, textStatus, errorThrown) {
                                 switch (jqXHR.status) {
                                     case 403:
@@ -357,22 +444,24 @@
         computed: {
             clientList: {
                 get: function() {
-                    var clients = [];
+                    this.records.source.clients.data = [];
 
                     if (this.records.source.clients.listOrder.length <= 0) {
-                        return clients;
+                        return this.records.source.clients.data;
                     }
 
                     for (var i in this.records.source.clients.listOrder) {
-                        clients.push(this.records.source.clients.clientMap[
-                            this.records.source.clients.listOrder[i].Key
-                        ]);
+                        this.records.source.clients.data.push(
+                            this.records.source.clients.clientMap[
+                                this.records.source.clients.listOrder[i].Key
+                            ]);
                     }
 
-                    return clients;
+                    return this.records.source.clients.data;
                 },
                 set: function(clientList) {
-                    var updateableAttributes = ['LastSeen', 'Count', 'Records', 'Marked'],
+                    var vueObj = this,
+                        updateableAttributes = ['LastSeen', 'Count', 'Records', 'Marked'],
                         newClientKeys = {},
                         parseClientData = function(clientData) {
                             return {
@@ -382,10 +471,78 @@
                                 Count:          clientList[i].Count,
                                 Records:        clientList[i].Records,
                                 Marked:         clientList[i].Marked,
-
                                 RecordData:     [],
                                 Expended:       false,
-                                Deleting:       false
+                                Expend:         function(index) {
+                                    if (this.Expended) {
+                                        this.Expended = false;
+
+                                        $('#status-marked-client-data-' + index).slideUp(500);
+
+                                        return;
+                                    }
+
+                                    this.RecordData = vueObj.parseClientRecords(this.Records);
+                                    this.Expended = true;
+
+                                    $('#status-marked-client-data-' + index).slideDown(500);
+                                },
+                                Deleting:       false,
+                                Delete:         function(index) {
+                                    if (this.Deleting) {
+                                        return;
+                                    }
+
+                                    if (!confirm('Do you want to remove and unmark inbound client \'' + this.Address + '\'?')) {
+                                        return;
+                                    }
+
+                                    this.Deleting = true;
+                                    vueObj.records.queuer.reset();
+
+                                    vueObj.requestJson(
+                                        'DELETE',
+                                        '/api/client?client=' + encodeURIComponent(this.Address),
+                                        {},
+                                        function(data) {
+                                            this.Deleting = false;
+
+                                            if (!data.Result) {
+                                                alert('Error happened :(');
+
+                                                return;
+                                            }
+
+                                            $('#status-marked-client-' + index).slideUp(
+                                                500,
+                                                function() {
+                                                    // Manually fetch updated client data
+                                                    vueObj.records.fetch(vueObj, false, function() {
+                                                        // Restart data sync after data load
+                                                        vueObj.records.queuer.run(vueObj);
+                                                    });
+                                                }
+                                            );
+                                        },
+                                        function(jqXHR, textStatus, errorThrown) {
+                                            switch (jqXHR.status) {
+                                                case 403:
+                                                case 400:
+                                                case 401:
+                                                    vueObj.auth = null;
+                                                    break;
+                                            }
+
+                                            if (typeof jqXHR.responseJSON !== 'object') {
+                                                alert('Error happened :(');
+
+                                                return;
+                                            }
+
+                                            alert(jqXHR.responseJSON.Error);
+                                        }
+                                    );
+                                }
                             };
                         },
                         eClient = null;
@@ -517,6 +674,41 @@
             }
         },
         methods: {
+            parseTime: function(dateTime) {
+                var d = new Date(dateTime),
+                    s = [   'Jan', 'Feb', 'Mar', 'Apr',
+                            'May', 'Jun', 'Jul', 'Aug',
+                            'Sep', 'Oct', 'Nov', 'Dec'];
+
+                return {
+                    Clock:  d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds(),
+                    Date:   s[d.getMonth()] + ', ' + d.getDate(),
+                    Year:   d.getFullYear()
+                };
+            },
+            numFilter: function(num, formats) {
+                var n = parseInt(num, 10), format = [0, formats[0]];
+
+                for (var f in formats) {
+                    if (n < f) {
+                        break;
+                    }
+
+                    format = [f, formats[f]];
+                }
+
+                if (format[0] == 0) {
+                    return format[1].replace(
+                        '%N%',
+                        Math.round(n).toLocaleString()
+                    );
+                }
+
+                return format[1].replace(
+                    '%N%',
+                    Math.round(n / format[0]).toLocaleString()
+                );
+            },
             httpRequest: function(method, url, reqData, reqDataType, succ, fail, always) {
                 var headers = {}, empty = {};
                 var successCb = typeof succ === 'function' ? succ : function() {},
@@ -616,33 +808,6 @@
                     self.status.verifiy.running = false;
                 });
             },
-            parseTime: function(dateTime) {
-                var d = new Date(dateTime),
-                    s = [   'Jan', 'Feb', 'Mar', 'Apr',
-                            'May', 'Jun', 'Jul', 'Aug',
-                            'Sep', 'Oct', 'Nov', 'Dec'];
-
-                return {
-                    Clock:  d.getHours() + ':' + d.getMinutes() + ':' + d.getSeconds(),
-                    Date:   s[d.getMonth()] + ', ' + d.getDate(),
-                    Year:   d.getFullYear()
-                };
-            },
-            expendClientRecord: function(client, index) {
-                if (client.Expended) {
-                    client.Expended = false;
-
-                    $('#status-marked-client-data-' + index).slideUp(500);
-
-                    return;
-                }
-
-                client.RecordData = this.parseClientRecords(client.Records);
-
-                client.Expended = true;
-
-                $('#status-marked-client-data-' + index).slideDown(500);
-            },
             parseClientRecords: function(data) {
                 var result = [];
 
@@ -663,63 +828,6 @@
                     Hitting: data.Hitting,
                     Time: date
                 };
-            },
-            removeClient: function(client, index) {
-                var self = this;
-
-                if (client.Deleting) {
-                    return;
-                }
-
-                if (!confirm('Do you want to remove and unmark inbound client \'' + client.Address + '\'?')) {
-                    return;
-                }
-
-                client.Deleting = true;
-                self.records.queuer.reset();
-
-                self.requestJson(
-                    'DELETE',
-                    '/api/client?client=' + encodeURIComponent(client.Address),
-                    {},
-                    function(data) {
-                        client.Deleting = false;
-
-                        if (!data.Result) {
-                            alert('Error happened :(');
-
-                            return;
-                        }
-
-                        $('#status-marked-client-' + index).slideUp(
-                            500,
-                            function() {
-                                // Manually fetch updated client data
-                                self.records.fetch(self, false, function() {
-                                    // Restart data sync after data load
-                                    self.records.queuer.run(self);
-                                });
-                            }
-                        );
-                    },
-                    function(jqXHR, textStatus, errorThrown) {
-                        switch (jqXHR.status) {
-                            case 403:
-                            case 400:
-                            case 401:
-                                self.auth = null;
-                                break;
-                        }
-
-                        if (typeof jqXHR.responseJSON !== 'object') {
-                            alert('Error happened :(');
-
-                            return;
-                        }
-
-                        alert(jqXHR.responseJSON.Error);
-                    }
-                );
             }
         },
         filters: {
@@ -748,24 +856,41 @@
                     ago = (+ new Date()) - time,
                     formats = {
                         0: 'just now',
-                        1000: '%T% seconds ago',
-                        60000: '%T% minutes ago',
-                        3600000: '%T% hours ago',
-                        86400000: '%T% days ago',
-                        2592000000: '%T% months ago',
-                        31104000000: '%T% years ago'
-                    },
-                    format = [0, formats[0]];
-
-                for (var f in formats) {
-                    if (ago < f) {
-                        break;
+                        1000: '%N% seconds ago',
+                        60000: '%N% minutes ago',
+                        3600000: '%N% hours ago',
+                        86400000: '%N% days ago',
+                        2592000000: '%N% months ago',
+                        31104000000: '%N% years ago'
                     }
 
-                    format = [f, formats[f]];
+                return this.numFilter(ago, formats);
+            },
+            duration: function(d) {
+                if (d <= 0) {
+                    return 'n/a';
                 }
 
-                return format[1].replace('%T%', Math.round(ago / format[0]));
+                return this.numFilter(d, {
+                    0: '%N%ns',
+                    1000: '%N%μs',
+                    1000000: '%N%ms',
+                    1000000000: '%N%s',
+                    60000000000: '%N%m',
+                    360000000000: '%N%h'
+                });
+            },
+            bytes: function(b) {
+                if (b <= 0) {
+                    return '0B';
+                }
+
+                return this.numFilter(b, {
+                    0: '%N%B',
+                    1024: '%N%KiB',
+                    1048576: '%N%MiB',
+                    1073741824: '%N%GiB'
+                });
             },
             ASCIICode: function(str) {
                 var codes = '';

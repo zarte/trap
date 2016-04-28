@@ -462,7 +462,7 @@ func TestConvertAddress(t *testing.T) {
 	testConvertAddress(t, "[::]", "::", 443)
 }
 
-func TestConvertAddressInvalid(t *testing.T) {
+func TestIPAddressInvalid(t *testing.T) {
 	addr, err := ConvertAddress(fakeNetAddress{
 		IPPort: "::0",
 		Net:    "",
@@ -477,7 +477,7 @@ func TestConvertAddressInvalid(t *testing.T) {
 	}
 }
 
-func TestConvertIPAddressesSerializeUnarshalText(t *testing.T) {
+func TestIPAddressesSerializeUnarshalText(t *testing.T) {
 	ips := IPAddresses{}
 	ips2 := IPAddresses{}
 
@@ -514,7 +514,7 @@ func TestConvertIPAddressesSerializeUnarshalText(t *testing.T) {
 	}
 }
 
-func TestConvertIPAddressesContains(t *testing.T) {
+func TestIPAddressesContains(t *testing.T) {
 	ips := IPAddresses{}
 	ips2 := IPAddresses{}
 
@@ -529,9 +529,9 @@ func TestConvertIPAddressesContains(t *testing.T) {
 	ips = append(ips, testIPAddress2)
 	ips2 = append(ips2, testIPAddress)
 
-	if ips.Contains(&ips2) != 0 {
+	if ips.Contains(&ips2) {
 		t.Errorf("IPAddresses.Contains() failed to count the right " +
-			"amount of companion object")
+			"amount of companion objects")
 
 		return
 	}
@@ -539,9 +539,173 @@ func TestConvertIPAddressesContains(t *testing.T) {
 	ips = append(ips, testIPAddress)
 	ips = append(ips, testIPAddress)
 
-	if ips.Contains(&ips2) != 2 {
+	if !ips.Contains(&ips2) {
 		t.Errorf("IPAddresses.Contains() failed to count the right " +
-			"amount of companion object")
+			"amount of companion objects")
+
+		return
+	}
+}
+
+func TestIPAddressesIntersection(t *testing.T) {
+	ips := IPAddresses{}
+	ips2 := IPAddresses{}
+
+	testIPAddress, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.1:8080",
+	})
+
+	testIPAddress2, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.2:8080",
+	})
+
+	ips = append(ips, testIPAddress)
+	ips2 = append(ips2, testIPAddress2)
+
+	if len(ips.Intersection(&ips2)) != 0 {
+		t.Errorf("IPAddresses.Intersection() failed to pickup the right " +
+			"amount of companion objects")
+
+		return
+	}
+
+	ips2 = append(ips2, testIPAddress)
+
+	intersection := ips.Intersection(&ips2)
+
+	if len(intersection) != 1 {
+		t.Errorf("IPAddresses.Intersection() failed to pickup the right " +
+			"amount of companion objects")
+
+		return
+	}
+
+	if !intersection[0].IsEqual(&testIPAddress) {
+		t.Errorf("IPAddresses.Intersection() failed to pickup the right result")
+
+		return
+	}
+}
+
+func TestIPAddressWrapped(t *testing.T) {
+	testIPAddress, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.1:8080",
+	})
+
+	wrapped := testIPAddress.Wrapped()
+
+	wrappedIPAddr := wrapped.IPAddress()
+
+	if !wrappedIPAddr.IsEqual(&testIPAddress) {
+		t.Errorf("IPAddressWrapped.Import() failed import IPAddress")
+
+		return
+	}
+
+	if wrapped.String() != IPAddressString(testIPAddress.String()) {
+		t.Errorf("IPAddressWrapped.Import() failed import IPAddress")
+
+		return
+	}
+}
+
+func TestSearchableIPAddresses(t *testing.T) {
+	testIPAddress, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.1:8080",
+	})
+
+	testIPAddress2, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.1:8081",
+	})
+
+	testIPAddress3, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.2:8081",
+	})
+
+	testIPAddress4, _ := ConvertIPAddress(fakeNetAddress{
+		IPPort: "127.0.0.3:8081",
+	})
+
+	wrapped := testIPAddress.Wrapped()
+	wrapped2 := testIPAddress4.Wrapped()
+
+	ips := IPAddresses{testIPAddress, testIPAddress2, testIPAddress3}
+	ips2 := IPAddresses{testIPAddress, testIPAddress2, testIPAddress4}
+
+	searchable := ips.Searchable()
+	searchable2 := ips2.Searchable()
+
+	if !searchable.Has(&wrapped) {
+		t.Error("SearchableIPAddresses.Import() failed import IPAddress")
+
+		return
+	}
+
+	if searchable.Has(&wrapped2) {
+		t.Error("SearchableIPAddresses.Has() failed to return a false on fail")
+
+		return
+	}
+
+	inter := searchable.Intersection(&searchable2)
+
+	if inter.Len() != 2 ||
+		len(inter.Export()) != 2 ||
+		!inter.Contains(&searchable) {
+		t.Error("SearchableIPAddresses.Intersection() failed to return " +
+			"a right amount of result")
+
+		return
+	}
+
+	errorString := ""
+
+	inter.Through(func(key IPAddressString, val IPAddressWrapped) *Throw {
+		switch key {
+		case "127.0.0.1:8080":
+			if String(val.String()) != testIPAddress.String() {
+				errorString = "SearchableIPAddresses.Intersection() failed " +
+					"to return the right result"
+
+				return nil
+			}
+
+		case "127.0.0.1:8081":
+			if String(val.String()) != testIPAddress2.String() {
+				errorString = "SearchableIPAddresses.Intersection() failed " +
+					"to return the right result"
+
+				return nil
+			}
+
+		default:
+			errorString = "SearchableIPAddresses.Intersection() returning an " +
+				"unexpected result"
+
+			return nil
+		}
+
+		inter.Delete(&val)
+
+		return nil
+	})
+
+	if errorString != "" {
+		t.Error(errorString)
+
+		return
+	}
+
+	if inter.Len() != 0 {
+		t.Error("SearchableIPAddresses.Delete() failed to delete " +
+			"items")
+
+		return
+	}
+
+	if inter.Contains(&searchable) {
+		t.Error("SearchableIPAddresses.Contains() failed to return false when" +
+			" it's not contains specified item")
 
 		return
 	}
