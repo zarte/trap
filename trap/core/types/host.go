@@ -71,11 +71,11 @@ func (ip *IP) IsEmpty() bool {
 }
 
 func (ip *IP) IsZero() bool {
-	if !ip.IsEqual(&zeroIP4) && !ip.IsEqual(&zeroIP6) {
-		return false
+	if ip.IsEmpty() || ip.IsEqual(&zeroIP4) || ip.IsEqual(&zeroIP6) {
+		return true
 	}
 
-	return true
+	return false
 }
 
 func (ip IP) MarshalText() ([]byte, error) {

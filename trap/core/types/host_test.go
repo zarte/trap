@@ -141,6 +141,12 @@ func TestIPStruct(t *testing.T) {
 		return
 	}
 
+	if !ip2.IsZero() {
+		t.Errorf("Failed asserting the IP '%s' is zero", ip2.String())
+
+		return
+	}
+
 	if ip3.String() != "127.0.0.1" {
 		t.Errorf("Failed asserting the IP is excepted '127.0.0.1', got '%s'", ip3.String())
 
