@@ -21,6 +21,7 @@
 
 package communication
 
+/*
 import (
 	"github.com/raincious/trap/trap/core/logger"
 	"github.com/raincious/trap/trap/core/sync/communication/conn"
@@ -94,3 +95,4 @@ func TestClientConnect(t *testing.T) {
 
 	log.Printf("Partners: %v", serverPartners)
 }
+*/
