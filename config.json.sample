@@ -80,6 +80,7 @@
      *   "clients"    -- Add, remove and see inbound clients
      *   "sessions"   -- See active sessions
      *   "logs"       -- See recent logs
+     *   "sync"       -- See sync status
      *
      * Notice:
      *   Anyone had a valid password can login to the server interface
@@ -94,6 +95,7 @@
         "The password of a manage account": [
             "clients",
             "sessions",
+            "sync",
             "logs"
         ],
         "AAA": []

@@ -22,6 +22,6 @@
 package messager
 
 type Stats struct {
-	TX int64
-	RX int64
+	TX int32
+	RX int32
 }

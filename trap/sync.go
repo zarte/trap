@@ -514,8 +514,6 @@ func (s *Sync) Serv() *types.Throw {
 
 	s.downing = false
 
-	s.connectAllNodes()
-
 	go s.cron()
 
 	s.logger.Debugf("`Sync` is up")

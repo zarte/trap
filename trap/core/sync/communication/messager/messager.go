@@ -80,8 +80,8 @@ type Messager struct {
 	writerChan        chan *message
 	exitChan          messageSignalChan
 	defaultResponders Callbacks
-	transmited        int64
-	received          int64
+	transmited        int32
+	received          int32
 	syncCtlCharTable  byteCheckTable
 }
 
@@ -507,7 +507,7 @@ func (m *Messager) reader(rConn *conn.Conn) *types.Throw {
 
 			return nil
 		}, func(readLen int, readErr error) *types.Throw {
-			atomic.AddInt64(&m.received, int64(readLen))
+			atomic.AddInt32(&m.received, int32(readLen))
 
 			receivedDataLen += readLen
 
@@ -669,7 +669,7 @@ func (m *Messager) writer(wConn *conn.Conn) {
 
 			segWrtLen += wLen
 
-			atomic.AddInt64(&m.transmited, int64(wLen))
+			atomic.AddInt32(&m.transmited, int32(wLen))
 
 			if !message.Held {
 				message.ResultChan <- nil
@@ -767,8 +767,8 @@ func (m *Messager) SetMaxSendLength(newLength types.UInt16) {
 
 func (m *Messager) Stats() Stats {
 	return Stats{
-		TX: atomic.LoadInt64(&m.transmited),
-		RX: atomic.LoadInt64(&m.received),
+		TX: atomic.LoadInt32(&m.transmited),
+		RX: atomic.LoadInt32(&m.received),
 	}
 }
 
