@@ -3,6 +3,7 @@
 !*.*
 !LICENSE
 !README
+!THIRD-PARTY
 statusui/temp
 statusui/node_modules
 statusui/dist
