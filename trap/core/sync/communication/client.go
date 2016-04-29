@@ -329,7 +329,7 @@ func (c *Client) Auth(
 			return
 		}
 
-		pMaxLen, delay, _, ips, authErr := sess.Auth(
+		pMaxLen, delay, heatb, ips, authErr := sess.Auth(
 			c.maxOutgoingDataSize, password, connects, onAuthed)
 
 		if authErr != nil {
@@ -340,7 +340,7 @@ func (c *Client) Auth(
 		}
 
 		c.delayLock.Exec(func() {
-			//c.heatbeatTicker = time.Tick(heatb)
+			c.heatbeatTicker = time.Tick(heatb)
 			c.clientAuthed = true
 			c.connDelay = delay
 			c.maxOutgoingDataSize = pMaxLen
