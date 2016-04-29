@@ -296,7 +296,7 @@ func (s *Sync) server() *communication.Server {
 		},
 		Responders:         handle,
 		MaxReceiveDataSize: s.maxReceiveLen,
-		Logger:             s.logger.NewContext("Partner"),
+		Logger:             s.logger.NewContext("Server"),
 	}
 
 	s.syncServer = comServer

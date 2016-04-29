@@ -73,7 +73,7 @@ func (s *Server) Listen(listenOn net.TCPAddr, cert tls.Certificate,
 	s.wait = sync.WaitGroup{}
 	s.timeout = timeout
 	s.sessions = NewSessions(
-		s.Logger.NewContext("Server"),
+		s.Logger,
 		s.MaxReceiveDataSize,
 		timeout,
 		func() {

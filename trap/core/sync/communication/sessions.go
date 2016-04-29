@@ -50,7 +50,7 @@ func NewSessions(
 ) *Sessions {
 	return &Sessions{
 		maxIncommingDataSize: maxIncommingDataSize,
-		logger:               logger,
+		logger:               logger.NewContext("Session"),
 		reqTimeout:           reqTimeout,
 		sessions:             map[string]*Session{},
 		sessionLock:          types.Mutex{},
@@ -143,9 +143,9 @@ func (s *Sessions) Unregister(connection *conn.Conn) *types.Throw {
 	})
 
 	if er != nil {
-		s.logger.Warningf("Ending session '%s' with error: %s", addr, er)
+		s.logger.Warningf("Session dropped '%s' with error: %s", addr, er)
 	} else {
-		s.logger.Infof("Ending session '%s'", addr)
+		s.logger.Infof("Dropped session '%s'", addr)
 	}
 
 	return er
