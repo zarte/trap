@@ -118,15 +118,17 @@ func (s *Sessions) Register(connection *conn.Conn,
 		return nil, er
 	}
 
+	s.logger.Infof("New session '%s'", add)
+
 	return session, nil
 }
 
 func (s *Sessions) Unregister(connection *conn.Conn) *types.Throw {
 	var er *types.Throw = nil
 
-	s.sessionLock.Exec(func() {
-		addr := connection.RemoteAddr().String()
+	addr := connection.RemoteAddr().String()
 
+	s.sessionLock.Exec(func() {
 		if !s.hasByKey(addr) {
 			er = ErrSessionNotRegistered.Throw(addr)
 
@@ -139,6 +141,12 @@ func (s *Sessions) Unregister(connection *conn.Conn) *types.Throw {
 
 		s.onUnregister()
 	})
+
+	if er != nil {
+		s.logger.Warningf("Ending session '%s' with error: %s", addr, er)
+	} else {
+		s.logger.Infof("Ending session '%s'", addr)
+	}
 
 	return er
 }

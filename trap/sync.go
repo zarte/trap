@@ -33,6 +33,7 @@ import (
 
 	"crypto/tls"
 	"net"
+	gosync "sync"
 	"time"
 )
 
@@ -43,6 +44,7 @@ type Sync struct {
 	upped             bool
 	upping            bool
 	shutdownLock      types.Mutex
+	shutdownWait      gosync.WaitGroup
 	maxReceiveLen     types.UInt16
 	logger            *logger.Logger
 	passphrase        types.String
@@ -55,6 +57,7 @@ type Sync struct {
 	looseTimeout      time.Duration
 	cronDownChan      chan bool
 	downing           bool
+	downingLock       types.Mutex
 }
 
 func NewSync() *Sync {
@@ -68,6 +71,7 @@ func NewSync() *Sync {
 		upped:             false,
 		upping:            false,
 		shutdownLock:      types.Mutex{},
+		shutdownWait:      gosync.WaitGroup{},
 		maxReceiveLen:     65535,
 		passphrase:        "",
 		syncNodes:         nil,
@@ -79,6 +83,7 @@ func NewSync() *Sync {
 		looseTimeout:      120 * time.Second,
 		cronDownChan:      make(chan bool),
 		downing:           false,
+		downingLock:       types.Mutex{},
 	}
 }
 
@@ -291,7 +296,7 @@ func (s *Sync) server() *communication.Server {
 		},
 		Responders:         handle,
 		MaxReceiveDataSize: s.maxReceiveLen,
-		Logger:             s.logger,
+		Logger:             s.logger.NewContext("Partner"),
 	}
 
 	s.syncServer = comServer
@@ -368,6 +373,8 @@ func (s *Sync) LoadCert(pem types.String, key types.String) *types.Throw {
 }
 
 func (s *Sync) cron() {
+	defer s.shutdownWait.Done()
+
 	for {
 		select {
 		case <-s.cronDownChan:
@@ -382,6 +389,10 @@ func (s *Sync) cron() {
 
 func (s *Sync) connectAllNodes() {
 	s.nodes().Scan(func(key types.String, node *sync.Node) *types.Throw {
+		if s.isDowning() {
+			return sync.ErrSyncShuttingDown.Throw()
+		}
+
 		if node.IsConnected() {
 			return nil
 		}
@@ -429,7 +440,7 @@ func (s *Sync) connectAllNodes() {
 }
 
 func (s *Sync) tryConnectToAllNodes() {
-	if s.downing {
+	if s.isDowning() {
 		return
 	}
 
@@ -539,7 +550,9 @@ func (s *Sync) up() *types.Throw {
 
 	s.logger.Infof("Serving `Sync` Server at '%s'", s.listenOn.String())
 
-	s.downing = false
+	s.setDowning(false)
+
+	s.shutdownWait.Add(1)
 
 	go s.cron()
 
@@ -555,30 +568,46 @@ func (s *Sync) down() *types.Throw {
 		return sync.ErrSyncNotUpCannotDown.Throw()
 	}
 
-	s.downing = true
-
-	s.logger.Debugf("Shutting down server")
+	s.logger.Debugf("Shutting down")
 
 	sErr := s.server().Down()
 
 	if sErr != nil {
 		s.logger.Errorf("There are an error happened while shuting "+
 			"down the server: %s", sErr)
-
-		return sErr
 	}
 
-	s.upped = false
+	s.setDowning(true)
 
 	s.cronDownChan <- true
+
+	s.shutdownWait.Wait()
 
 	s.syncNodes = nil
 	s.syncServer = nil
 	s.activeClients = sync.NewActiveClientsTable()
 
-	s.logger.Infof("`Sync` is down")
+	s.upped = false
+
+	s.logger.Debugf("Down")
 
 	return nil
+}
+
+func (s *Sync) setDowning(dn bool) {
+	s.downingLock.Exec(func() {
+		s.downing = dn
+	})
+}
+
+func (s *Sync) isDowning() bool {
+	var dn bool
+
+	s.downingLock.Exec(func() {
+		dn = s.downing
+	})
+
+	return dn
 }
 
 func (s *Sync) Serv() *types.Throw {

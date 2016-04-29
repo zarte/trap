@@ -27,6 +27,9 @@ var (
 	ErrSyncAlreadyUp *types.Error = types.NewError(
 		"`Sync` is already up")
 
+	ErrSyncShuttingDown *types.Error = types.NewError(
+		"`Sync` is shutting down")
+
 	ErrSyncNotUpCannotDown *types.Error = types.NewError(
 		"`Sync` can't be shutdown because it's not up")
 )

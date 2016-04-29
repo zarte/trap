@@ -144,18 +144,22 @@ func (s *Server) serve() {
 			defer func() {
 				s.sessions.Unregister(c)
 
-				s.wait.Done()
-
 				if onDisconnect != nil {
 					onDisconnect(c)
 				}
 
 				c.Close()
+
+				s.wait.Done()
 			}()
 
 			if onConnect != nil {
 				onConnect(c)
 			}
+
+			go func() {
+				<-ready
+			}()
 
 			session.Serve(ready)
 		}(syncConn)
